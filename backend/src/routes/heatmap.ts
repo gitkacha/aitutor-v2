@@ -7,7 +7,7 @@ router.get('/', async (_req: Request, res: Response) => {
   const types = await prisma.writingType.findMany({
     include: {
       attempts: {
-        where: { isDemo: false },
+        // Demo data is visible when loaded; isDemo flag exists for clean clearing
         include: { analysis: true },
       },
     },
