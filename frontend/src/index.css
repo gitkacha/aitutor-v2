@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  @apply bg-gray-50 text-gray-900 antialiased;
+}
+
+@layer base {
+  :root {
+    --brand-blue: #1c6dd0;
+    --brand-green: #2e9e5b;
+    --brand-amber: #f2a71b;
+  }
+}
