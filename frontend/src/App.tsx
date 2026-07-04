@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
+import Dashboard from './pages/Dashboard';
 import PracticeHome from './pages/PracticeHome';
 import TimedPractice from './pages/TimedPractice';
 
@@ -10,15 +11,7 @@ export default function App() {
       <main className="flex-1 overflow-y-auto p-6">
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route
-            path="/dashboard"
-            element={
-              <div className="text-center py-20">
-                <h1 className="text-2xl font-semibold text-gray-700">Progress Dashboard</h1>
-                <p className="text-gray-500 mt-2">No attempts yet. Start practising to see your progress.</p>
-              </div>
-            }
-          />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/practice/:typeSlug" element={<PracticeHome />} />
           <Route path="/practice/:typeSlug/start" element={<TimedPractice />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
