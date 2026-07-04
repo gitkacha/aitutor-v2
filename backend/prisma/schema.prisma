@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model WritingType {
+  id                Int       @id @default(autoincrement())
+  name              String
+  slug              String    @unique
+  description       String
+  expectedStructure String
+  isDemo            Boolean   @default(false)
+  prompts           Prompt[]
+  attempts          Attempt[]
+}
+
+model Prompt {
+  id        Int       @id @default(autoincrement())
+  text      String
+  typeId    Int
+  isDemo    Boolean   @default(false)
+  type      WritingType @relation(fields: [typeId], references: [id])
+  attempts  Attempt[]
+}
+
+model Attempt {
+  id          Int       @id @default(autoincrement())
+  typeId      Int
+  promptId    Int
+  text        String
+  startedAt   DateTime
+  finishedAt  DateTime
+  timeTaken   Int
+  source      String
+  worksheetId Int?
+  isDemo      Boolean   @default(false)
+  type        WritingType @relation(fields: [typeId], references: [id])
+  prompt      Prompt      @relation(fields: [promptId], references: [id])
+  worksheet   Worksheet?  @relation(fields: [worksheetId], references: [id])
+  analysis    Analysis?
+}
+
+model Analysis {
+  id                Int     @id @default(autoincrement())
+  attemptId         Int     @unique
+  vocabScore        Int
+  vocabComments     String
+  structureScore    Int
+  structureComments String
+  contentScore      Int
+  contentComments   String
+  overallScore      Int
+  summary           String
+  isDemo            Boolean @default(false)
+  attempt           Attempt @relation(fields: [attemptId], references: [id])
+}
+
+model Worksheet {
+  id        Int       @id @default(autoincrement())
+  title     String
+  typeId    Int
+  prompts   String
+  createdAt DateTime  @default(now())
+  isDemo    Boolean   @default(false)
+  attempts  Attempt[]
+}
