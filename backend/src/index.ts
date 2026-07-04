@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { errorHandler } from './middleware/error';
 import typesRouter from './routes/types';
+import attemptsRouter from './routes/attempts';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -10,6 +11,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api/types', typesRouter);
+app.use('/api/attempts', attemptsRouter);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });
