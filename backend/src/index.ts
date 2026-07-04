@@ -4,6 +4,7 @@ import { errorHandler } from './middleware/error';
 import typesRouter from './routes/types';
 import attemptsRouter from './routes/attempts';
 import heatmapRouter from './routes/heatmap';
+import analysisRouter from './routes/analysis';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -14,6 +15,7 @@ app.use(express.json());
 app.use('/api/types', typesRouter);
 app.use('/api/attempts', attemptsRouter);
 app.use('/api/heatmap', heatmapRouter);
+app.use('/api/analysis', analysisRouter);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });
