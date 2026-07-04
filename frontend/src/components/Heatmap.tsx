@@ -3,7 +3,7 @@ import { HeatmapEntry } from '@/lib/api';
 
 interface HeatmapProps {
   data: HeatmapEntry[];
-  onSelect?: (slug: string) => void;
+  onSelect?: (entry: HeatmapEntry) => void;
 }
 
 function getScoreColor(score: number | null): string {
@@ -64,7 +64,15 @@ export default function Heatmap({ data, onSelect }: HeatmapProps) {
       {data.map((entry) => (
         <button
           key={entry.typeSlug}
-          onClick={() => (onSelect || navigate)(entry.typeSlug)}
+          onClick={() => {
+            if (onSelect) {
+              onSelect(entry);
+            } else if (entry.attemptCount > 0) {
+              navigate(`/history/${entry.typeSlug}`);
+            } else {
+              navigate(`/practice/${entry.typeSlug}`);
+            }
+          }}
           className={`rounded-xl p-4 text-left transition-all hover:scale-105 active:scale-95 ${getScoreColor(entry.averageScore)}`}
           title={`${entry.typeName}: ${entry.attemptCount} attempt${entry.attemptCount !== 1 ? 's' : ''}`}
         >

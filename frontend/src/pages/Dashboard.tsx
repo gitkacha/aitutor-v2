@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useHeatmap } from '@/hooks/useHeatmap';
+import { HeatmapEntry } from '@/lib/api';
 import Heatmap from '@/components/Heatmap';
 import { BarChart3 } from 'lucide-react';
 
@@ -23,8 +24,12 @@ export default function Dashboard() {
     );
   }
 
-  const handleSelect = (slug: string) => {
-    navigate(`/practice/${slug}`);
+  const handleSelect = (entry: HeatmapEntry) => {
+    if (entry.attemptCount > 0) {
+      navigate(`/history/${entry.typeSlug}`);
+    } else {
+      navigate(`/practice/${entry.typeSlug}`);
+    }
   };
 
   return (

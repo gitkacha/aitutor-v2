@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import PracticeHome from './pages/PracticeHome';
 import TimedPractice from './pages/TimedPractice';
+import ScoreHistory from './components/ScoreHistory';
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/practice/:typeSlug" element={<PracticeHome />} />
           <Route path="/practice/:typeSlug/start" element={<TimedPractice />} />
+          <Route path="/history/:typeSlug" element={<ScoreHistory />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>
