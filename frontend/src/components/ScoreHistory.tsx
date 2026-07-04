@@ -73,10 +73,10 @@ export default function ScoreHistory() {
                 <Line
                   type="monotone"
                   dataKey="score"
-                  stroke="#1c6dd0"
+                  stroke="var(--brand-blue)"
                   strokeWidth={2}
-                  dot={{ r: 4, fill: '#1c6dd0', strokeWidth: 0 }}
-                  activeDot={{ r: 6, fill: '#1c6dd0' }}
+                  dot={{ r: 4, fill: 'var(--brand-blue)', strokeWidth: 0 }}
+                  activeDot={{ r: 6, fill: 'var(--brand-blue)' }}
                 />
               </LineChart>
             </ResponsiveContainer>

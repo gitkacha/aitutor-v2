@@ -53,7 +53,7 @@ export default function Timer({ timeLeft, total, onTick, onTimeUp, running }: Ti
           <circle
             cx="64" cy="64" r="56"
             fill="none"
-            stroke={isLow ? '#ef4444' : isMedium ? '#f2a71b' : '#2e9e5b'}
+            stroke={isLow ? '#ef4444' : isMedium ? 'var(--brand-amber)' : 'var(--brand-green)'}
             strokeWidth="6"
             strokeDasharray={`${2 * Math.PI * 56}`}
             strokeDashoffset={`${2 * Math.PI * 56 * (1 - percentage / 100)}`}
