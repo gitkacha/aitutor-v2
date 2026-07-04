@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
+import PracticeHome from './pages/PracticeHome';
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
               </div>
             }
           />
+          <Route path="/practice/:typeSlug" element={<PracticeHome />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>
