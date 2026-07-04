@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { api, WritingType } from '@/lib/api';
-import { FileText, ChevronDown, ChevronRight, Menu, X } from 'lucide-react';
+import { FileText, ChevronDown, ChevronRight, Menu, X, Shield } from 'lucide-react';
 
 export default function Sidebar() {
   const [types, setTypes] = useState<WritingType[]>([]);
@@ -90,8 +90,8 @@ export default function Sidebar() {
           </div>
         </nav>
 
-        {/* Admin link at bottom */}
-        <div className="p-2 border-t border-gray-200">
+        {/* Admin link at bottom — always visible */}
+        <div className="p-2 border-t border-gray-200 shrink-0">
           <Link
             to="/admin"
             onClick={() => setMobileOpen(false)}
@@ -99,9 +99,10 @@ export default function Sidebar() {
               'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors w-full',
               location.pathname === '/admin'
                 ? 'bg-brand-blue/10 text-brand-blue font-medium'
-                : 'text-gray-500 hover:bg-gray-100'
+                : 'text-gray-600 hover:bg-gray-100'
             )}
           >
+            <Shield size={16} />
             Admin
           </Link>
         </div>
