@@ -1,15 +1,27 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { mathApi, MathQuestionFull } from '@/lib/api';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { mathApi, MathQuestionFull, GeneratedMathQuestion } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import Timer from '@/components/Timer';
 import MathQuestionCard from '@/components/MathQuestionCard';
 import MathStimulusDisplay from '@/components/MathStimulusDisplay';
 
+interface WorksheetQuestion {
+  questionText: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+  topicSlug: string;
+  topicName: string;
+}
+
 export default function MathTimedPractice() {
   const { topicSlug } = useParams<{ topicSlug: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
-  const [questions, setQuestions] = useState<MathQuestionFull[]>([]);
+  const { worksheetId, worksheetQuestions } = location.state || {};
+
+  const [questions, setQuestions] = useState<MathQuestionFull[] | WorksheetQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
@@ -20,15 +32,25 @@ export default function MathTimedPractice() {
   const submittedRef = useRef(false);
   const hasStarted = useRef(false);
 
+  const isWorksheet = !!worksheetId;
+
   useEffect(() => {
     if (hasStarted.current) return;
     hasStarted.current = true;
-    const slug = topicSlug === 'all-topics' ? undefined : topicSlug;
-    mathApi.getQuestions(slug)
-      .then(setQuestions)
-      .catch(() => navigate('/dashboard'))
-      .finally(() => setLoading(false));
-  }, [topicSlug, navigate]);
+
+    if (isWorksheet && worksheetQuestions) {
+      // Use worksheet questions directly
+      setQuestions(worksheetQuestions);
+      setLoading(false);
+    } else {
+      // Fetch questions from API as usual
+      const slug = topicSlug === 'all-topics' ? undefined : topicSlug;
+      mathApi.getQuestions(slug)
+        .then(setQuestions as any)
+        .catch(() => navigate('/dashboard'))
+        .finally(() => setLoading(false));
+    }
+  }, [topicSlug, navigate, isWorksheet, worksheetQuestions]);
 
   const totalTime = Math.min(questions.length * 69, 2400); // 69s per Q, max 40 min
   const [timeLeft, setTimeLeft] = useState(totalTime);
@@ -41,27 +63,60 @@ export default function MathTimedPractice() {
 
     try {
       const elapsed = Math.round((Date.now() - startTimeRef.current) / 1000);
-      const qIds = questions.map(q => q.id);
-      const answerArray = questions.map(q => answers[q.id] ?? -1);
-      const topicId = questions[0]?.topicId ?? null;
 
-      const attempt = await mathApi.createAttempt({
-        topicId: topicSlug === 'all-topics' ? null : topicId,
-        questions: JSON.stringify(qIds),
-        answers: JSON.stringify(answerArray),
-        startedAt: new Date(startTimeRef.current).toISOString(),
-        finishedAt: new Date().toISOString(),
-        timeTaken: Math.min(elapsed, totalTime - timeLeft),
-        source: 'practice',
-      });
+      if (isWorksheet) {
+        // For worksheet questions: compute score client-side and save directly
+        const wq = questions as WorksheetQuestion[];
+        const answerArray = wq.map((_, i) => answers[i] ?? -1);
+        let score = 0;
+        const breakdown: Record<string, { correct: number; total: number }> = {};
+        for (let i = 0; i < wq.length; i++) {
+          const slug = wq[i].topicSlug;
+          if (!breakdown[slug]) breakdown[slug] = { correct: 0, total: 0 };
+          breakdown[slug].total++;
+          if (answerArray[i] === wq[i].correctIndex) {
+            score++;
+            breakdown[slug].correct++;
+          }
+        }
 
-      navigate(`/math-attempt/${attempt.id}`, { replace: true });
+        const attempt = await mathApi.createAttempt({
+          topicId: null,
+          questions: JSON.stringify(wq.map((_, i) => i)), // Use index-based IDs
+          answers: JSON.stringify(answerArray),
+          startedAt: new Date(startTimeRef.current).toISOString(),
+          finishedAt: new Date().toISOString(),
+          timeTaken: Math.min(elapsed, totalTime - timeLeft),
+          source: 'worksheet',
+          worksheetId,
+        });
+
+        navigate(`/math-attempt/${attempt.id}`, { replace: true });
+      } else {
+        // Regular practice: use existing flow with DB-backed questions
+        const fq = questions as MathQuestionFull[];
+        const qIds = fq.map(q => q.id);
+        const answerArray = fq.map(q => answers[q.id] ?? -1);
+        const topicId = fq[0]?.topicId ?? null;
+
+        const attempt = await mathApi.createAttempt({
+          topicId: topicSlug === 'all-topics' ? null : topicId,
+          questions: JSON.stringify(qIds),
+          answers: JSON.stringify(answerArray),
+          startedAt: new Date(startTimeRef.current).toISOString(),
+          finishedAt: new Date().toISOString(),
+          timeTaken: Math.min(elapsed, totalTime - timeLeft),
+          source: 'practice',
+        });
+
+        navigate(`/math-attempt/${attempt.id}`, { replace: true });
+      }
     } catch (err) {
       console.error('Failed to save attempt:', err);
       setSubmitting(false);
       submittedRef.current = false;
     }
-  }, [questions, answers, topicSlug, totalTime, timeLeft, navigate]);
+  }, [questions, answers, topicSlug, totalTime, timeLeft, navigate, isWorksheet, worksheetId]);
 
   const handleTimeUp = useCallback(() => submitAttempt(), [submitAttempt]);
 
@@ -147,6 +202,7 @@ export default function MathTimedPractice() {
           </div>
           <p className="text-xs text-gray-400 mt-1">
             {answeredCount} answered · {questions.length - answeredCount} remaining
+            {isWorksheet && <span className="ml-2 text-brand-amber">· Worksheet</span>}
           </p>
         </div>
       </div>
@@ -154,13 +210,19 @@ export default function MathTimedPractice() {
       {/* Question */}
       {currentQ && (
         <div className="space-y-4">
-          {currentQ.stimulusGroup && (
-            <MathStimulusDisplay stimulus={currentQ.stimulusGroup.stimulus} />
+          {'stimulusGroup' in currentQ && currentQ.stimulusGroup && (
+            <MathStimulusDisplay stimulus={(currentQ as MathQuestionFull).stimulusGroup!.stimulus} />
           )}
           <MathQuestionCard
-            question={currentQ}
-            selectedIndex={answers[currentQ.id] ?? -1}
-            onSelect={(index) => setAnswers(prev => ({ ...prev, [currentQ.id]: index }))}
+            question={currentQ as any}
+            selectedIndex={(isWorksheet ? answers[currentIndex] : answers[(currentQ as MathQuestionFull).id]) ?? -1}
+            onSelect={(index) => {
+              if (isWorksheet) {
+                setAnswers(prev => ({ ...prev, [currentIndex]: index }));
+              } else {
+                setAnswers(prev => ({ ...prev, [(currentQ as MathQuestionFull).id]: index }));
+              }
+            }}
           />
         </div>
       )}

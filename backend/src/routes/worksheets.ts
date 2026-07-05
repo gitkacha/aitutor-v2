@@ -63,4 +63,25 @@ router.get('/', async (_req: Request, res: Response) => {
   res.json(worksheets);
 });
 
+// GET /api/worksheets/available/:typeId — get worksheets for a specific writing type
+router.get('/available/:typeId', async (req: Request, res: Response) => {
+  const typeId = parseInt(req.params.typeId);
+  if (isNaN(typeId)) {
+    return res.status(400).json({ error: 'Invalid typeId', status: 400 });
+  }
+
+  const worksheets = await prisma.worksheet.findMany({
+    where: { typeId },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      attempts: {
+        select: { id: true, source: true, finishedAt: true, isDemo: true },
+      },
+    },
+  });
+
+  // Filter out worksheets where all attempts are demo (or show them? show them)
+  res.json(worksheets);
+});
+
 export default router;

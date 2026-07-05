@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { mathApi, MathTopic, MathAttempt } from '@/lib/api';
+import { mathApi, MathTopic, MathAttempt, MathWorksheet, GeneratedMathQuestion } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Clock, Grid3x3 } from 'lucide-react';
+import { Clock, Grid3x3, FileText } from 'lucide-react';
 
 export default function MathPracticeHome() {
   const { topicSlug } = useParams<{ topicSlug: string }>();
   const navigate = useNavigate();
   const [topic, setTopic] = useState<MathTopic | null>(null);
   const [attempts, setAttempts] = useState<MathAttempt[]>([]);
+  const [worksheets, setWorksheets] = useState<MathWorksheet[]>([]);
   const [loading, setLoading] = useState(true);
   const isAllTopics = topicSlug === 'all-topics';
 
@@ -17,7 +18,13 @@ export default function MathPracticeHome() {
     setLoading(true);
 
     if (isAllTopics) {
-      mathApi.getAttempts().then(setAttempts).catch(() => {}).finally(() => setLoading(false));
+      Promise.all([
+        mathApi.getAttempts(),
+        mathApi.getWorksheets(),
+      ]).then(([a, ws]) => {
+        setAttempts(a);
+        setWorksheets(ws);
+      }).catch(() => {}).finally(() => setLoading(false));
       setTopic({
         id: 0,
         name: 'All Topics',
@@ -29,10 +36,16 @@ export default function MathPracticeHome() {
       Promise.all([
         mathApi.getTopic(topicSlug),
         mathApi.getAttempts(topicSlug),
+        mathApi.getWorksheets(),
       ])
-        .then(([t, a]) => {
+        .then(([t, a, ws]) => {
           setTopic(t);
           setAttempts(a);
+          // Filter worksheets that include this topic
+          setWorksheets(ws.filter(w => {
+            const topicIds: string[] = JSON.parse(w.topicIds);
+            return topicIds.includes(topicSlug);
+          }));
         })
         .catch(() => navigate('/dashboard'))
         .finally(() => setLoading(false));
@@ -44,6 +57,17 @@ export default function MathPracticeHome() {
         attempts.reduce((sum, a) => sum + Math.round((a.score / a.totalQuestions) * 100), 0) / attempts.length
       )
     : null;
+
+  const handleStartWorksheet = async (worksheet: MathWorksheet) => {
+    if (!topic) return;
+    const questions: GeneratedMathQuestion[] = JSON.parse(worksheet.questions);
+    navigate(`/math/${topic.slug}/start`, {
+      state: {
+        worksheetId: worksheet.id,
+        worksheetQuestions: questions,
+      },
+    });
+  };
 
   if (loading) {
     return (
@@ -125,6 +149,35 @@ export default function MathPracticeHome() {
           </div>
         )}
       </div>
+
+      {/* Available Worksheets */}
+      {worksheets.length > 0 && (
+        <div className="bg-white rounded-xl p-6 border border-gray-200">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Available Worksheets</h2>
+          <div className="space-y-3">
+            {worksheets.map((ws) => {
+              const questions: GeneratedMathQuestion[] = JSON.parse(ws.questions);
+              return (
+                <div key={ws.id} className="border border-brand-blue/20 rounded-lg p-4 bg-brand-blue/5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">{ws.title}</p>
+                      <p className="text-xs text-gray-400">{questions.length} questions · Created {new Date(ws.createdAt).toLocaleDateString()}</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleStartWorksheet(ws)}
+                    >
+                      <FileText size={14} className="mr-1" />
+                      Start
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Start button */}
       <Button

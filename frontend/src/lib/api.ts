@@ -67,6 +67,8 @@ export interface Worksheet {
   typeId: number;
   prompts: string;
   createdAt: string;
+  isDemo?: boolean;
+  attempts?: Attempt[];
 }
 
 // ── Mathematics Types ──
@@ -133,6 +135,7 @@ export interface MathWorksheet {
   topicIds: string;
   questions: string;
   createdAt: string;
+  isDemo?: boolean;
   attempts?: MathAttempt[];
 }
 

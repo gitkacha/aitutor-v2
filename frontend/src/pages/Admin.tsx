@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useHeatmap } from '@/hooks/useHeatmap';
 import Heatmap from '@/components/Heatmap';
-import { api, mathApi, MathTopic, MathHeatmapEntry, GeneratedMathQuestion } from '@/lib/api';
+import { api, mathApi, MathTopic, MathHeatmapEntry, GeneratedMathQuestion, Worksheet, MathWorksheet } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Shield, Plus, Database, Trash2, Calculator } from 'lucide-react';
+import { Shield, Plus, Database, Trash2, Calculator, FileText } from 'lucide-react';
 
 type AdminTab = 'writing' | 'math';
 
@@ -36,12 +36,18 @@ export default function Admin() {
   const [generatedQuestions, setGeneratedQuestions] = useState<GeneratedMathQuestion[]>([]);
   const [showMathReview, setShowMathReview] = useState(false);
 
+  // Saved worksheets lists
+  const [writingWorksheets, setWritingWorksheets] = useState<Worksheet[]>([]);
+  const [mathWorksheets, setMathWorksheets] = useState<MathWorksheet[]>([]);
+
   useEffect(() => {
     if (activeTab === 'writing') {
       api.getTypes().then(setWritingTypes).catch(() => {});
+      api.getWorksheets().then(setWritingWorksheets).catch(() => {});
     } else if (activeTab === 'math') {
       mathApi.getHeatmap().then(setMathHeatmap).catch(() => {});
       mathApi.getTopics().then(setMathTopics).catch(() => {});
+      mathApi.getWorksheets().then(setMathWorksheets).catch(() => {});
     }
   }, [activeTab]);
 
@@ -301,6 +307,34 @@ export default function Admin() {
               })}
             </div>
           )}
+
+          {/* Saved Writing Worksheets */}
+          {writingWorksheets.length > 0 && !showWritingReview && (
+            <div className="bg-white rounded-xl p-6 border border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">Saved Writing Worksheets</h2>
+              <div className="space-y-2">
+                {writingWorksheets.map((ws) => {
+                  const prompts: string[] = JSON.parse(ws.prompts || '[]');
+                  return (
+                    <div key={ws.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50">
+                      <div className="flex items-start gap-3">
+                        <FileText size={16} className="text-brand-blue mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{ws.title}</p>
+                          <p className="text-xs text-gray-400">
+                            {prompts.length} prompts · Created {new Date(ws.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-medium text-gray-500 whitespace-nowrap">
+                        {(ws.attempts as any[])?.length || 0} attempt{(ws.attempts as any[])?.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </>
       ) : (
         <>
@@ -412,6 +446,34 @@ export default function Admin() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Saved Math Worksheets */}
+          {mathWorksheets.length > 0 && !showMathReview && (
+            <div className="bg-white rounded-xl p-6 border border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">Saved Mathematics Worksheets</h2>
+              <div className="space-y-2">
+                {mathWorksheets.map((ws) => {
+                  const questions: any[] = JSON.parse(ws.questions || '[]');
+                  return (
+                    <div key={ws.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50">
+                      <div className="flex items-start gap-3">
+                        <FileText size={16} className="text-brand-blue mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{ws.title}</p>
+                          <p className="text-xs text-gray-400">
+                            {questions.length} questions · Created {new Date(ws.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-medium text-gray-500 whitespace-nowrap">
+                        {(ws.attempts as any[])?.length || 0} attempt{(ws.attempts as any[])?.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </>

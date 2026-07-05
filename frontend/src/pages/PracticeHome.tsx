@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { api, WritingType, Attempt } from '@/lib/api';
+import { api, WritingType, Attempt, Worksheet } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Clock, ArrowRight } from 'lucide-react';
+import { Clock, ArrowRight, FileText } from 'lucide-react';
 
 export default function PracticeHome() {
   const { typeSlug } = useParams<{ typeSlug: string }>();
   const navigate = useNavigate();
   const [type, setType] = useState<WritingType | null>(null);
   const [attempts, setAttempts] = useState<Attempt[]>([]);
+  const [worksheets, setWorksheets] = useState<Worksheet[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,10 +17,13 @@ export default function PracticeHome() {
     Promise.all([
       api.getType(typeSlug),
       api.getAttempts(typeSlug),
+      api.getWorksheets(),
     ])
-      .then(([t, a]) => {
+      .then(([t, a, ws]) => {
         setType(t);
         setAttempts(a);
+        // Filter worksheets that match this type
+        setWorksheets(ws.filter(w => w.typeId === t.id));
       })
       .catch(() => navigate('/dashboard'))
       .finally(() => setLoading(false));
@@ -30,6 +34,22 @@ export default function PracticeHome() {
         attempts.reduce((sum, a) => sum + (a.analysis?.overallScore ?? 0), 0) / attempts.length
       )
     : null;
+
+  const handleStartWorksheet = (worksheet: Worksheet, promptIndex: number) => {
+    if (!type) return;
+    const prompts: string[] = JSON.parse(worksheet.prompts);
+    const promptText = prompts[promptIndex] || prompts[0];
+    // Use the first real prompt from the type for FK compliance
+    const realPrompt = type.prompts?.[0];
+    navigate(`/practice/${type.slug}/start`, {
+      state: {
+        prompt: realPrompt || { id: 0, text: promptText, typeId: type.id },
+        type,
+        worksheetId: worksheet.id,
+        worksheetPromptText: promptText,
+      },
+    });
+  };
 
   if (loading) {
     return (
@@ -88,7 +108,43 @@ export default function PracticeHome() {
         )}
       </div>
 
-      {/* Start button */}
+      {/* Available Worksheets */}
+      {worksheets.length > 0 && (
+        <div className="bg-white rounded-xl p-6 border border-gray-200">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Available Worksheets</h2>
+          <div className="space-y-3">
+            {worksheets.map((ws) => {
+              const prompts: string[] = JSON.parse(ws.prompts);
+              return (
+                <div key={ws.id} className="border border-brand-blue/20 rounded-lg p-4 bg-brand-blue/5">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">{ws.title}</p>
+                      <p className="text-xs text-gray-400">{prompts.length} prompts · Created {new Date(ws.createdAt).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    {prompts.map((pt, pi) => (
+                      <Button
+                        key={pi}
+                        variant="outline"
+                        size="sm"
+                        className="w-full justify-start text-left h-auto py-2 px-3 text-xs"
+                        onClick={() => handleStartWorksheet(ws, pi)}
+                      >
+                        <FileText size={12} className="mr-1.5 shrink-0" />
+                        <span className="truncate">{pt}</span>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Start regular practice button */}
       <Button
         size="lg"
         className="w-full"

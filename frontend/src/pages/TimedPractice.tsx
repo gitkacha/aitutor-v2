@@ -10,7 +10,7 @@ export default function TimedPractice() {
   const location = useLocation();
   const navigate = useNavigate();
   const { typeSlug } = useParams<{ typeSlug: string }>();
-  const { prompt, type } = location.state || {};
+  const { prompt, type, worksheetId, worksheetPromptText } = location.state || {};
 
   const [text, setText] = useState('');
   const [timeLeft, setTimeLeft] = useState(TOTAL_TIME);
@@ -37,7 +37,8 @@ export default function TimedPractice() {
         startedAt: new Date(startTimeRef.current).toISOString(),
         finishedAt: new Date().toISOString(),
         timeTaken: Math.min(elapsed, TOTAL_TIME - timeLeft),
-        source: 'practice',
+        source: worksheetId ? 'worksheet' : 'practice',
+        worksheetId: worksheetId || undefined,
       });
       // Trigger AI analysis (fire-and-forget)
       api.triggerAnalysis(attempt.id).catch(() => {});
@@ -47,7 +48,7 @@ export default function TimedPractice() {
       setSubmitting(false);
       submittedRef.current = false;
     }
-  }, [text, prompt, type, timeLeft, navigate]);
+  }, [text, prompt, type, worksheetId, timeLeft, navigate]);
 
   // Handle time up
   const handleTimeUp = useCallback(() => {
@@ -112,10 +113,13 @@ export default function TimedPractice() {
           running={running}
         />
         <div className="flex-1">
-          <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Prompt</p>
-          <p className="text-gray-800 mt-1">{prompt.text}</p>
+          <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">
+            {worksheetId ? 'Worksheet Prompt' : 'Prompt'}
+          </p>
+          <p className="text-gray-800 mt-1">{worksheetPromptText || prompt.text}</p>
           <p className="text-xs text-gray-400 mt-1">
             Type: {type.name} — Word count: {wordCount}
+            {worksheetId && <span className="ml-2 text-brand-amber">· Worksheet</span>}
           </p>
         </div>
       </div>
