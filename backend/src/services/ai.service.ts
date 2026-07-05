@@ -146,9 +146,9 @@ The student needs practice with the following text type(s):
 
 ${typeDescriptions}
 
-Generate 3 writing prompts that target these text types. Each prompt should be a complete, engaging topic suitable for a Year 6 student.
+Generate exactly 1 writing prompt targeting these text types. It should be a complete, engaging topic suitable for a Year 6 student.
 Respond with ONLY a JSON array of strings, no markdown, no code fences:
-["prompt 1", "prompt 2", "prompt 3"]`;
+["prompt text"]`;
 
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
@@ -195,8 +195,6 @@ Respond with ONLY a JSON array of strings, no markdown, no code fences:
 function getFallbackPrompts(): string[] {
   return [
     'Write a persuasive text arguing for or against school uniforms.',
-    'Write a narrative about a surprising discovery.',
-    'Write a discussion on whether homework should be banned.',
   ];
 }
 

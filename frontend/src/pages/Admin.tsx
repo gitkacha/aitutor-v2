@@ -93,6 +93,7 @@ export default function Admin() {
       setGeneratedTypeInfo([]);
       setMessage(`Writing worksheet "${title}" saved successfully!`);
       refreshWriting();
+      api.getWorksheets().then(setWritingWorksheets).catch(() => {});
     } catch (e: any) {
       setMessage(`Error: ${e.message}`);
     }
@@ -123,6 +124,7 @@ export default function Admin() {
       setGeneratedQuestions([]);
       setMessage(`Worksheet "${title}" saved successfully!`);
       refreshMath();
+      mathApi.getWorksheets().then(setMathWorksheets).catch(() => {});
     } catch (e: any) {
       setMessage(`Error: ${e.message}`);
     }
@@ -222,7 +224,7 @@ export default function Admin() {
             <div className="bg-white rounded-xl p-6 border border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900 mb-2">Generate Writing Worksheet</h2>
               <p className="text-sm text-gray-500 mb-4">
-                Select one or more text types, or leave empty for auto-selection. Generates 3 targeted writing prompts for the selected text types.
+                Select one or more text types, or leave empty for auto-selection. Generates 1 targeted writing prompt for the selected text types.
               </p>
 
               {/* Writing type selector */}
@@ -267,7 +269,7 @@ export default function Admin() {
 
               <Button onClick={handleGenerateWriting} disabled={generating}>
                 <Plus className="mr-2" size={18} />
-                {generating ? 'Generating...' : 'Generate 3-Prompt Worksheet'}
+                {generating ? 'Generating...' : 'Generate 1-Prompt Worksheet'}
               </Button>
             </div>
           ) : (
@@ -285,14 +287,14 @@ export default function Admin() {
                 </div>
               </div>
               <p className="text-sm text-gray-500">
-                {generatedPrompts.length} prompts generated for {generatedTypeInfo.map(t => t.name).join(', ')}. Review and save to make them available to the student.
+                1 prompt generated for {generatedTypeInfo.map(t => t.name).join(', ')}. Review and save to make it available to the student.
               </p>
               {generatedPrompts.map((prompt, i) => {
                 const type = generatedTypeInfo[i % generatedTypeInfo.length] || generatedTypeInfo[0];
                 return (
                   <div key={i} className="bg-white rounded-xl p-4 border border-gray-200">
                     <div className="flex items-start gap-3">
-                      <span className="text-sm font-bold text-gray-400 shrink-0 mt-0.5">P{i + 1}.</span>
+                      <span className="text-sm font-bold text-gray-400 shrink-0 mt-0.5">Prompt</span>
                       <div className="flex-1">
                         <p className="text-sm text-gray-900 font-medium">{prompt}</p>
                         {type && (
@@ -315,20 +317,37 @@ export default function Admin() {
               <div className="space-y-2">
                 {writingWorksheets.map((ws) => {
                   const prompts: string[] = JSON.parse(ws.prompts || '[]');
+                  const atts = (ws.attempts || []) as any[];
+                  const scored = atts.filter((a: any) => a.analysis?.overallScore != null);
                   return (
-                    <div key={ws.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50">
-                      <div className="flex items-start gap-3">
-                        <FileText size={16} className="text-brand-blue mt-0.5 shrink-0" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{ws.title}</p>
-                          <p className="text-xs text-gray-400">
-                            {prompts.length} prompts · Created {new Date(ws.createdAt).toLocaleDateString()}
-                          </p>
+                    <div key={ws.id} className="p-3 rounded-lg border border-gray-100 hover:bg-gray-50">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-start gap-3">
+                          <FileText size={16} className="text-brand-blue mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{ws.title}</p>
+                            <p className="text-xs text-gray-400">
+                              1 prompt · Created {new Date(ws.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
                         </div>
+                        <span className="text-xs font-medium text-gray-500 whitespace-nowrap">
+                          {atts.length} attempt{atts.length !== 1 ? 's' : ''}
+                        </span>
                       </div>
-                      <span className="text-xs font-medium text-gray-500 whitespace-nowrap">
-                        {(ws.attempts as any[])?.length || 0} attempt{(ws.attempts as any[])?.length !== 1 ? 's' : ''}
-                      </span>
+                      {scored.length > 0 && (
+                        <div className="mt-2 ml-9 space-y-1">
+                          {scored.slice(0, 3).map((a: any) => (
+                            <button
+                              key={a.id}
+                              onClick={() => navigate(`/attempt/${a.id}`)}
+                              className="block text-xs text-brand-blue hover:underline"
+                            >
+                              {new Date(a.finishedAt).toLocaleDateString()} — Score: {a.analysis?.overallScore}/100
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -456,20 +475,37 @@ export default function Admin() {
               <div className="space-y-2">
                 {mathWorksheets.map((ws) => {
                   const questions: any[] = JSON.parse(ws.questions || '[]');
+                  const atts = (ws.attempts || []) as any[];
+                  const scored = atts.filter((a: any) => a.score != null);
                   return (
-                    <div key={ws.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50">
-                      <div className="flex items-start gap-3">
-                        <FileText size={16} className="text-brand-blue mt-0.5 shrink-0" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{ws.title}</p>
-                          <p className="text-xs text-gray-400">
-                            {questions.length} questions · Created {new Date(ws.createdAt).toLocaleDateString()}
-                          </p>
+                    <div key={ws.id} className="p-3 rounded-lg border border-gray-100 hover:bg-gray-50">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-start gap-3">
+                          <FileText size={16} className="text-brand-blue mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{ws.title}</p>
+                            <p className="text-xs text-gray-400">
+                              {questions.length} questions · Created {new Date(ws.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
                         </div>
+                        <span className="text-xs font-medium text-gray-500 whitespace-nowrap">
+                          {atts.length} attempt{atts.length !== 1 ? 's' : ''}
+                        </span>
                       </div>
-                      <span className="text-xs font-medium text-gray-500 whitespace-nowrap">
-                        {(ws.attempts as any[])?.length || 0} attempt{(ws.attempts as any[])?.length !== 1 ? 's' : ''}
-                      </span>
+                      {scored.length > 0 && (
+                        <div className="mt-2 ml-9 space-y-1">
+                          {scored.slice(0, 3).map((a: any) => (
+                            <button
+                              key={a.id}
+                              onClick={() => navigate(`/math-attempt/${a.id}`)}
+                              className="block text-xs text-brand-blue hover:underline"
+                            >
+                              {new Date(a.finishedAt).toLocaleDateString()} — Score: {a.score}/{a.totalQuestions}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

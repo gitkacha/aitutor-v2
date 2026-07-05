@@ -35,10 +35,10 @@ export default function PracticeHome() {
       )
     : null;
 
-  const handleStartWorksheet = (worksheet: Worksheet, promptIndex: number) => {
+  const handleStartWorksheet = (worksheet: Worksheet) => {
     if (!type) return;
     const prompts: string[] = JSON.parse(worksheet.prompts);
-    const promptText = prompts[promptIndex] || prompts[0];
+    const promptText = prompts[0] || '';
     // Use the first real prompt from the type for FK compliance
     const realPrompt = type.prompts?.[0];
     navigate(`/practice/${type.slug}/start`, {
@@ -115,27 +115,23 @@ export default function PracticeHome() {
           <div className="space-y-3">
             {worksheets.map((ws) => {
               const prompts: string[] = JSON.parse(ws.prompts);
+              const promptText = prompts[0] || '';
               return (
                 <div key={ws.id} className="border border-brand-blue/20 rounded-lg p-4 bg-brand-blue/5">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 mr-4">
                       <p className="text-sm font-semibold text-gray-900">{ws.title}</p>
-                      <p className="text-xs text-gray-400">{prompts.length} prompts · Created {new Date(ws.createdAt).toLocaleDateString()}</p>
+                      <p className="text-xs text-gray-400 mt-1">Created {new Date(ws.createdAt).toLocaleDateString()}</p>
+                      <p className="text-sm text-gray-600 mt-2 line-clamp-2">{promptText}</p>
                     </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    {prompts.map((pt, pi) => (
-                      <Button
-                        key={pi}
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start text-left h-auto py-2 px-3 text-xs"
-                        onClick={() => handleStartWorksheet(ws, pi)}
-                      >
-                        <FileText size={12} className="mr-1.5 shrink-0" />
-                        <span className="truncate">{pt}</span>
-                      </Button>
-                    ))}
+                    <Button
+                      size="sm"
+                      className="shrink-0 mt-1"
+                      onClick={() => handleStartWorksheet(ws)}
+                    >
+                      <FileText size={14} className="mr-1" />
+                      Start
+                    </Button>
                   </div>
                 </div>
               );
