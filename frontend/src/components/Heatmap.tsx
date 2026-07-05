@@ -4,6 +4,7 @@ import { HeatmapEntry } from '@/lib/api';
 interface HeatmapProps {
   data: HeatmapEntry[];
   onSelect?: (entry: HeatmapEntry) => void;
+  basePath?: string; // 'math' for math topics, undefined for writing
 }
 
 function getScoreColor(score: number | null): string {
@@ -20,8 +21,9 @@ function getScoreLabel(score: number | null): string {
   return `${score}`;
 }
 
-export default function Heatmap({ data, onSelect }: HeatmapProps) {
+export default function Heatmap({ data, onSelect, basePath }: HeatmapProps) {
   const navigate = useNavigate();
+  const prefix = basePath ? `/${basePath}` : '';
 
   if (data.length === 0) {
     return (
@@ -39,21 +41,21 @@ export default function Heatmap({ data, onSelect }: HeatmapProps) {
         <div className="bg-white rounded-2xl p-12 border border-gray-200">
           <h2 className="text-xl font-semibold text-gray-700">Your progress will appear here</h2>
           <p className="text-gray-500 mt-3 max-w-md mx-auto">
-            Start a timed practice for any text type to see your performance heatmap grow.
-            Each text type gets a cell shaded by your average score.
+            Start a timed practice to see your performance heatmap grow.
+            Each {basePath ? 'topic' : 'text type'} gets a cell shaded by your average score.
           </p>
           <div className="flex justify-center gap-2 mt-8">
             {data.slice(0, 5).map((d) => (
               <button
                 key={d.typeSlug}
-                onClick={() => navigate(`/practice/${d.typeSlug}`)}
+                onClick={() => navigate(`${prefix}/${d.typeSlug}`)}
                 className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-500 hover:border-brand-blue hover:text-brand-blue transition-colors"
               >
                 {d.typeName}
               </button>
             ))}
           </div>
-          <p className="text-xs text-gray-400 mt-4">Click a text type above to start practising</p>
+          <p className="text-xs text-gray-400 mt-4">Click a {basePath ? 'topic' : 'text type'} above to start practising</p>
         </div>
       </div>
     );
@@ -68,9 +70,9 @@ export default function Heatmap({ data, onSelect }: HeatmapProps) {
             if (onSelect) {
               onSelect(entry);
             } else if (entry.attemptCount > 0) {
-              navigate(`/history/${entry.typeSlug}`);
+              navigate(basePath ? `/math-history/${entry.typeSlug}` : `/history/${entry.typeSlug}`);
             } else {
-              navigate(`/practice/${entry.typeSlug}`);
+              navigate(basePath ? `/math/${entry.typeSlug}` : `/practice/${entry.typeSlug}`);
             }
           }}
           className={`rounded-xl p-4 text-left transition-all hover:scale-105 active:scale-95 ${getScoreColor(entry.averageScore)}`}

@@ -252,25 +252,33 @@ tracks alongside practice tests — visually inspecting every screen, not just r
 
 ## Final success criteria
 
-The project is complete, and the Coding Agent may stop, when **all** of the following are true:
+## Final success criteria for the Writing subject
 
-- A non-technical person can start the app with a single documented command and open it in a browser.
+The Writing portion of the project is complete, and the Coding Agent may stop and move on to
+`Mathematics-plan.md`, when all of the following are true:
+
+
+A non-technical person can start the app with a single documented command and open it in a browser.
 On first run the student side is genuinely empty and ready to practice (prompts exist, but no fake
-history); from Admin, a **Load Demo Data** button populates a realistic spread of past attempts,
-analyses, and a completed worksheet for demo purposes, with a matching **Clear Demo Data** to undo
+history); from Admin, a Load Demo Data button populates a realistic spread of past attempts,
+analyses, and a completed worksheet for demo purposes, with a matching Clear Demo Data to undo
 it — and neither control is ever visible on the student-facing side.
-- The sidebar's Writing item expands to all eleven Selective Test text types.
-- A timed practice test enforces the real 30-minute limit, auto-saves on timeout or manual submit,
+The sidebar's Writing item expands to all eleven Selective Test text types.
+A timed practice test enforces the real 30-minute limit, auto-saves on timeout or manual submit,
 and persists across refreshes.
-- Every completed attempt gets an AI-generated Analysis covering vocabulary, sentence structure and
+Every completed attempt gets an AI-generated Analysis covering vocabulary, sentence structure and
 flow, and content, specific to what the student wrote.
-- The heatmap accurately reflects performance across text types and updates as new attempts land.
-- Admin can generate AI-assisted worksheets targeted at the weakest text types, and worksheet
+The heatmap accurately reflects performance across text types and updates as new attempts land.
+Admin can generate AI-assisted worksheets targeted at the weakest text types, and worksheet
 performance is tracked over time alongside ordinary practice.
-- The look-and-feel rules are met and none of the banned elements appear anywhere.
-- All unit tests pass.
-- **Most importantly: the product has been validated by actually using it end to end in a real
+The look-and-feel rules are met and none of the banned elements appear anywhere.
+All unit tests pass.
+Most importantly: the product has been validated by actually using it end to end in a real
 browser — clicking through every section as a real student and a real admin would, performing the
 actions above, and visually inspecting each screen. Passing unit tests is necessary but NOT
 sufficient; the Coding Agent must confirm the running product works and looks right, not merely
-that the tests are green.**
+that the tests are green.
+
+
+Once every criterion above is met, continue with `Mathematics-plan.md`, Phase 7 onward, for the
+Mathematics subject. That document has its own final success criteria at the end.

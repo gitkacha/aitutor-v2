@@ -5,26 +5,46 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export default function ScoreHistory() {
+interface ScoreHistoryProps {
+  subject?: 'writing' | 'math';
+}
+
+export default function ScoreHistory({ subject = 'writing' }: ScoreHistoryProps) {
   const { typeSlug } = useParams<{ typeSlug: string }>();
   const navigate = useNavigate();
-  const [attempts, setAttempts] = useState<Attempt[]>([]);
+  const [attempts, setAttempts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [typeName, setTypeName] = useState('');
+  const isMath = subject === 'math';
 
   useEffect(() => {
     if (!typeSlug) return;
-    Promise.all([
-      api.getAttempts(typeSlug),
-      api.getType(typeSlug),
-    ])
-      .then(([atts, t]) => {
-        setAttempts(atts.filter((a) => a.analysis));
-        setTypeName(t.name);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [typeSlug]);
+    setLoading(true);
+
+    if (isMath) {
+      Promise.all([
+        import('@/lib/api').then(m => m.mathApi.getAttempts(typeSlug)),
+        import('@/lib/api').then(m => m.mathApi.getTopic(typeSlug)),
+      ])
+        .then(([atts, t]) => {
+          setAttempts(atts);
+          setTypeName(t.name);
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    } else {
+      Promise.all([
+        api.getAttempts(typeSlug),
+        api.getType(typeSlug),
+      ])
+        .then(([atts, t]) => {
+          setAttempts(atts.filter((a) => a.analysis));
+          setTypeName(t.name);
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    }
+  }, [typeSlug, isMath]);
 
   if (loading) {
     return (
@@ -36,16 +56,16 @@ export default function ScoreHistory() {
 
   const chartData = [...attempts]
     .reverse()
-    .map((a) => ({
+    .map((a: any) => ({
       date: new Date(a.finishedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }),
-      score: a.analysis?.overallScore ?? 0,
+      score: isMath ? Math.round((a.score / a.totalQuestions) * 100) : (a.analysis?.overallScore ?? 0),
       id: a.id,
     }));
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
+        <Button variant="ghost" size="sm" onClick={() => navigate(isMath ? '/dashboard' : '/dashboard')}>
           <ArrowLeft size={18} />
         </Button>
         <h1 className="text-2xl font-bold text-gray-900">{typeName} &mdash; Score History</h1>
@@ -53,7 +73,7 @@ export default function ScoreHistory() {
 
       {chartData.length === 0 ? (
         <div className="text-center py-12 text-gray-500">
-          No completed attempts with scores yet for this text type.
+          No completed attempts with scores yet for this {isMath ? 'topic' : 'text type'}.
         </div>
       ) : (
         <>
@@ -83,10 +103,10 @@ export default function ScoreHistory() {
           </div>
 
           <div className="space-y-2">
-            {attempts.map((a) => (
+            {attempts.map((a: any) => (
               <button
                 key={a.id}
-                onClick={() => navigate(`/attempt/${a.id}`)}
+                onClick={() => navigate(isMath ? `/math-attempt/${a.id}` : `/attempt/${a.id}`)}
                 className="w-full bg-white rounded-lg p-4 border border-gray-200 text-left hover:border-brand-blue/50 transition-colors"
               >
                 <div className="flex justify-between items-center">
@@ -99,10 +119,14 @@ export default function ScoreHistory() {
                     })}
                   </span>
                   <span className="font-semibold text-brand-blue">
-                    Score: {a.analysis?.overallScore ?? 'Pending'}
+                    {isMath
+                      ? `Score: ${a.score}/${a.totalQuestions} (${Math.round((a.score / a.totalQuestions) * 100)}%)`
+                      : `Score: ${a.analysis?.overallScore ?? 'Pending'}`}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600 mt-1 line-clamp-1">{a.text.slice(0, 100)}...</p>
+                {!isMath && (
+                  <p className="text-sm text-gray-600 mt-1 line-clamp-1">{a.text.slice(0, 100)}...</p>
+                )}
               </button>
             ))}
           </div>

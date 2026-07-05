@@ -201,3 +201,131 @@ function getFallbackPrompts(): string[] {
 }
 
 export type { AnalysisResult };
+
+// ── Math Worksheet Generation ────────────────────────────────────────────────
+
+interface MathTopicForGen {
+  id: number;
+  name: string;
+  slug: string;
+  description: string;
+  questions: Array<{
+    id: number;
+    questionText: string;
+    options: string;
+    correctIndex: number;
+    explanation: string;
+    percentCorrect: number | null;
+  }>;
+}
+
+interface GeneratedMathQuestion {
+  questionText: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+  topicSlug: string;
+  topicName: string;
+}
+
+export async function generateMathWorksheetQuestions(topics: MathTopicForGen[]): Promise<GeneratedMathQuestion[]> {
+  // Build difficulty exemplars from hardest seeded questions
+  const exemplars = topics.map(t => {
+    const hardest = t.questions[0];
+    if (!hardest) return null;
+    return {
+      topic: t.name,
+      percentCorrect: hardest.percentCorrect,
+      question: hardest.questionText,
+      options: hardest.options,
+      explanation: hardest.explanation,
+    };
+  }).filter(Boolean);
+
+  const prompt = `You are a mathematics tutor creating a practice worksheet for a student preparing for the NSW Selective High School Placement Test (Mathematical Reasoning section).
+
+The worksheet should cover the following topic(s):
+${topics.map(t => `- ${t.name}: ${t.description}`).join('\n')}
+
+Generate 35 five-option multiple-choice questions distributed across these topics. Each question must have exactly one correct answer and four plausible distractors.
+
+DIFFICULTY REQUIREMENT: Each question must be at or above the difficulty of the hardest known reference question for its topic. Here are the hardest reference questions per topic (with their cohort % Correct — lower % = harder):
+
+${exemplars.map(e => `- ${e.topic}: ${e.percentCorrect}% correct (hard). Example: "${e.question}"`).join('\n')}
+
+For each question, provide a detailed "Question Feedback" style explanation in the same format as the reference paper.
+
+Respond with ONLY a JSON array (no markdown, no code fences) in this exact format:
+[
+  {
+    "questionText": "full question text including any tables or data",
+    "options": ["A", "B", "C", "D", "E"],
+    "correctIndex": 0,
+    "explanation": "Step-by-step reasoning. Therefore, the answer is Option X.",
+    "topicSlug": "${topics[0]?.slug || 'algebra'}",
+    "topicName": "${topics[0]?.name || 'Algebra'}"
+  }
+]
+
+Generate exactly 35 questions. Make sure distractors are plausible — they should be answers a student might get from common mistakes.`;
+
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    return getFallbackMathQuestions(topics);
+  }
+
+  try {
+    const response = await fetch(OPENROUTER_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': 'http://localhost:5173',
+        'X-Title': 'NSW Selective Prep Coach',
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 8000,
+        temperature: 0.8,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`OpenRouter API error (${response.status}):`, errorText);
+      return getFallbackMathQuestions(topics);
+    }
+
+    const data = (await response.json()) as OpenRouterResponse;
+    const content = data.choices?.[0]?.message?.content || '';
+    const arrayMatch = content.match(/\[[\s\S]*\]/);
+    if (arrayMatch) {
+      const parsed = JSON.parse(arrayMatch[0]);
+      return parsed.slice(0, 35);
+    }
+    return getFallbackMathQuestions(topics);
+  } catch (error) {
+    console.error('OpenRouter API call failed:', error);
+    return getFallbackMathQuestions(topics);
+  }
+}
+
+function getFallbackMathQuestions(topics: MathTopicForGen[]): GeneratedMathQuestion[] {
+  const fallback: GeneratedMathQuestion[] = [];
+  const topicNames = topics.map(t => ({ slug: t.slug, name: t.name }));
+
+  for (let i = 0; i < 35; i++) {
+    const t = topicNames[i % topicNames.length];
+    fallback.push({
+      questionText: `Sample question ${i + 1} for ${t.name}. What is the value of 25 × 4?`,
+      options: ['80', '100', '120', '125', '150'],
+      correctIndex: 1,
+      explanation: '25 × 4 = 100. Therefore, the answer is Option B.',
+      topicSlug: t.slug,
+      topicName: t.name,
+    });
+  }
+
+  return fallback;
+}

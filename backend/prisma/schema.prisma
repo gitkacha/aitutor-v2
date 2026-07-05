@@ -68,3 +68,63 @@ model Worksheet {
   isDemo    Boolean   @default(false)
   attempts  Attempt[]
 }
+
+// ── Mathematics Models ──────────────────────────────────────────────────────
+
+model MathTopic {
+  id          Int            @id @default(autoincrement())
+  name        String
+  slug        String         @unique
+  description String
+  isDemo      Boolean        @default(false)
+  questions   MathQuestion[]
+  attempts    MathAttempt[]
+}
+
+model MathStimulusGroup {
+  id        Int            @id @default(autoincrement())
+  stimulus  String
+  questions MathQuestion[]
+}
+
+model MathQuestion {
+  id              Int                @id @default(autoincrement())
+  topicId         Int
+  stimulusGroupId Int?
+  questionText    String
+  options         String
+  correctIndex    Int
+  explanation     String
+  percentCorrect  Float?
+  isDemo          Boolean            @default(false)
+  topic           MathTopic          @relation(fields: [topicId], references: [id])
+  stimulusGroup   MathStimulusGroup? @relation(fields: [stimulusGroupId], references: [id])
+}
+
+model MathAttempt {
+  id             Int            @id @default(autoincrement())
+  topicId        Int?
+  questions      String
+  answers        String
+  topicBreakdown String
+  score          Int
+  totalQuestions Int
+  startedAt      DateTime
+  finishedAt     DateTime
+  timeTaken      Int
+  source         String
+  worksheetId    Int?
+  isDemo         Boolean        @default(false)
+  topic          MathTopic?     @relation(fields: [topicId], references: [id])
+  worksheet      MathWorksheet? @relation(fields: [worksheetId], references: [id])
+}
+
+model MathWorksheet {
+  id        Int          @id @default(autoincrement())
+  title     String
+  topicIds  String
+  questions String
+  createdAt DateTime     @default(now())
+  isDemo    Boolean      @default(false)
+  attempts  MathAttempt[]
+}

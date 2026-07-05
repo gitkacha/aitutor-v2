@@ -33,7 +33,8 @@ async function getDemoPrompt(typeId: number) {
 export async function loadDemoData() {
   // Check if demo data already exists
   const existingDemo = await prisma.attempt.findFirst({ where: { isDemo: true } });
-  if (existingDemo) {
+  const existingMathDemo = await prisma.mathAttempt.findFirst({ where: { isDemo: true } });
+  if (existingDemo || existingMathDemo) {
     return { message: 'Demo data already loaded. Clear it first if you want to reload.' };
   }
 
@@ -139,7 +140,116 @@ export async function loadDemoData() {
     }
   }
 
-  return { message: `Demo data loaded: ${attemptCount} attempts created across ${typeSlugs.length} text types.` };
+  // ── Math Demo Data ──
+  const mathTopics = await prisma.mathTopic.findMany();
+  let mathAttemptCount = 0;
+
+  for (const topic of mathTopics) {
+    const topicQuestions = await prisma.mathQuestion.findMany({
+      where: { topicId: topic.id },
+      take: 5,
+    });
+    if (topicQuestions.length === 0) continue;
+
+    const daysAgo = Math.floor(Math.random() * 28) + 1;
+    const startedAt = new Date(now - daysAgo * DAY - 1800 * 1000);
+    const finishedAt = new Date(startedAt.getTime() + 1200 * 1000);
+
+    const questionSubset = topicQuestions.slice(0, Math.min(5, topicQuestions.length));
+    const qIds = questionSubset.map(q => q.id);
+    const answers = questionSubset.map(q => {
+      // Mix of correct and wrong answers
+      return Math.random() > 0.4 ? q.correctIndex : (q.correctIndex + 1) % 5;
+    });
+    const score = questionSubset.filter((q, i) => answers[i] === q.correctIndex).length;
+
+    const breakdown: Record<string, { correct: number; total: number }> = {};
+    breakdown[topic.slug] = { correct: score, total: questionSubset.length };
+
+    await prisma.mathAttempt.create({
+      data: {
+        topicId: topic.id,
+        questions: JSON.stringify(qIds),
+        answers: JSON.stringify(answers),
+        topicBreakdown: JSON.stringify(breakdown),
+        score,
+        totalQuestions: questionSubset.length,
+        startedAt,
+        finishedAt,
+        timeTaken: 1200,
+        source: 'practice',
+        isDemo: true,
+      },
+    });
+    mathAttemptCount++;
+  }
+
+  // Create a demo math worksheet
+  const firstTopic = mathTopics[0];
+  const secondTopic = mathTopics[1];
+  if (firstTopic && secondTopic) {
+    const wsStartedAt = new Date(now - 2 * DAY - 1800 * 1000);
+    const wsFinishedAt = new Date(wsStartedAt.getTime() + 2400 * 1000);
+
+    const wsQuestions = await prisma.mathQuestion.findMany({
+      where: { topicId: { in: [firstTopic.id, secondTopic.id] } },
+      take: 10,
+    });
+
+    const wsQIds = wsQuestions.map(q => q.id);
+    const wsAnswers = wsQuestions.map(q => q.correctIndex);
+    const wsScore = wsQuestions.filter((q, i) => wsAnswers[i] === q.correctIndex).length;
+
+    const wsBreakdown: Record<string, { correct: number; total: number }> = {};
+    for (const q of wsQuestions) {
+      const slug = q.topicId === firstTopic.id ? firstTopic.slug : secondTopic.slug;
+      if (!wsBreakdown[slug]) wsBreakdown[slug] = { correct: 0, total: 0 };
+      wsBreakdown[slug].total++;
+    }
+    // Count correct per topic
+    for (let i = 0; i < wsQuestions.length; i++) {
+      const slug = wsQuestions[i].topicId === firstTopic.id ? firstTopic.slug : secondTopic.slug;
+      if (wsAnswers[i] === wsQuestions[i].correctIndex) {
+        wsBreakdown[slug].correct++;
+      }
+    }
+
+    const worksheet = await prisma.mathWorksheet.create({
+      data: {
+        title: 'Worksheet: Number Sentences + Probability',
+        topicIds: JSON.stringify([firstTopic.slug, secondTopic.slug]),
+        questions: JSON.stringify(wsQuestions.map(q => ({
+          questionText: q.questionText,
+          options: JSON.parse(q.options),
+          correctIndex: q.correctIndex,
+          explanation: q.explanation,
+          topicSlug: q.topicId === firstTopic.id ? firstTopic.slug : secondTopic.slug,
+          topicName: q.topicId === firstTopic.id ? firstTopic.name : secondTopic.name,
+        }))),
+        isDemo: true,
+      },
+    });
+
+    await prisma.mathAttempt.create({
+      data: {
+        topicId: null,
+        questions: JSON.stringify(wsQIds),
+        answers: JSON.stringify(wsAnswers),
+        topicBreakdown: JSON.stringify(wsBreakdown),
+        score: wsScore,
+        totalQuestions: wsQuestions.length,
+        startedAt: wsStartedAt,
+        finishedAt: wsFinishedAt,
+        timeTaken: 2400,
+        source: 'worksheet',
+        worksheetId: worksheet.id,
+        isDemo: true,
+      },
+    });
+    mathAttemptCount++;
+  }
+
+  return { message: `Demo data loaded: ${attemptCount} writing attempts + ${mathAttemptCount} math attempts.` };
 }
 
 export async function clearDemoData() {
@@ -147,6 +257,9 @@ export async function clearDemoData() {
   await prisma.analysis.deleteMany({ where: { isDemo: true } });
   await prisma.attempt.deleteMany({ where: { isDemo: true } });
   await prisma.worksheet.deleteMany({ where: { isDemo: true } });
+  // Math demo data
+  await prisma.mathAttempt.deleteMany({ where: { isDemo: true } });
+  await prisma.mathWorksheet.deleteMany({ where: { isDemo: true } });
 
   return { message: 'Demo data cleared successfully. Your real attempts have not been touched.' };
 }

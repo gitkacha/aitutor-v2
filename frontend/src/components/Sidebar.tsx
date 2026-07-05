@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { api, WritingType } from '@/lib/api';
-import { FileText, ChevronDown, ChevronRight, Menu, X, Shield } from 'lucide-react';
+import { api, WritingType, MathTopic, mathApi } from '@/lib/api';
+import { FileText, ChevronDown, ChevronRight, Menu, X, Shield, Calculator } from 'lucide-react';
 
 export default function Sidebar() {
   const [types, setTypes] = useState<WritingType[]>([]);
+  const [mathTopics, setMathTopics] = useState<MathTopic[]>([]);
   const [writingExpanded, setWritingExpanded] = useState(true);
+  const [mathExpanded, setMathExpanded] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
     api.getTypes().then(setTypes).catch(() => {});
+    mathApi.getTopics().then(setMathTopics).catch(() => {});
   }, []);
 
   const isActive = (slug: string) => location.pathname.includes(slug);
@@ -83,6 +86,54 @@ export default function Sidebar() {
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
                     {type.name}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Mathematics accordion */}
+          <div className="mt-2">
+            <button
+              onClick={() => setMathExpanded(!mathExpanded)}
+              className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Calculator size={16} />
+                <span>Mathematics</span>
+              </div>
+              {mathExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            </button>
+
+            {mathExpanded && (
+              <div className="ml-2 mt-1 space-y-0.5">
+                <Link
+                  to="/math/all-topics"
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors',
+                    isActive('all-topics')
+                      ? 'bg-brand-blue/10 text-brand-blue font-medium'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  )}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-blue" />
+                  All Topics
+                </Link>
+                {mathTopics.map((topic) => (
+                  <Link
+                    key={topic.slug}
+                    to={`/math/${topic.slug}`}
+                    onClick={() => setMobileOpen(false)}
+                    className={cn(
+                      'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors',
+                      isActive(topic.slug)
+                        ? 'bg-brand-blue/10 text-brand-blue font-medium'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    )}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                    {topic.name}
                   </Link>
                 ))}
               </div>

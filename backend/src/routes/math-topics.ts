@@ -1,0 +1,29 @@
+import { Router, Request, Response } from 'express';
+import prisma from '../lib/prisma';
+
+const router = Router();
+
+router.get('/', async (_req: Request, res: Response) => {
+  const topics = await prisma.mathTopic.findMany({
+    orderBy: { name: 'asc' },
+  });
+  res.json(topics);
+});
+
+router.get('/:slug', async (req: Request, res: Response) => {
+  const topic = await prisma.mathTopic.findUnique({
+    where: { slug: req.params.slug },
+    include: {
+      questions: {
+        orderBy: { id: 'asc' },
+        include: { stimulusGroup: true },
+      },
+    },
+  });
+  if (!topic) {
+    return res.status(404).json({ error: 'Topic not found' });
+  }
+  res.json(topic);
+});
+
+export default router;

@@ -69,6 +69,119 @@ export interface Worksheet {
   createdAt: string;
 }
 
+// ── Mathematics Types ──
+
+export interface MathTopic {
+  id: number;
+  name: string;
+  slug: string;
+  description: string;
+  isDemo: boolean;
+  questions?: MathQuestionFull[];
+}
+
+export interface MathStimulusGroup {
+  id: number;
+  stimulus: string;
+}
+
+export interface MathQuestionFull {
+  id: number;
+  topicId: number;
+  stimulusGroupId: number | null;
+  questionText: string;
+  options: string;
+  correctIndex: number;
+  explanation: string;
+  percentCorrect: number | null;
+  isDemo: boolean;
+  topic: MathTopic;
+  stimulusGroup: MathStimulusGroup | null;
+}
+
+export interface MathAttempt {
+  id: number;
+  topicId: number | null;
+  questions: string;
+  answers: string;
+  topicBreakdown: string;
+  score: number;
+  totalQuestions: number;
+  startedAt: string;
+  finishedAt: string;
+  timeTaken: number;
+  source: string;
+  worksheetId: number | null;
+  isDemo: boolean;
+  topic: MathTopic | null;
+  questionDetails?: MathQuestionFull[];
+  answersArray?: number[];
+  breakdown?: Record<string, { correct: number; total: number }>;
+}
+
+export interface MathHeatmapEntry {
+  topicId: number;
+  topicName: string;
+  topicSlug: string;
+  averageScore: number | null;
+  attemptCount: number;
+}
+
+export interface MathWorksheet {
+  id: number;
+  title: string;
+  topicIds: string;
+  questions: string;
+  createdAt: string;
+  attempts?: MathAttempt[];
+}
+
+// ── Math API ──
+
+export interface GeneratedMathQuestion {
+  questionText: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+  topicSlug: string;
+  topicName: string;
+}
+
+export const mathApi = {
+  getTopics: () => fetchJSON<MathTopic[]>('/math/topics'),
+  getTopic: (slug: string) => fetchJSON<MathTopic>(`/math/topics/${slug}`),
+  getQuestions: (topicSlug?: string) =>
+    fetchJSON<MathQuestionFull[]>(`/math/questions${topicSlug ? `?topic=${topicSlug}` : ''}`),
+  getAttempts: (topicSlug?: string) =>
+    fetchJSON<MathAttempt[]>(`/math/attempts${topicSlug ? `?topic=${topicSlug}` : ''}`),
+  getAttempt: (id: number) => fetchJSON<MathAttempt>(`/math/attempts/${id}`),
+  createAttempt: (data: {
+    topicId?: number | null;
+    questions: string;
+    answers: string;
+    startedAt: string;
+    finishedAt: string;
+    timeTaken: number;
+    source?: string;
+    worksheetId?: number;
+  }) => fetchJSON<MathAttempt>('/math/attempts', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  getHeatmap: () => fetchJSON<MathHeatmapEntry[]>('/math/heatmap'),
+  generateWorksheet: (topicIds: string[]) =>
+    fetchJSON<{ topics: Array<{ id: number; name: string; slug: string }>; questions: GeneratedMathQuestion[] }>(
+      '/math/worksheets/generate',
+      { method: 'POST', body: JSON.stringify({ topicIds }) }
+    ),
+  saveWorksheet: (title: string, topicIds: string[], questions: GeneratedMathQuestion[]) =>
+    fetchJSON<MathWorksheet>('/math/worksheets/save', {
+      method: 'POST',
+      body: JSON.stringify({ title, topicIds, questions }),
+    }),
+  getWorksheets: () => fetchJSON<MathWorksheet[]>('/math/worksheets'),
+};
+
 export const api = {
   getTypes: () => fetchJSON<WritingType[]>('/types'),
   getType: (slug: string) => fetchJSON<WritingType>(`/types/${slug}`),
