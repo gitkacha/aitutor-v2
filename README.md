@@ -58,6 +58,25 @@ Open **http://localhost:5173** in your browser.
 - Worksheets are reviewed before assignment
 - Mathematics worksheet performance rolls into the same per-topic heatmap
 
+## Build Progress
+
+All 12 phases are complete. Both **Writing** and **Mathematics** subjects are fully implemented.
+
+| Phase | Feature | Status |
+|---|---|---|
+| 1 | Running skeleton and data (sidebar, SQLite, seed) | ✅ Complete |
+| 2 | Timed practice test (30-min countdown, auto-submit) | ✅ Complete |
+| 3 | Progress tracking and heatmap (per-type scores, drill-down) | ✅ Complete |
+| 4 | In-depth AI analysis (vocabulary, sentence structure, content) | ✅ Complete |
+| 5 | Admin, AI-assisted worksheets, demo data load/clear | ✅ Complete |
+| 6 | Look and feel polish, banned element sweep, E2E validation | ✅ Complete |
+| 7a | Mathematics schema migration + seed (20 topics, 35 questions, stimulus groups) | ✅ Complete |
+| 7b | Mathematics API routes + sidebar accordion | ✅ Complete |
+| 8-9 | Mathematics timed practice + scoring/review (question-by-question, 5 options, proportional timer) | ✅ Complete |
+| 10 | Mathematics heatmap in Dashboard with per-topic drill-down | ✅ Complete |
+| 11 | Admin math tab, topic selector, 35-question worksheet generation, AI difficulty calibration, demo data | ✅ Complete |
+| 12 | E2E verification, brand palette compliance, README | ✅ Complete |
+
 ## Tech Stack
 
 | Layer | Technology |
