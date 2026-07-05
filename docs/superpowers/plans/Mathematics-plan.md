@@ -1,12 +1,12 @@
 # Mathematics Feature Plan — NSW Selective Writing Coach → Selective Prep Coach
 
-## How this fits with CLAUDE.md
+## How this fits with the project plans
 
-This document is a supplement to `CLAUDE.md`, not a replacement. It follows the same structure
-(features, success criteria, phases you cannot skip ahead of) and picks up numbering at **Phase 7**,
-since the existing `CLAUDE.md` runs through Phase 6 for the Writing feature. Build Phases 7–12 in
-order, exactly as strictly as Phases 1–6: do not start a phase until the previous one's success
-criteria are demonstrably met.
+This document is a supplement to `CLAUDE.md` and `Writing-plan.md`, not a replacement. It follows
+the same structure (features, success criteria, phases you cannot skip ahead of) and picks up
+numbering at **Phase 7**, since `Writing-plan.md` runs through Phase 6 for the Writing feature.
+Build Phases 7–12 in order, exactly as strictly as Phases 1–6: do not start a phase until the
+previous one's success criteria are demonstrably met.
 
 Once Mathematics ships, the product is no longer just a writing coach — rename the sidebar's mental
 model (not necessarily the product name) to "subjects," with **Writing** and **Mathematics** as the
@@ -84,7 +84,7 @@ generation (see Phase 11).
 ## What the app keeps track of (new entities)
 
 Alongside the existing WritingType / Prompt / Attempt / Analysis / Worksheet entities from
-`CLAUDE.md`, add:
+`Writing-plan.md`, add:
 
 - **MathTopic** — one of the twenty categories above. Key info: name, a short description of what
 the topic covers, and a rough difficulty benchmark (see Phase 11).
@@ -215,7 +215,7 @@ already works.
 
 1. The heatmap shows all twenty MathTopics, shaded to reflect recorded performance, with an
 encouraging empty state for topics with no attempts yet — matching the empty-by-default behaviour
-established for Writing in `CLAUDE.md`.
+established for Writing in `Writing-plan.md`.
 2. Completing a new topic practice test updates the relevant heatmap cell after a refresh.
 3. Clicking a heatmap cell shows a chronological history of scores for that topic.
 4. The unit tests for heatmap accuracy pass.
@@ -242,7 +242,7 @@ made available to the student, exactly as the existing Writing worksheet flow al
 review before assignment.
 - Completing a MathWorksheet produces MathAttempts and scoring exactly like ordinary topic practice,
 and rolls into the same Mathematics heatmap and history.
-- Extend the existing **Load Demo Data** / **Clear Demo Data** admin controls (from `AGENTS.md`
+- Extend the existing **Load Demo Data** / **Clear Demo Data** admin controls (from `CLAUDE.md`
 Phase 5) to also seed a believable spread of MathAttempts across most or all twenty topics, and at
 least one completed MathWorksheet — kept invisible on the student-facing side, same as the Writing
 demo data.
@@ -272,7 +272,7 @@ all pass.
 
 **Features**
 
-- Apply the existing brand palette and look-and-feel rules (from `AGENTS.md`) to every new
+- Apply the existing brand palette and look-and-feel rules (from `CLAUDE.md`) to every new
 Mathematics screen — topic list, timed practice, review, heatmap, admin worksheet flow.
 - A full end-to-end walkthrough in a real browser, covering Mathematics specifically alongside
 Writing.
@@ -293,7 +293,7 @@ practice — visually inspecting every screen.
 ## Final success criteria for the Mathematics feature
 
 The feature is complete when all of the following are true, in addition to everything already true
-of the Writing feature in `CLAUDE.md`:
+of the Writing feature in `Writing-plan.md`:
 
 - The sidebar's Mathematics item expands to all twenty topic categories drawn from Types.pdf.
 - Every question from T5-Maths.pdf is seeded, correctly grouped by stimulus and topic, with accurate

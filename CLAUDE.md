@@ -1,70 +1,26 @@
-# NSW Selective Writing Coach — Requirements
+# NSW Selective Prep Coach — Project-wide Guidelines
 
 ## Summary
 
-NSW Selective Writing Coach is a writing-practice and progress-tracking tool for students preparing
-for the Writing component of the NSW Selective High School Placement Test. It runs on your own
-computer — think of it as a private writing coach and test simulator. It helps a student practise
-every text type tested in the Selective exam under real exam time pressure, automatically tracks how
-they perform over time, and helps a parent or tutor spot weak areas and generate targeted practice.
-It runs locally, needs no login, and works entirely on your machine.
+NSW Selective Prep Coach is a practice and progress-tracking tool for the NSW Selective High School
+Placement Test. It runs on your own computer — think of it as a private tutor and test simulator.
+It helps a student practise every subject tested in the Selective exam under real exam time pressure,
+automatically tracks how they perform over time, and helps a parent or tutor spot weak areas and
+generate targeted practice. It runs locally, needs no login, and works entirely on your machine.
 
 The goal is a clean, focused tool that does the essentials really well: a sidebar for choosing a
-writing text type; a timed practice test that replicates the real exam's on-screen conditions; a
-heatmap showing strength and weakness across text types; an in-depth breakdown of vocabulary,
-sentence structure and flow, and content for every piece written; and an admin view that turns the
-heatmap into AI-generated worksheets, whose results feed back into the same tracking. It should feel
-sharp and encouraging, and be genuinely pleasant to use.
+subject and topic; timed practice tests that replicate the real exam's conditions; a heatmap showing
+strength and weakness across topics; detailed feedback on every completed attempt; and an admin view
+that turns the heatmap into AI-generated worksheets, whose results feed back into the same tracking.
 
-## Platform
+## Subject plans
 
-The app has a **sidebar navigation**. For this version it has a single top-level item, **Writing**,
-which expands to reveal the text types covered by the Selective Test (see below). Clicking a text
-type takes the student straight into that type's practice flow. The sidebar is built so further
-top-level subjects (Reading, Mathematical Reasoning, Thinking Skills) can be added later without
-restructuring it — but only Writing ships now.
+Writing phases and requirements are documented in `docs/superpowers/plans/Writing-plan.md`.
 
-- **Writing → [Text Type]** — choosing a text type shows that type's practice home: a short
-description of the type, the student's history for it, and a **Start Timed Practice** button.
-- **Timed Practice** — a distraction-free writing screen that mirrors the real test: a single prompt
-(topic/stimulus), a **30-minute countdown timer** matching the actual Selective Writing test, a
-plain text-entry area with a live word count, and no spelling/grammar autocorrect crutches (no
-dictionary is allowed in the real test). The response auto-submits when time runs out; the student
-can also submit early. There is no pause.
-- **Progress Dashboard** — the heatmap: one cell per text type, shaded by average/most recent
-performance, so weak text types are visually obvious at a glance. Clicking a cell drills into that
-type's score history over time.
-- **Attempt Detail** — for any completed attempt (practice test or worksheet), a breakdown covering
-**vocabulary use, sentence structure and flow, and overall content/structure against the type's
-expected structure**, each with a score and specific, quotable feedback tied to the student's own
-text.
-- **Admin** — a separate, simple view (toggled, not a login) where a parent/tutor sees the same
-heatmap and can generate an **AI-assisted worksheet** targeting the weakest text type(s), review
-generated worksheets before assigning them, and see worksheet-attempt history for the student. Admin
-also holds the **Load Demo Data** control (see below) — the student-facing side stays genuinely
-empty until the student writes something, or until Admin chooses to populate it for a demo.
+Mathematics phases and requirements are documented in `docs/superpowers/plans/Mathematics-plan.md`.
 
-## What the app keeps track of
-
-Five kinds of record. (Plain-English fields — the exact details are up to the build.)
-
-- **WritingType** — one of the eleven text types tested in the Selective exam (Advertisement, Advice
-Sheet, Diary Entry, Discussion, Guide, Letter, Narrative/Creative, News Report, Persuasive, Review,
-Speech). Key info: name, a short description, and its expected structure (e.g. introduction, three
-body paragraphs, conclusion) used both to display guidance and to prompt the AI grader/worksheet
-generator.
-- **Prompt** — a writing stimulus/topic tied to a WritingType, used to start a timed practice test or
-a worksheet question. Several prompts per type so repeat practice doesn't repeat topics.
-- **Attempt** — one completed (or timed-out) piece of writing. Key info: which WritingType and
-Prompt, the student's submitted text, when it started and finished, time taken, whether it was a
-free **practice test** or came from an assigned **worksheet**, and its scores.
-- **Analysis** — the in-depth breakdown for an Attempt. Key info: a vocabulary score and comments, a
-sentence-structure-and-flow score and comments, a content/structure score and comments, an overall
-score, and a short written summary — generated by AI from the student's actual text.
-- **Worksheet** — an admin-created, AI-assisted practice set targeting one or more weak
-WritingTypes identified from the heatmap. Key info: title, target WritingType(s), the generated
-prompt(s)/questions, when it was created, and which Attempts were completed against it (so
-worksheet performance rolls into the same progress tracking as ordinary practice tests).
+Each plan has its own final success criteria. Build in phase-order within each plan. Do not start a
+phase until every success criterion of the previous phase is demonstrably met.
 
 ## High-level technical guidance
 
@@ -74,14 +30,14 @@ Just enough direction to keep things on track — specific choices are left to t
 - It runs fully locally and starts with **one simple command**; no accounts, no cloud, no internet
 needed to use it, other than the AI calls described below.
 - It stores its data **locally on the machine** in a **SQLite** database file.
-- Use the **OpenRouter API** (a `.env`-provided API key) for the two AI-assisted features: generating
-the vocabulary/sentence-structure/content Analysis for a submitted Attempt, and generating
-worksheet prompts targeted at weak WritingTypes. Keep these calls isolated behind a small service
-layer so the rest of the app doesn't care how the analysis was produced. use **openrouter/free** as the model to start with
+- Use the **OpenRouter API** (a `.env`-provided API key) for AI-assisted features: analysis of
+writing attempts and generating worksheet content. Keep these calls isolated behind a small service
+layer so the rest of the app doesn't care how the analysis was produced. Use **openrouter/free**
+as the model to start with.
 - **Prefer popular, well-supported libraries over custom code** — for the data tables, the heatmap
 and charts, and the countdown timer. Don't hand-roll what a mature library does well.
 - Keep the implementation simple and conventional. Library, data and structure choices are the
-Coding Agent's call, as long as the requirements and the success criteria below are met.
+Coding Agent's call, as long as the requirements and the success criteria are met.
 
 ## Not in scope (v1)
 
@@ -89,8 +45,6 @@ Deliberately left out to keep this small and focused. Do not build these:
 
 - No login, user accounts, multiple students or permissions — it's single-student and local; the
 admin view is a simple toggle, not an authentication system.
-- Only the Writing subject and its text types; Reading, Mathematical Reasoning and Thinking Skills
-are future sidebar items and out of scope now.
 - No handwriting input, scanning or OCR — responses are typed, matching the real computer-based test.
 - No live proctoring, plagiarism detection or exam-integrity tooling.
 - No mobile app; a responsive web layout is enough.
@@ -109,176 +63,3 @@ grays. The heatmap uses its own red-to-green performance scale and is exempt fro
 - **Avoid** these — they read as generic "AI-generated" tells: background gradients, purple
 backgrounds, buttons with gradients, and panels or cards with a single accent border line down one
 side.
-
-## Phases and success criteria
-
-Build in these phases, in order. **Do not start a phase until every success criterion of the
-previous phase is demonstrably met** — each criterion must be something you can actually show
-working, not just assert.
-
-### Phase 1 — Running skeleton and data
-
-**Features**
-
-- A single local web app with the sidebar showing **Writing**, expandable to all eleven text types.
-- A SQLite database storing WritingType, Prompt, Attempt, Analysis and Worksheet records.
-- A seed step that fills the database with the eleven text types (name, description, expected
-structure) and several sample prompts per type, so practice can start right away — but otherwise
-leaves the student side (no attempts, no history, a blank heatmap) genuinely empty on first run.
-Dummy demo attempts/analyses/worksheets are introduced later, under Admin, in Phase 5.
-- Unit tests to create, read, update and delete each record type.
-
-**Success criteria**
-
-1. One documented command starts the app, and opening the given URL shows the sidebar with Writing,
-which expands to list all eleven text types.
-2. On first run, the student side is genuinely empty (no fake history, an empty-state heatmap) while
-sample prompts already exist for every text type so practice can begin immediately.
-3. The unit tests for creating, reading, updating and deleting each record type all pass.
-
-### Phase 2 — Timed practice test
-
-**Features**
-
-- Clicking a text type shows its practice home with a **Start Timed Practice** button.
-- The Timed Practice screen: a prompt, a 30-minute countdown, a text-entry area with live word
-count, and submit (manual or automatic on timeout).
-- Completed attempts are saved automatically with their text, timing and which prompt/type they used.
-- Unit tests for starting, auto-saving on timeout, and manual submission.
-
-**Success criteria**
-
-1. Starting practice for any text type shows a prompt and a visibly running 30-minute countdown.
-2. Submitting early, or letting the timer reach zero, saves the attempt with the text the student
-wrote and the actual time taken.
-3. A saved attempt is still there, unchanged, after a browser refresh.
-4. The unit tests for starting, auto-saving and manual submission all pass.
-
-### Phase 3 — Progress tracking and heatmap
-
-**Features**
-
-- The Progress Dashboard heatmap, one cell per text type, shaded by performance.
-- Drilling into a cell shows that type's score history over time.
-- Unit tests confirming the heatmap reflects the underlying attempt scores.
-
-**Success criteria**
-
-1. The heatmap shows all eleven text types, shaded to reflect recorded performance (text types with
-no attempts yet are visibly distinct from scored ones); with no attempts at all, it shows a clear,
-encouraging empty state rather than looking broken.
-2. Completing a new timed practice test updates the relevant heatmap cell after a refresh.
-3. Clicking a heatmap cell shows a chronological history of scores for that text type.
-4. The unit tests for heatmap accuracy pass.
-
-### Phase 4 — In-depth AI analysis
-
-**Features**
-
-- On submission, an Attempt is sent for AI analysis covering vocabulary use, sentence structure and
-flow, and overall content/structure against the type's expected structure.
-- An Attempt Detail page showing the resulting scores and written feedback.
-- Unit tests (with the AI call mocked) for storing and displaying an Analysis.
-
-**Success criteria**
-
-1. After submitting a timed practice test, its Attempt Detail page shows a vocabulary score and
-comments, a sentence-structure-and-flow score and comments, a content score and comments, and an
-overall score.
-2. The feedback references specifics from the student's own submitted text, not generic boilerplate.
-3. The unit tests for storing and displaying an Analysis pass.
-
-### Phase 5 — Admin, AI-assisted worksheets, and demo data
-
-**Features**
-
-- An Admin view (toggle, not a login) showing the same heatmap plus a **Generate Worksheet** action.
-- Generating a worksheet uses AI to produce prompt(s) targeted at the weakest text type(s) from the
-heatmap; the admin reviews it before it's available to the student.
-- Completing a worksheet produces Attempts and Analyses exactly like a timed practice test, and rolls
-into the same heatmap and history.
-- An Admin-only **Load Demo Data** button and matching **Clear Demo Data** button. The student side
-stays clean by default; these controls exist purely so the app can be demoed without hours of real
-typing, and live only in Admin, never on the student screens.
-- Unit tests for generating, assigning, and completing a worksheet, and for loading/clearing demo
-data.
-
-**Demo data details** — what **Load Demo Data** should populate:
-
-- A believable spread of **completed Attempts across most or all eleven text types**, dated over the
-past several weeks, with a realistic mix of scores (some strong, some weak, some mid) so the
-heatmap looks like real progress rather than a flat demo.
-- A full **Analysis** (vocabulary, sentence-structure-and-flow, content, overall scores and written
-comments) for every seeded Attempt.
-- At least one already-generated, already-completed **Worksheet** with its own tracked Attempts.
-- **Clear Demo Data** removes exactly these seeded records and nothing else, so it's safe to use
-even after the student has made some real attempts of their own.
-
-**Success criteria**
-
-1. From Admin, generating a worksheet produces prompt(s) for the text type(s) currently weakest on
-the heatmap, shown for review before assignment.
-2. The student can complete an assigned worksheet under the same timed conditions as ordinary
-practice.
-3. A completed worksheet attempt appears in that text type's score history and updates the heatmap,
-indistinguishable in the data model from a regular practice attempt except for its worksheet link.
-4. From Admin, **Load Demo Data** populates attempts, analyses and a worksheet across most or all
-text types, and the student-facing heatmap, history and detail views immediately reflect that data
-as if it were real; the **Load Demo Data** and **Clear Demo Data** controls themselves are not
-visible anywhere in the student-facing views.
-5. **Clear Demo Data** removes the seeded records cleanly, leaving any genuine student attempts made
-in the meantime untouched.
-6. The unit tests for the worksheet lifecycle and for loading/clearing demo data all pass.
-
-### Phase 6 — Look and feel, and end-to-end validation
-
-**Features**
-
-- The look-and-feel rules applied across the whole app (brand palette with grays; sharp, modern,
-clean, encouraging; calm Timed Practice screen).
-- Removal of any banned elements (background gradients, purple backgrounds, gradient buttons,
-single-side accent border lines).
-- A full end-to-end walkthrough of the running app in a real browser, with visual inspection of every
-screen.
-
-**Success criteria**
-
-1. The whole app follows the look-and-feel rules and contains none of the banned elements.
-2. The Coding Agent has driven the running app in a real browser end to end — expanded the sidebar,
-completed a timed practice test to both early submission and timeout, viewed its AI analysis,
-checked the heatmap and drill-down, generated and completed an admin worksheet, and confirmed it
-tracks alongside practice tests — visually inspecting every screen, not just running unit tests.
-3. No errors appear in the browser console during that walkthrough.
-
-## Final success criteria
-
-## Final success criteria for the Writing subject
-
-The Writing portion of the project is complete, and the Coding Agent may stop and move on to
-`Mathematics-plan.md`, when all of the following are true:
-
-
-A non-technical person can start the app with a single documented command and open it in a browser.
-On first run the student side is genuinely empty and ready to practice (prompts exist, but no fake
-history); from Admin, a Load Demo Data button populates a realistic spread of past attempts,
-analyses, and a completed worksheet for demo purposes, with a matching Clear Demo Data to undo
-it — and neither control is ever visible on the student-facing side.
-The sidebar's Writing item expands to all eleven Selective Test text types.
-A timed practice test enforces the real 30-minute limit, auto-saves on timeout or manual submit,
-and persists across refreshes.
-Every completed attempt gets an AI-generated Analysis covering vocabulary, sentence structure and
-flow, and content, specific to what the student wrote.
-The heatmap accurately reflects performance across text types and updates as new attempts land.
-Admin can generate AI-assisted worksheets targeted at the weakest text types, and worksheet
-performance is tracked over time alongside ordinary practice.
-The look-and-feel rules are met and none of the banned elements appear anywhere.
-All unit tests pass.
-Most importantly: the product has been validated by actually using it end to end in a real
-browser — clicking through every section as a real student and a real admin would, performing the
-actions above, and visually inspecting each screen. Passing unit tests is necessary but NOT
-sufficient; the Coding Agent must confirm the running product works and looks right, not merely
-that the tests are green.
-
-
-Once every criterion above is met, continue with `Mathematics-plan.md`, Phase 7 onward, for the
-Mathematics subject. That document has its own final success criteria at the end.
