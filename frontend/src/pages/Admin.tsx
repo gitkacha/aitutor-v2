@@ -8,9 +8,16 @@ import { Shield, Plus, Database, Trash2, Calculator } from 'lucide-react';
 
 type AdminTab = 'writing' | 'math';
 
+interface WritingTypeBrief {
+  id: number;
+  name: string;
+  slug: string;
+}
+
 export default function Admin() {
   const navigate = useNavigate();
   const { data: writingHeatmap, refresh: refreshWriting } = useHeatmap();
+  const [writingTypes, setWritingTypes] = useState<WritingTypeBrief[]>([]);
   const [mathHeatmap, setMathHeatmap] = useState<MathHeatmapEntry[]>([]);
   const [mathTopics, setMathTopics] = useState<MathTopic[]>([]);
   const [activeTab, setActiveTab] = useState<AdminTab>('writing');
@@ -18,13 +25,21 @@ export default function Admin() {
   const [demoLoading, setDemoLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
+  // Writing worksheet state
+  const [selectedWritingTypes, setSelectedWritingTypes] = useState<number[]>([]);
+  const [generatedPrompts, setGeneratedPrompts] = useState<string[]>([]);
+  const [generatedTypeInfo, setGeneratedTypeInfo] = useState<WritingTypeBrief[]>([]);
+  const [showWritingReview, setShowWritingReview] = useState(false);
+
   // Math worksheet state
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [generatedQuestions, setGeneratedQuestions] = useState<GeneratedMathQuestion[]>([]);
-  const [showReview, setShowReview] = useState(false);
+  const [showMathReview, setShowMathReview] = useState(false);
 
   useEffect(() => {
-    if (activeTab === 'math') {
+    if (activeTab === 'writing') {
+      api.getTypes().then(setWritingTypes).catch(() => {});
+    } else if (activeTab === 'math') {
       mathApi.getHeatmap().then(setMathHeatmap).catch(() => {});
       mathApi.getTopics().then(setMathTopics).catch(() => {});
     }
@@ -34,24 +49,46 @@ export default function Admin() {
     mathApi.getHeatmap().then(setMathHeatmap).catch(() => {});
   };
 
-  // Writing worksheet
+  // Writing worksheet generation
   const handleGenerateWriting = async () => {
     setGenerating(true);
     setMessage(null);
     try {
-      const withScores = writingHeatmap
-        .filter((d) => d.averageScore !== null)
-        .sort((a, b) => (a.averageScore || 0) - (b.averageScore || 0));
-      const targetTypes = withScores.length > 0
-        ? [withScores[0].typeId]
-        : writingHeatmap.slice(0, 2).map((d) => d.typeId);
-      const worksheet = await api.generateWorksheet(targetTypes);
-      setMessage(`Writing worksheet "${worksheet.title}" generated!`);
-      refreshWriting();
+      let typeIds = selectedWritingTypes;
+      if (typeIds.length === 0) {
+        // Auto-select weakest type(s) from heatmap
+        const withScores = writingHeatmap
+          .filter((d) => d.averageScore !== null)
+          .sort((a, b) => (a.averageScore || 0) - (b.averageScore || 0));
+        typeIds = withScores.length > 0
+          ? [withScores[0].typeId]
+          : writingHeatmap.slice(0, 2).map((d) => d.typeId);
+      }
+      const result = await api.generateWorksheet(typeIds);
+      setGeneratedPrompts(result.prompts);
+      setGeneratedTypeInfo(result.types);
+      setShowWritingReview(true);
+      setMessage(`Generated ${result.prompts.length} writing prompts.`);
     } catch (e: any) {
       setMessage(`Error: ${e.message}`);
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleSaveWritingWorksheet = async () => {
+    setMessage(null);
+    try {
+      const typeIds = generatedTypeInfo.map((t) => t.id);
+      const title = `Worksheet: ${generatedTypeInfo.map((t) => t.name).join(' + ')}`;
+      await api.saveWorksheet(title, typeIds, generatedPrompts);
+      setShowWritingReview(false);
+      setGeneratedPrompts([]);
+      setGeneratedTypeInfo([]);
+      setMessage(`Writing worksheet "${title}" saved successfully!`);
+      refreshWriting();
+    } catch (e: any) {
+      setMessage(`Error: ${e.message}`);
     }
   };
 
@@ -62,7 +99,7 @@ export default function Admin() {
     try {
       const result = await mathApi.generateWorksheet(selectedTopics);
       setGeneratedQuestions(result.questions);
-      setShowReview(true);
+      setShowMathReview(true);
       setMessage(`Generated ${result.questions.length} questions across ${result.topics.length} topic(s).`);
     } catch (e: any) {
       setMessage(`Error: ${e.message}`);
@@ -76,7 +113,7 @@ export default function Admin() {
     try {
       const title = `Worksheet: ${selectedTopics.length === 0 ? 'All Topics' : selectedTopics.join(', ')}`;
       await mathApi.saveWorksheet(title, selectedTopics, generatedQuestions);
-      setShowReview(false);
+      setShowMathReview(false);
       setGeneratedQuestions([]);
       setMessage(`Worksheet "${title}" saved successfully!`);
       refreshMath();
@@ -114,6 +151,12 @@ export default function Admin() {
     } finally {
       setDemoLoading(false);
     }
+  };
+
+  const toggleWritingType = (id: number) => {
+    setSelectedWritingTypes(prev =>
+      prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
+    );
   };
 
   const toggleTopic = (slug: string) => {
@@ -168,17 +211,96 @@ export default function Admin() {
             />
           </div>
 
-          {/* Writing Worksheet */}
-          <div className="bg-white rounded-xl p-6 border border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Generate Writing Worksheet</h2>
-            <p className="text-sm text-gray-500 mb-4">
-              Generate an AI-assisted worksheet targeting the weakest text types.
-            </p>
-            <Button onClick={handleGenerateWriting} disabled={generating}>
-              <Plus className="mr-2" size={18} />
-              {generating ? 'Generating...' : 'Generate Worksheet'}
-            </Button>
-          </div>
+          {/* Writing Worksheet Generation */}
+          {!showWritingReview ? (
+            <div className="bg-white rounded-xl p-6 border border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">Generate Writing Worksheet</h2>
+              <p className="text-sm text-gray-500 mb-4">
+                Select one or more text types, or leave empty for auto-selection. Generates 3 targeted writing prompts for the selected text types.
+              </p>
+
+              {/* Writing type selector */}
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <button
+                    onClick={() => setSelectedWritingTypes([])}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                      selectedWritingTypes.length === 0
+                        ? 'bg-brand-blue text-white border-brand-blue'
+                        : 'border-gray-200 text-gray-600 hover:border-brand-blue'
+                    }`}
+                  >
+                    Auto (weakest first)
+                  </button>
+                  <span className="text-xs text-gray-400">or select specific types:</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-60 overflow-y-auto">
+                  {writingTypes.map((wt) => {
+                    const heatEntry = writingHeatmap.find(h => h.typeSlug === wt.slug);
+                    return (
+                      <button
+                        key={wt.id}
+                        onClick={() => toggleWritingType(wt.id)}
+                        className={`px-3 py-2 rounded-lg text-xs border text-left transition-colors ${
+                          selectedWritingTypes.includes(wt.id)
+                            ? 'bg-brand-blue/10 border-brand-blue text-brand-blue'
+                            : 'border-gray-200 text-gray-600 hover:border-brand-blue'
+                        }`}
+                      >
+                        <div className="font-medium">{wt.name}</div>
+                        {heatEntry && (
+                          <div className="text-gray-400 mt-0.5">
+                            {heatEntry.averageScore !== null ? `${heatEntry.averageScore}%` : '—'} · {heatEntry.attemptCount} att.
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <Button onClick={handleGenerateWriting} disabled={generating}>
+                <Plus className="mr-2" size={18} />
+                {generating ? 'Generating...' : 'Generate 3-Prompt Worksheet'}
+              </Button>
+            </div>
+          ) : (
+            /* Review generated writing prompts */
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-900">Review Generated Prompts</h2>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => { setShowWritingReview(false); setGeneratedPrompts([]); setGeneratedTypeInfo([]); }}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSaveWritingWorksheet}>
+                    Save Worksheet
+                  </Button>
+                </div>
+              </div>
+              <p className="text-sm text-gray-500">
+                {generatedPrompts.length} prompts generated for {generatedTypeInfo.map(t => t.name).join(', ')}. Review and save to make them available to the student.
+              </p>
+              {generatedPrompts.map((prompt, i) => {
+                const type = generatedTypeInfo[i % generatedTypeInfo.length] || generatedTypeInfo[0];
+                return (
+                  <div key={i} className="bg-white rounded-xl p-4 border border-gray-200">
+                    <div className="flex items-start gap-3">
+                      <span className="text-sm font-bold text-gray-400 shrink-0 mt-0.5">P{i + 1}.</span>
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-900 font-medium">{prompt}</p>
+                        {type && (
+                          <p className="text-xs text-gray-400 mt-2">
+                            <span className="font-medium">Text Type:</span> {type.name}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </>
       ) : (
         <>
@@ -198,7 +320,7 @@ export default function Admin() {
           </div>
 
           {/* Math Worksheet Generation */}
-          {!showReview ? (
+          {!showMathReview ? (
             <div className="bg-white rounded-xl p-6 border border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900 mb-2">Generate Mathematics Worksheet</h2>
               <p className="text-sm text-gray-500 mb-4">
@@ -256,7 +378,7 @@ export default function Admin() {
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-gray-900">Review Generated Questions</h2>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => { setShowReview(false); setGeneratedQuestions([]); }}>
+                  <Button variant="outline" onClick={() => { setShowMathReview(false); setGeneratedQuestions([]); }}>
                     Cancel
                   </Button>
                   <Button onClick={handleSaveWorksheet}>

@@ -182,6 +182,19 @@ export const mathApi = {
   getWorksheets: () => fetchJSON<MathWorksheet[]>('/math/worksheets'),
 };
 
+// ── Writing Worksheet (generation + review) ──
+
+export interface GeneratedWritingPrompt {
+  questionText: string;
+  typeSlug: string;
+  typeName: string;
+}
+
+export interface GenerateWritingWorksheetResponse {
+  types: Array<{ id: number; name: string; slug: string }>;
+  prompts: string[];
+}
+
 export const api = {
   getTypes: () => fetchJSON<WritingType[]>('/types'),
   getType: (slug: string) => fetchJSON<WritingType>(`/types/${slug}`),
@@ -197,9 +210,14 @@ export const api = {
     fetchJSON<Analysis>(`/analysis/${attemptId}`, { method: 'POST' }),
   getHeatmap: () => fetchJSON<HeatmapEntry[]>('/heatmap'),
   generateWorksheet: (typeIds: number[]) =>
-    fetchJSON<Worksheet>('/worksheets/generate', {
+    fetchJSON<GenerateWritingWorksheetResponse>('/worksheets/generate', {
       method: 'POST',
       body: JSON.stringify({ typeIds }),
+    }),
+  saveWorksheet: (title: string, typeIds: number[], prompts: string[]) =>
+    fetchJSON<Worksheet>('/worksheets/save', {
+      method: 'POST',
+      body: JSON.stringify({ title, typeIds, prompts }),
     }),
   getWorksheets: () => fetchJSON<Worksheet[]>('/worksheets'),
   loadDemo: () => fetchJSON<{ message: string }>('/demo/load', { method: 'POST' }),
