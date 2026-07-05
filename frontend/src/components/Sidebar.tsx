@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { api, WritingType, MathTopic, mathApi } from '@/lib/api';
-import { FileText, ChevronDown, ChevronRight, Menu, X, Shield, Calculator } from 'lucide-react';
+import { FileText, ChevronDown, ChevronRight, Menu, X, Shield, Calculator, Pencil } from 'lucide-react';
 
 export default function Sidebar() {
   const [types, setTypes] = useState<WritingType[]>([]);
@@ -32,7 +32,7 @@ export default function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 h-full transition-transform',
+          'w-64 bg-gradient-to-b from-teal-600 to-teal-800 border-r border-teal-500 flex flex-col shrink-0 h-full transition-transform',
           'lg:relative lg:translate-x-0',
           mobileOpen ? 'fixed inset-y-0 left-0 z-40 translate-x-0' : 'fixed -translate-x-full lg:relative lg:translate-x-0'
         )}
@@ -51,8 +51,8 @@ export default function Sidebar() {
             className={cn(
               'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
               location.pathname === '/dashboard'
-                ? 'bg-brand-blue/10 text-brand-blue font-medium'
-                : 'text-gray-600 hover:bg-gray-100'
+                ? 'bg-white/20 text-white font-medium'
+                : 'text-white/80 hover:bg-white/10'
             )}
             onClick={() => setMobileOpen(false)}
           >
@@ -64,9 +64,12 @@ export default function Sidebar() {
           <div>
             <button
               onClick={() => setWritingExpanded(!writingExpanded)}
-              className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-white/80 hover:bg-white/10 rounded-lg transition-colors"
             >
-              <span>Writing</span>
+              <div className="flex items-center gap-2">
+                <Pencil size={16} />
+                <span>Writing</span>
+              </div>
               {writingExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
             </button>
 
@@ -80,11 +83,11 @@ export default function Sidebar() {
                     className={cn(
                       'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors',
                       isActive(type.slug)
-                        ? 'bg-brand-blue/10 text-brand-blue font-medium'
-                        : 'text-gray-600 hover:bg-gray-100'
+                        ? 'bg-white/20 text-white font-medium'
+                        : 'text-white/80 hover:bg-white/10'
                     )}
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
                     {type.name}
                   </Link>
                 ))}
@@ -96,7 +99,7 @@ export default function Sidebar() {
           <div className="mt-2">
             <button
               onClick={() => setMathExpanded(!mathExpanded)}
-              className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-white/80 hover:bg-white/10 rounded-lg transition-colors"
             >
               <div className="flex items-center gap-2">
                 <Calculator size={16} />
@@ -113,11 +116,11 @@ export default function Sidebar() {
                   className={cn(
                     'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors',
                     isActive('all-topics')
-                      ? 'bg-brand-blue/10 text-brand-blue font-medium'
-                      : 'text-gray-600 hover:bg-gray-100'
+                      ? 'bg-white/20 text-white font-medium'
+                      : 'text-white/80 hover:bg-white/10'
                   )}
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand-blue" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
                   All Topics
                 </Link>
                 {mathTopics.map((topic) => (
@@ -128,11 +131,11 @@ export default function Sidebar() {
                     className={cn(
                       'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors',
                       isActive(topic.slug)
-                        ? 'bg-brand-blue/10 text-brand-blue font-medium'
-                        : 'text-gray-600 hover:bg-gray-100'
+                        ? 'bg-white/20 text-white font-medium'
+                        : 'text-white/80 hover:bg-white/10'
                     )}
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
                     {topic.name}
                   </Link>
                 ))}
@@ -142,15 +145,15 @@ export default function Sidebar() {
         </nav>
 
         {/* Admin link at bottom — always visible */}
-        <div className="p-2 border-t border-gray-200 shrink-0">
+        <div className="p-2 border-t border-teal-400 shrink-0">
           <Link
             to="/admin"
             onClick={() => setMobileOpen(false)}
             className={cn(
               'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors w-full',
               location.pathname === '/admin'
-                ? 'bg-brand-blue/10 text-brand-blue font-medium'
-                : 'text-gray-600 hover:bg-gray-100'
+                ? 'bg-white/20 text-white font-medium'
+                : 'text-white/80 hover:bg-white/10'
             )}
           >
             <Shield size={16} />
