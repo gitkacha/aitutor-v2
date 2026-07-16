@@ -11,35 +11,39 @@ export default function AttemptDetail() {
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [retryToken, setRetryToken] = useState(0);
 
   useEffect(() => {
     if (!id) return;
-    // Poll for analysis if it doesn't exist yet
-    let pollCount = 0;
     let cancelled = false;
     const fetchAttempt = async () => {
       try {
         const a = await api.getAttempt(parseInt(id));
         if (cancelled) return;
         setAttempt(a);
-        // If no analysis, trigger one and poll
+        setLoading(false);
+        // The analysis endpoint runs synchronously — one awaited trigger, then refetch.
         if (!a.analysis) {
-          api.triggerAnalysis(parseInt(id)).catch(() => {});
-          if (pollCount < 30) {
-            pollCount++;
-            setTimeout(fetchAttempt, 2000);
-            return;
+          setAnalysisError(null);
+          try {
+            await api.triggerAnalysis(parseInt(id));
+            const refreshed = await api.getAttempt(parseInt(id));
+            if (!cancelled) setAttempt(refreshed);
+          } catch (e: any) {
+            if (!cancelled) setAnalysisError(e.message);
           }
         }
       } catch (e: any) {
-        if (!cancelled) setError(e.message);
-      } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setError(e.message);
+          setLoading(false);
+        }
       }
     };
     fetchAttempt();
     return () => { cancelled = true; };
-  }, [id]);
+  }, [id, retryToken]);
 
   if (loading) {
     return (
@@ -109,10 +113,18 @@ export default function AttemptDetail() {
       {/* Analysis (if available) */}
       {attempt.analysis ? (
         <AnalysisDisplay analysis={attempt.analysis} />
+      ) : analysisError ? (
+        <div className="bg-white rounded-xl p-6 border border-gray-200 text-center">
+          <p className="text-gray-700 font-medium">Analysis is unavailable right now</p>
+          <p className="text-sm text-gray-500 mt-1">{analysisError}</p>
+          <Button variant="outline" className="mt-4" onClick={() => setRetryToken(t => t + 1)}>
+            Retry Analysis
+          </Button>
+        </div>
       ) : (
         <div className="bg-white rounded-xl p-6 border border-gray-200 text-center">
           <Loader2 size={24} className="animate-spin text-brand-blue mx-auto" />
-          <p className="text-gray-500 mt-2">Analysis still processing...</p>
+          <p className="text-gray-500 mt-2">Analysing your writing...</p>
         </div>
       )}
     </div>

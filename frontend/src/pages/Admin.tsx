@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useHeatmap } from '@/hooks/useHeatmap';
 import Heatmap from '@/components/Heatmap';
+import PendingWorksheets from '@/components/PendingWorksheets';
 import { api, mathApi, MathTopic, MathHeatmapEntry, GeneratedMathQuestion, Worksheet, MathWorksheet } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Shield, Plus, Database, Trash2, Calculator, FileText } from 'lucide-react';
@@ -24,6 +25,7 @@ export default function Admin() {
   const [generating, setGenerating] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [worksheetRefresh, setWorksheetRefresh] = useState(0);
 
   // Writing worksheet state
   const [selectedWritingTypes, setSelectedWritingTypes] = useState<number[]>([]);
@@ -33,6 +35,7 @@ export default function Admin() {
 
   // Math worksheet state
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
+  const [questionCount, setQuestionCount] = useState(35);
   const [generatedQuestions, setGeneratedQuestions] = useState<GeneratedMathQuestion[]>([]);
   const [showMathReview, setShowMathReview] = useState(false);
 
@@ -93,6 +96,7 @@ export default function Admin() {
       setGeneratedTypeInfo([]);
       setMessage(`Writing worksheet "${title}" saved successfully!`);
       refreshWriting();
+      setWorksheetRefresh(n => n + 1);
       api.getWorksheets().then(setWritingWorksheets).catch(() => {});
     } catch (e: any) {
       setMessage(`Error: ${e.message}`);
@@ -104,7 +108,7 @@ export default function Admin() {
     setGenerating(true);
     setMessage(null);
     try {
-      const result = await mathApi.generateWorksheet(selectedTopics);
+      const result = await mathApi.generateWorksheet(selectedTopics, questionCount);
       setGeneratedQuestions(result.questions);
       setShowMathReview(true);
       setMessage(`Generated ${result.questions.length} questions across ${result.topics.length} topic(s).`);
@@ -124,6 +128,7 @@ export default function Admin() {
       setGeneratedQuestions([]);
       setMessage(`Worksheet "${title}" saved successfully!`);
       refreshMath();
+      setWorksheetRefresh(n => n + 1);
       mathApi.getWorksheets().then(setMathWorksheets).catch(() => {});
     } catch (e: any) {
       setMessage(`Error: ${e.message}`);
@@ -186,6 +191,9 @@ export default function Admin() {
           {message}
         </div>
       )}
+
+      {/* Pending worksheets quick view (both subjects) */}
+      <PendingWorksheets mode="admin" refreshKey={worksheetRefresh} />
 
       {/* Tab switcher */}
       <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
@@ -377,8 +385,25 @@ export default function Admin() {
             <div className="bg-white rounded-xl p-6 border border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900 mb-2">Generate Mathematics Worksheet</h2>
               <p className="text-sm text-gray-500 mb-4">
-                Select one or more topics, or leave empty for all topics. Generates 35 multiple-choice questions at or above the difficulty of the reference test.
+                Select one or more topics, or leave empty for all topics. Generates multiple-choice questions at or above the difficulty of the reference test. Students get 1 minute per question.
               </p>
+
+              {/* Question count */}
+              <div className="mb-4 flex items-center gap-3">
+                <label htmlFor="question-count" className="text-sm font-medium text-gray-700">
+                  Number of questions
+                </label>
+                <input
+                  id="question-count"
+                  type="number"
+                  min={5}
+                  max={50}
+                  value={questionCount}
+                  onChange={(e) => setQuestionCount(Math.max(5, Math.min(50, parseInt(e.target.value) || 35)))}
+                  className="w-20 px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
+                />
+                <span className="text-xs text-gray-400">5–50 · time limit {questionCount} min</span>
+              </div>
 
               {/* Topic selector */}
               <div className="mb-4">
@@ -422,7 +447,7 @@ export default function Admin() {
 
               <Button onClick={handleGenerateMath} disabled={generating}>
                 <Plus className="mr-2" size={18} />
-                {generating ? 'Generating 35 Questions...' : 'Generate 35-Question Worksheet'}
+                {generating ? `Generating ${questionCount} Questions...` : `Generate ${questionCount}-Question Worksheet`}
               </Button>
             </div>
           ) : (

@@ -1,14 +1,61 @@
 import prisma from '../lib/prisma';
 
-const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const MODEL = 'openrouter/free';
+// OpenAI API per CLAUDE.md. OPENAI_BASE_URL is overridable so tests can point the
+// service at a local stub; production use needs no configuration beyond the API key.
+//
+// Models are split per task: worksheet generation and answer-key verification need
+// arithmetic reliability, so they run on a reasoning model; writing analysis is
+// language feedback where gpt-4o-mini is sufficient and fast.
+const generationModel = () => process.env.GENERATION_MODEL || 'gpt-5-mini';
+const analysisModel = () => process.env.ANALYSIS_MODEL || 'gpt-4o-mini';
 
-interface OpenRouterResponse {
+// Reasoning models reject `temperature` and think inside the completion budget.
+const isReasoningModel = (model: string) => /^(gpt-5|o[134])/.test(model);
+
+interface ChatCompletionResponse {
   choices: Array<{
     message: {
       content: string;
     };
   }>;
+}
+
+async function chatCompletion(model: string, prompt: string, maxTokens: number, temperature?: number): Promise<string> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is not configured. Add it to backend/.env.');
+  }
+
+  const body: Record<string, unknown> = {
+    model,
+    messages: [{ role: 'user', content: prompt }],
+    max_completion_tokens: maxTokens,
+  };
+  if (temperature !== undefined && !isReasoningModel(model)) {
+    body.temperature = temperature;
+  }
+
+  const baseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = (await response.text()).slice(0, 300);
+    throw new Error(`OpenAI API error (${response.status}): ${errorText}`);
+  }
+
+  const data = (await response.json()) as ChatCompletionResponse;
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error('OpenAI API returned an empty response');
+  }
+  return content;
 }
 
 interface AnalysisResult {
@@ -22,26 +69,45 @@ interface AnalysisResult {
   summary: string;
 }
 
+const ANALYSIS_SCORE_FIELDS = ['vocabScore', 'structureScore', 'contentScore', 'overallScore'] as const;
+const ANALYSIS_TEXT_FIELDS = ['vocabComments', 'structureComments', 'contentComments', 'summary'] as const;
+
+// Strict parse: a malformed model response must fail the analysis, never degrade
+// into fake scores — failed analyses are not persisted.
 function parseAnalysisResponse(content: string): AnalysisResult {
-  try {
-    // Try to find JSON in the response
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
-    }
-  } catch {
-    // Fall through to fallback
+  const jsonMatch = content.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error('Analysis response did not contain a JSON object');
   }
-  // Fallback if parsing fails
+
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(jsonMatch[0]);
+  } catch {
+    throw new Error('Analysis response was not valid JSON');
+  }
+
+  for (const field of ANALYSIS_SCORE_FIELDS) {
+    const value = parsed[field];
+    if (typeof value !== 'number' || Number.isNaN(value) || value < 0 || value > 100) {
+      throw new Error(`Analysis response has a missing or invalid ${field}`);
+    }
+  }
+  for (const field of ANALYSIS_TEXT_FIELDS) {
+    if (typeof parsed[field] !== 'string' || (parsed[field] as string).length === 0) {
+      throw new Error(`Analysis response has a missing or invalid ${field}`);
+    }
+  }
+
   return {
-    vocabScore: 50,
-    vocabComments: 'Analysis could not be parsed. Please try again.',
-    structureScore: 50,
-    structureComments: 'Analysis could not be parsed. Please try again.',
-    contentScore: 50,
-    contentComments: 'Analysis could not be parsed. Please try again.',
-    overallScore: 50,
-    summary: 'Analysis could not be completed.',
+    vocabScore: Math.round(parsed.vocabScore as number),
+    vocabComments: parsed.vocabComments as string,
+    structureScore: Math.round(parsed.structureScore as number),
+    structureComments: parsed.structureComments as string,
+    contentScore: Math.round(parsed.contentScore as number),
+    contentComments: parsed.contentComments as string,
+    overallScore: Math.round(parsed.overallScore as number),
+    summary: parsed.summary as string,
   };
 }
 
@@ -81,55 +147,8 @@ Respond with ONLY a JSON object (no markdown, no code fences) in this exact form
 
 All comments must reference specific parts of the student's text.`;
 
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    console.warn('No OPENROUTER_API_KEY set, using fallback analysis');
-    return getFallbackAnalysis();
-  }
-
-  try {
-    const response = await fetch(OPENROUTER_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': 'http://localhost:5173',
-        'X-Title': 'NSW Selective Writing Coach',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 1000,
-        temperature: 0.7,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`OpenRouter API error (${response.status}):`, errorText);
-      return getFallbackAnalysis();
-    }
-
-    const data = (await response.json()) as OpenRouterResponse;
-    const content = data.choices?.[0]?.message?.content || '';
-    return parseAnalysisResponse(content);
-  } catch (error) {
-    console.error('OpenRouter API call failed:', error);
-    return getFallbackAnalysis();
-  }
-}
-
-function getFallbackAnalysis(): AnalysisResult {
-  return {
-    vocabScore: 0,
-    vocabComments: 'Unable to analyse vocabulary. Please check your OpenRouter API key and try again.',
-    structureScore: 0,
-    structureComments: 'Unable to analyse structure. Please check your OpenRouter API key and try again.',
-    contentScore: 0,
-    contentComments: 'Unable to analyse content. Please check your OpenRouter API key and try again.',
-    overallScore: 0,
-    summary: 'Analysis could not be completed. Please ensure your API key is configured correctly in the .env file.',
-  };
+  const content = await chatCompletion(analysisModel(), prompt, 1000, 0.7);
+  return parseAnalysisResponse(content);
 }
 
 export async function generateWorksheetPrompts(typeIds: number[]): Promise<string[]> {
@@ -150,44 +169,15 @@ Generate exactly 1 writing prompt targeting these text types. It should be a com
 Respond with ONLY a JSON array of strings, no markdown, no code fences:
 ["prompt text"]`;
 
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    return [
-      'Write a persuasive text arguing for or against school uniforms.',
-      'Write a narrative about a surprising discovery.',
-      'Write a discussion on whether homework should be banned.',
-    ];
-  }
-
   try {
-    const response = await fetch(OPENROUTER_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': 'http://localhost:5173',
-        'X-Title': 'NSW Selective Writing Coach',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 500,
-        temperature: 0.8,
-      }),
-    });
-
-    if (!response.ok) {
-      return getFallbackPrompts();
-    }
-
-    const data = (await response.json()) as OpenRouterResponse;
-    const content = data.choices?.[0]?.message?.content || '';
+    const content = await chatCompletion(generationModel(), prompt, 2000, 0.8);
     const arrayMatch = content.match(/\[[\s\S]*\]/);
     if (arrayMatch) {
       return JSON.parse(arrayMatch[0]);
     }
     return getFallbackPrompts();
-  } catch {
+  } catch (error) {
+    console.error('Worksheet prompt generation failed:', error);
     return getFallbackPrompts();
   }
 }
@@ -226,32 +216,93 @@ interface GeneratedMathQuestion {
   topicName: string;
 }
 
-export async function generateMathWorksheetQuestions(topics: MathTopicForGen[]): Promise<GeneratedMathQuestion[]> {
-  // Build difficulty exemplars from hardest seeded questions
+// One LLM call reliably produces only a handful of long-form questions before drifting
+// or stopping short (35 asked, ~25 delivered), so generation runs in small batches and
+// tops up until the exact requested count is collected.
+const GENERATION_BATCH_SIZE = 10;
+
+// Compare options as values so `5/10` and `25/50` count as duplicates, not just
+// identical strings. Non-numeric options fall back to case-insensitive text.
+function optionValue(option: string): string {
+  const s = String(option).trim();
+  const frac = s.match(/^(-?\d+(?:\.\d+)?)\s*\/\s*(-?\d+(?:\.\d+)?)$/);
+  if (frac) {
+    const denominator = parseFloat(frac[2]);
+    if (denominator !== 0) return (parseFloat(frac[1]) / denominator).toFixed(9);
+  }
+  const num = Number(s.replace(/,/g, ''));
+  if (s !== '' && !Number.isNaN(num)) return num.toFixed(9);
+  return s.toLowerCase();
+}
+
+function hasDistinctOptions(options: string[]): boolean {
+  return new Set(options.map(optionValue)).size === options.length;
+}
+
+// Independent audit of a generated question's answer key: a second model call solves
+// the question from scratch; a question only survives if the solver lands on the
+// same option the generator claimed. Catches self-inconsistent keys (e.g. an
+// explanation that computes 1/2 while the key points at 4/5).
+async function verifyQuestionKey(q: GeneratedMathQuestion): Promise<boolean> {
+  const prompt = `You are independently solving a multiple-choice question to audit its answer key.
+
+Question:
+${q.questionText}
+
+Options (indexed 0-4):
+${q.options.map((o, i) => `${i}: ${o}`).join('\n')}
+
+Solve the question yourself, step by step, then respond with ONLY a JSON object (no markdown, no code fences):
+{"correctIndex": <0-4>}`;
+
+  try {
+    const content = await chatCompletion(generationModel(), prompt, 4000);
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return false;
+    const verdict = JSON.parse(jsonMatch[0]);
+    return Number.isInteger(verdict.correctIndex) && verdict.correctIndex === q.correctIndex;
+  } catch (error) {
+    console.error('Answer-key verification failed:', error);
+    return false;
+  }
+}
+
+function isValidGeneratedQuestion(q: any, allowedSlugs: Set<string>): boolean {
+  return (
+    q &&
+    typeof q.questionText === 'string' &&
+    q.questionText.length > 0 &&
+    Array.isArray(q.options) &&
+    q.options.length === 5 &&
+    q.options.every((o: unknown) => typeof o === 'string' || typeof o === 'number') &&
+    Number.isInteger(q.correctIndex) &&
+    q.correctIndex >= 0 &&
+    q.correctIndex < 5 &&
+    typeof q.explanation === 'string' &&
+    typeof q.topicSlug === 'string' &&
+    allowedSlugs.has(q.topicSlug)
+  );
+}
+
+async function generateQuestionBatch(topics: MathTopicForGen[], count: number): Promise<any[]> {
   const exemplars = topics.map(t => {
     const hardest = t.questions[0];
     if (!hardest) return null;
-    return {
-      topic: t.name,
-      percentCorrect: hardest.percentCorrect,
-      question: hardest.questionText,
-      options: hardest.options,
-      explanation: hardest.explanation,
-    };
+    return { topic: t.name, percentCorrect: hardest.percentCorrect, question: hardest.questionText };
   }).filter(Boolean);
 
   const prompt = `You are a mathematics tutor creating a practice worksheet for a student preparing for the NSW Selective High School Placement Test (Mathematical Reasoning section).
 
 The worksheet should cover the following topic(s):
-${topics.map(t => `- ${t.name}: ${t.description}`).join('\n')}
+${topics.map(t => `- ${t.name} (slug: ${t.slug}): ${t.description}`).join('\n')}
 
-Generate 35 five-option multiple-choice questions distributed across these topics. Each question must have exactly one correct answer and four plausible distractors.
+Generate exactly ${count} five-option multiple-choice questions distributed across these topics. Each question must have exactly one correct answer and four plausible distractors.
 
 DIFFICULTY REQUIREMENT: Each question must be at or above the difficulty of the hardest known reference question for its topic. Here are the hardest reference questions per topic (with their cohort % Correct — lower % = harder):
 
-${exemplars.map(e => `- ${e.topic}: ${e.percentCorrect}% correct (hard). Example: "${e.question}"`).join('\n')}
+${exemplars.map(e => `- ${e!.topic}: ${e!.percentCorrect}% correct (hard). Example: "${e!.question}"`).join('\n')}
 
-For each question, provide a detailed "Question Feedback" style explanation in the same format as the reference paper.
+For each question, provide a detailed "Question Feedback" style explanation.
 
 Respond with ONLY a JSON array (no markdown, no code fences) in this exact format:
 [
@@ -260,60 +311,81 @@ Respond with ONLY a JSON array (no markdown, no code fences) in this exact forma
     "options": ["A", "B", "C", "D", "E"],
     "correctIndex": 0,
     "explanation": "Step-by-step reasoning. Therefore, the answer is Option X.",
-    "topicSlug": "${topics[0]?.slug || 'algebra'}",
-    "topicName": "${topics[0]?.name || 'Algebra'}"
+    "topicSlug": "<slug of this question's topic, one of: ${topics.map(t => t.slug).join(', ')}>",
+    "topicName": "<name of this question's topic>"
   }
 ]
 
-Generate exactly 35 questions. Make sure distractors are plausible — they should be answers a student might get from common mistakes.`;
+Generate exactly ${count} questions. Make sure distractors are plausible — they should be answers a student might get from common mistakes.`;
 
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    return getFallbackMathQuestions(topics);
+  // Reasoning models think inside the completion budget, so leave generous headroom.
+  const content = await chatCompletion(generationModel(), prompt, Math.min(count * 600 + 4000, 16000), 0.8);
+  const arrayMatch = content.match(/\[[\s\S]*\]/);
+  if (!arrayMatch) {
+    throw new Error('Generation response did not contain a JSON array');
   }
-
-  try {
-    const response = await fetch(OPENROUTER_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': 'http://localhost:5173',
-        'X-Title': 'NSW Selective Prep Coach',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 8000,
-        temperature: 0.8,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`OpenRouter API error (${response.status}):`, errorText);
-      return getFallbackMathQuestions(topics);
-    }
-
-    const data = (await response.json()) as OpenRouterResponse;
-    const content = data.choices?.[0]?.message?.content || '';
-    const arrayMatch = content.match(/\[[\s\S]*\]/);
-    if (arrayMatch) {
-      const parsed = JSON.parse(arrayMatch[0]);
-      return parsed.slice(0, 35);
-    }
-    return getFallbackMathQuestions(topics);
-  } catch (error) {
-    console.error('OpenRouter API call failed:', error);
-    return getFallbackMathQuestions(topics);
+  const parsed = JSON.parse(arrayMatch[0]);
+  if (!Array.isArray(parsed)) {
+    throw new Error('Generation response was not an array');
   }
+  return parsed;
 }
 
-function getFallbackMathQuestions(topics: MathTopicForGen[]): GeneratedMathQuestion[] {
+export async function generateMathWorksheetQuestions(
+  topics: MathTopicForGen[],
+  questionCount = 35
+): Promise<GeneratedMathQuestion[]> {
+  const allowedSlugs = new Set(topics.map(t => t.slug));
+  const nameBySlug = new Map(topics.map(t => [t.slug, t.name]));
+  const collected: GeneratedMathQuestion[] = [];
+
+  // Verification drops some candidates, so allow extra top-up calls.
+  const maxCalls = Math.ceil(questionCount / GENERATION_BATCH_SIZE) + 5;
+  let failedCalls = 0;
+
+  for (let call = 0; call < maxCalls && collected.length < questionCount; call++) {
+    const need = Math.min(GENERATION_BATCH_SIZE, questionCount - collected.length);
+    try {
+      const batch = await generateQuestionBatch(topics, need);
+      const candidates: GeneratedMathQuestion[] = batch
+        .filter(q => isValidGeneratedQuestion(q, allowedSlugs) && hasDistinctOptions(q.options.map(String)))
+        .map(q => ({
+          questionText: q.questionText,
+          options: q.options.map(String),
+          correctIndex: q.correctIndex,
+          explanation: q.explanation,
+          topicSlug: q.topicSlug,
+          topicName: nameBySlug.get(q.topicSlug)!,
+        }));
+
+      // Audit every candidate's answer key in parallel; keep only confirmed ones.
+      const verdicts = await Promise.all(candidates.map(verifyQuestionKey));
+      const verified = candidates
+        .filter((_, i) => verdicts[i])
+        .slice(0, questionCount - collected.length);
+      collected.push(...verified);
+    } catch (error) {
+      failedCalls++;
+      console.error('Math worksheet generation batch failed:', error);
+    }
+  }
+
+  // Provider never produced anything (e.g. no API key): keep the offline fallback so
+  // the review flow still works — the admin sees obvious placeholders before saving.
+  if (collected.length === 0 && failedCalls > 0) {
+    return getFallbackMathQuestions(topics, questionCount);
+  }
+  if (collected.length < questionCount) {
+    throw new Error(`Only generated ${collected.length} of ${questionCount} questions. Please try again.`);
+  }
+  return collected;
+}
+
+function getFallbackMathQuestions(topics: MathTopicForGen[], questionCount = 35): GeneratedMathQuestion[] {
   const fallback: GeneratedMathQuestion[] = [];
   const topicNames = topics.map(t => ({ slug: t.slug, name: t.name }));
 
-  for (let i = 0; i < 35; i++) {
+  for (let i = 0; i < questionCount; i++) {
     const t = topicNames[i % topicNames.length];
     fallback.push({
       questionText: `Sample question ${i + 1} for ${t.name}. What is the value of 25 × 4?`,

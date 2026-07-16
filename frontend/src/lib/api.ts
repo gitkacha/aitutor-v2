@@ -153,8 +153,13 @@ export interface GeneratedMathQuestion {
 export const mathApi = {
   getTopics: () => fetchJSON<MathTopic[]>('/math/topics'),
   getTopic: (slug: string) => fetchJSON<MathTopic>(`/math/topics/${slug}`),
-  getQuestions: (topicSlug?: string) =>
-    fetchJSON<MathQuestionFull[]>(`/math/questions${topicSlug ? `?topic=${topicSlug}` : ''}`),
+  getQuestions: (opts?: { topicSlug?: string; worksheetId?: number }) => {
+    const params = new URLSearchParams();
+    if (opts?.topicSlug) params.set('topic', opts.topicSlug);
+    if (opts?.worksheetId) params.set('worksheet', String(opts.worksheetId));
+    const qs = params.toString();
+    return fetchJSON<MathQuestionFull[]>(`/math/questions${qs ? `?${qs}` : ''}`);
+  },
   getAttempts: (topicSlug?: string) =>
     fetchJSON<MathAttempt[]>(`/math/attempts${topicSlug ? `?topic=${topicSlug}` : ''}`),
   getAttempt: (id: number) => fetchJSON<MathAttempt>(`/math/attempts/${id}`),
@@ -172,10 +177,10 @@ export const mathApi = {
     body: JSON.stringify(data),
   }),
   getHeatmap: () => fetchJSON<MathHeatmapEntry[]>('/math/heatmap'),
-  generateWorksheet: (topicIds: string[]) =>
+  generateWorksheet: (topicIds: string[], questionCount?: number) =>
     fetchJSON<{ topics: Array<{ id: number; name: string; slug: string }>; questions: GeneratedMathQuestion[] }>(
       '/math/worksheets/generate',
-      { method: 'POST', body: JSON.stringify({ topicIds }) }
+      { method: 'POST', body: JSON.stringify({ topicIds, questionCount }) }
     ),
   saveWorksheet: (title: string, topicIds: string[], questions: GeneratedMathQuestion[]) =>
     fetchJSON<MathWorksheet>('/math/worksheets/save', {

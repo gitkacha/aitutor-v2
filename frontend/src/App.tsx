@@ -25,7 +25,8 @@ export default function App() {
           <Route path="/admin" element={<Admin />} />
           <Route path="/math/:topicSlug" element={<MathPracticeHome />} />
           <Route path="/math/:topicSlug/start" element={<MathTimedPractice />} />
-          <Route path="/math-history/:topicSlug" element={<ScoreHistory subject="math" />} />
+          {/* ScoreHistory reads :typeSlug for both subjects */}
+          <Route path="/math-history/:typeSlug" element={<ScoreHistory subject="math" />} />
           <Route path="/math-attempt/:id" element={<MathAttemptReview />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

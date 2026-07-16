@@ -91,6 +91,7 @@ model MathQuestion {
   id              Int                @id @default(autoincrement())
   topicId         Int
   stimulusGroupId Int?
+  worksheetId     Int?
   questionText    String
   options         String
   correctIndex    Int
@@ -99,6 +100,7 @@ model MathQuestion {
   isDemo          Boolean            @default(false)
   topic           MathTopic          @relation(fields: [topicId], references: [id])
   stimulusGroup   MathStimulusGroup? @relation(fields: [stimulusGroupId], references: [id])
+  worksheet       MathWorksheet?     @relation(fields: [worksheetId], references: [id])
 }
 
 model MathAttempt {
@@ -120,11 +122,12 @@ model MathAttempt {
 }
 
 model MathWorksheet {
-  id        Int          @id @default(autoincrement())
-  title     String
-  topicIds  String
-  questions String
-  createdAt DateTime     @default(now())
-  isDemo    Boolean      @default(false)
-  attempts  MathAttempt[]
+  id           Int            @id @default(autoincrement())
+  title        String
+  topicIds     String
+  questions    String
+  createdAt    DateTime       @default(now())
+  isDemo       Boolean        @default(false)
+  attempts     MathAttempt[]
+  questionRows MathQuestion[]
 }

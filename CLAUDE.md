@@ -30,9 +30,9 @@ Just enough direction to keep things on track — specific choices are left to t
 - It runs fully locally and starts with **one simple command**; no accounts, no cloud, no internet
 needed to use it, other than the AI calls described below.
 - It stores its data **locally on the machine** in a **SQLite** database file.
-- Use the **OpenRouter API** (a `.env`-provided API key) for AI-assisted features: analysis of
+- Use the **OpenAI API** (a `.env`-provided API key) for AI-assisted features: analysis of
 writing attempts and generating worksheet content. Keep these calls isolated behind a small service
-layer so the rest of the app doesn't care how the analysis was produced. Use **openrouter/free**
+layer so the rest of the app doesn't care how the analysis was produced. Use **gpt-4o-mini**
 as the model to start with.
 - **Prefer popular, well-supported libraries over custom code** — for the data tables, the heatmap
 and charts, and the countdown timer. Don't hand-roll what a mature library does well.
@@ -43,8 +43,6 @@ Coding Agent's call, as long as the requirements and the success criteria are me
 
 Deliberately left out to keep this small and focused. Do not build these:
 
-- No login, user accounts, multiple students or permissions — it's single-student and local; the
-admin view is a simple toggle, not an authentication system.
 - No handwriting input, scanning or OCR — responses are typed, matching the real computer-based test.
 - No live proctoring, plagiarism detection or exam-integrity tooling.
 - No mobile app; a responsive web layout is enough.

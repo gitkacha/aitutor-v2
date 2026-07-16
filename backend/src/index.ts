@@ -1,3 +1,4 @@
+import 'dotenv/config'; // loads backend/.env; never overrides variables already set
 import express from 'express';
 import cors from 'cors';
 import { errorHandler } from './middleware/error';

@@ -48,12 +48,14 @@ Open **http://localhost:5173** in your browser.
 - Toggle to admin view (no login needed — single-student local tool)
 - Tabbed interface for **Writing** and **Mathematics** controls
 - **Generate Writing Worksheet** — AI creates targeted prompts for the weakest text types
-- **Generate Mathematics Worksheet** — select specific topics or auto-generate a 35-question mixed-topic worksheet at reference-test difficulty
+- **Generate Mathematics Worksheet** — select specific topics (or all), choose the question count (5–50, default 35); generation is batched so the worksheet always contains exactly that many questions, at reference-test difficulty. Students get 1 minute per question.
+- **Answer-key verification** — every generated question is independently re-solved by the reasoning model; questions whose answer key can't be confirmed, or with duplicate/equivalent options, are discarded and regenerated
 - Review generated math questions before saving
 - **Load Demo Data** — populates realistic sample attempts, analyses, and worksheets for both subjects
 - **Clear Demo Data** — removes only demo records, leaving real student work untouched
 
 ### Worksheet Tracking
+- **Pending Worksheets quick view** — unattempted worksheets from both subjects are listed on the student Dashboard (with one-click start) and on the Admin page, no need to check each topic section
 - Worksheet attempts are tracked identically to practice tests in the heatmap and history
 - Worksheets are reviewed before assignment
 - Mathematics worksheet performance rolls into the same per-topic heatmap
@@ -85,8 +87,8 @@ All 12 phases are complete. Both **Writing** and **Mathematics** subjects are fu
 | **Backend** | Express, TypeScript, Prisma ORM |
 | **Database** | SQLite (local file) |
 | **Charts** | Recharts |
-| **AI** | OpenRouter API (`openrouter/free`) |
-| **Testing** | Vitest |
+| **AI** | OpenAI API — `gpt-5-mini` (worksheet generation + answer-key verification), `gpt-4o-mini` (writing analysis) |
+| **Testing** | Vitest (unit) + Playwright (end-to-end) |
 
 ## Project Structure
 
@@ -153,13 +155,20 @@ coach/
 
 ## Configuration
 
-Copy the `.env` file to configure the OpenRouter API key for AI analysis:
+Create a `backend/.env` file to configure the OpenAI API key for AI analysis:
 
 ```env
-OPENROUTER_API_KEY=your-key-here
+DATABASE_URL="file:./dev.db"
+OPENAI_API_KEY=your-key-here
+
+# Optional model overrides (defaults shown)
+GENERATION_MODEL=gpt-5-mini
+ANALYSIS_MODEL=gpt-4o-mini
 ```
 
-The app works without it — AI analysis will use fallback scores, and all other features function normally.
+Without a key, AI writing analysis shows an "unavailable" message with a Retry button (no fake
+scores are ever recorded), and worksheet generation falls back to built-in sample content. All
+other features function normally.
 
 ## Development
 
@@ -167,8 +176,11 @@ The app works without it — AI analysis will use fallback scores, and all other
 # Start both servers
 npm run dev
 
-# Run tests
+# Run unit tests
 npm test
+
+# Run end-to-end tests (isolated DB and ports; safe to run alongside dev servers)
+npm run e2e
 
 # Reset database
 npm run db:reset

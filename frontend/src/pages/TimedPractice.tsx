@@ -40,8 +40,7 @@ export default function TimedPractice() {
         source: worksheetId ? 'worksheet' : 'practice',
         worksheetId: worksheetId || undefined,
       });
-      // Trigger AI analysis (fire-and-forget)
-      api.triggerAnalysis(attempt.id).catch(() => {});
+      // The attempt detail page triggers and awaits the AI analysis.
       navigate(`/attempt/${attempt.id}`, { replace: true });
     } catch (err) {
       console.error('Failed to save attempt:', err);

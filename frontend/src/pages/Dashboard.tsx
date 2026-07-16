@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useHeatmap } from '@/hooks/useHeatmap';
 import { HeatmapEntry, MathHeatmapEntry, mathApi } from '@/lib/api';
 import Heatmap from '@/components/Heatmap';
+import PendingWorksheets from '@/components/PendingWorksheets';
 import { BarChart3, Calculator } from 'lucide-react';
 
 export default function Dashboard() {
@@ -56,6 +57,9 @@ export default function Dashboard() {
         <BarChart3 size={24} className="text-brand-blue" />
         <h1 className="text-2xl font-bold text-gray-900">Progress Dashboard</h1>
       </div>
+
+      {/* Pending worksheets quick view */}
+      <PendingWorksheets mode="student" />
 
       {/* Writing Section */}
       <div>

@@ -60,12 +60,8 @@ export default function MathPracticeHome() {
 
   const handleStartWorksheet = async (worksheet: MathWorksheet) => {
     if (!topic) return;
-    const questions: GeneratedMathQuestion[] = JSON.parse(worksheet.questions);
     navigate(`/math/${topic.slug}/start`, {
-      state: {
-        worksheetId: worksheet.id,
-        worksheetQuestions: questions,
-      },
+      state: { worksheetId: worksheet.id },
     });
   };
 
@@ -162,7 +158,7 @@ export default function MathPracticeHome() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-semibold text-gray-900">{ws.title}</p>
-                      <p className="text-xs text-gray-400">{questions.length} questions · Created {new Date(ws.createdAt).toLocaleDateString()}</p>
+                      <p className="text-xs text-gray-400">{questions.length} questions · {questions.length} min · Created {new Date(ws.createdAt).toLocaleDateString()}</p>
                     </div>
                     <Button
                       size="sm"

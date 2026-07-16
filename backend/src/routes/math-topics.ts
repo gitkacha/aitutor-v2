@@ -15,6 +15,8 @@ router.get('/:slug', async (req: Request, res: Response) => {
     where: { slug: req.params.slug },
     include: {
       questions: {
+        // Worksheet-owned questions are not part of the topic's practice bank.
+        where: { worksheetId: null },
         orderBy: { id: 'asc' },
         include: { stimulusGroup: true },
       },
