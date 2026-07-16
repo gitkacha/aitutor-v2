@@ -15,6 +15,10 @@
 > scoring fork; legacy worksheets are backfilled lazily on first use. The High/Medium/L/T findings
 > below remain open.
 
+> **Status tracking:** finding status now lives in **`docs/worklog.md`** — a checkbox per item,
+> ticked with commit hash and proving test. This document stays the detailed write-up; the work
+> log is the tracker.
+
 ---
 
 ## 1. Project Summary

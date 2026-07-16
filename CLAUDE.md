@@ -22,6 +22,31 @@ Mathematics phases and requirements are documented in `docs/superpowers/plans/Ma
 Each plan has its own final success criteria. Build in phase-order within each plan. Do not start a
 phase until every success criterion of the previous phase is demonstrably met.
 
+## Work log
+
+`docs/worklog.md` is the single source of truth for work items (bugs, features, review findings).
+When asked to fix or build something: add an unchecked `- [ ]` item there (or claim the existing
+one) **before** writing code. Tick it only when the item is verified, recording the commit hash and
+the proof (the e2e spec or test run that demonstrates it). Never delete items — supersede with a
+note. Items completed in a session are part of that session's commit.
+
+## Verification and testing — the definition of done
+
+No fix or feature is "done" on assertion alone. The required sequence:
+
+1. **Reproduce or specify first.** Bug fixes and features start with a **failing Playwright e2e
+test** (`e2e/*.spec.ts`) that reproduces the problem or specifies the new behaviour. Watch it fail
+for the right reason (RED), then implement, then watch it pass (GREEN).
+2. **Full suite before committing.** `npm run e2e` (all Playwright tests) and `npm test` (unit
+tests) must both pass — not just the new spec.
+3. **Isolated e2e stack only.** e2e tests run against a fresh `e2e.db` on their own ports
+(backend 3105, frontend 5273) with the OpenAI API **stubbed** on port 3106 — never against
+`dev.db` and never hitting the real OpenAI API.
+4. **Live check for UI changes.** Anything visual additionally gets a run of `npm run dev` and a
+screenshot review of the affected screens before being declared done.
+5. **Close the loop.** Tick the work-log item with commit hash + proof, and reference the proving
+spec in the commit message.
+
 ## High-level technical guidance
 
 Just enough direction to keep things on track — specific choices are left to the Coding Agent.
