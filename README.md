@@ -30,6 +30,12 @@ Open **http://localhost:5173** in your browser.
 - Instant scoring with per-topic breakdown
 - Full answer review with correct answers highlighted and worked explanations
 
+### "Evening Navy" Sidebar
+- Solid deep-navy rail with a **weekly momentum ring** — "N of 5 sessions done this week" celebrates effort, not just scores
+- A colour-coded score sits next to every writing type and maths topic (a quiet "—" when untouched); collapsed sections show all topics as a micro-heatmap strip
+- **"Up next" card** — the oldest pending worksheet is one tap away from the sidebar footer
+- **Focus mode** — during any timed test the rail collapses to a slim icon strip so nothing competes with the countdown
+
 ### Progress Dashboard
 - Colour-coded heatmap showing **Writing** performance across 11 text types
 - Second heatmap showing **Mathematics** performance across 20 topics

@@ -61,3 +61,7 @@ grays. The heatmap uses its own red-to-green performance scale and is exempt fro
 - **Avoid** these — they read as generic "AI-generated" tells: background gradients, purple
 backgrounds, buttons with gradients, and panels or cards with a single accent border line down one
 side.
+- The sidebar follows the **"Evening Navy"** design (`docs/mocks/example2.html`): a solid deep-navy
+rail (`#102a4a`, derived from the brand blue — a deliberate flat colour, not a gradient) carrying a
+weekly momentum ring, colour-coded topic scores, and an "Up next" pending-worksheet card. During a
+timed test it collapses to a slim icon strip ("focus mode").

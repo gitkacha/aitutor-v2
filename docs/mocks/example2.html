@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Concept 2 — Evening Navy</title>
+<style>
+  :root {
+    --blue: #1c6dd0;
+    --green: #2e9e5b;
+    --amber: #f2a71b;
+    --navy: #102a4a;        /* solid dark derived from brand blue — no gradient */
+    --navy-raise: #1a3a61;  /* hover / raised surfaces on the rail */
+    --rail-text: #d7e3f2;
+    --rail-muted: #8ca4c2;
+    --ink: #22303f;
+    --muted: #6b7684;
+    --line: #e5e9ef;
+    --paper: #ffffff;
+    --canvas: #f5f7fa;
+    --hm-red: #dd5b50;
+    --hm-amber: #f2a71b;
+    --hm-green: #43b573;
+    --hm-none: #33507a;
+    --sans: "Avenir Next", Avenir, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: var(--sans); background: #eceff3; color: var(--ink); }
+  button { font: inherit; cursor: pointer; }
+
+  .concept-bar {
+    max-width: 1180px; margin: 28px auto 14px; padding: 0 20px;
+    display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap;
+  }
+  .concept-bar h1 { font-size: 24px; font-weight: 700; letter-spacing: -.01em; }
+  .concept-bar h1 em { font-style: normal; color: var(--blue); }
+  .concept-bar p { font-size: 13.5px; color: var(--muted); max-width: 560px; }
+
+  .frame { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
+  .app {
+    display: flex; min-height: 640px; background: var(--canvas);
+    border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+    box-shadow: 0 18px 40px -24px rgba(16, 42, 74, .35);
+  }
+
+  /* ============ Sidebar ============ */
+  .rail {
+    width: 268px; flex-shrink: 0; background: var(--navy);
+    color: var(--rail-text); display: flex; flex-direction: column;
+  }
+
+  .brand { display: flex; align-items: center; gap: 11px; padding: 20px 18px 6px; }
+  .brand .mark {
+    width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+    background: var(--amber); display: grid; place-items: center;
+  }
+  .brand h2 { font-size: 15.5px; font-weight: 700; color: #fff; line-height: 1.15; }
+  .brand span {
+    display: block; font-size: 9.5px; font-weight: 600; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--rail-muted); margin-top: 3px;
+  }
+
+  /* weekly momentum card — encouragement, front and centre */
+  .week {
+    margin: 16px 14px 6px; padding: 12px 14px; border-radius: 12px;
+    background: var(--navy-raise);
+    display: flex; align-items: center; gap: 13px;
+  }
+  .ring { position: relative; width: 52px; height: 52px; flex-shrink: 0; }
+  .ring svg { transform: rotate(-90deg); }
+  .ring .val {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    font-size: 13px; font-weight: 700; color: #fff;
+  }
+  .week .label { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--rail-muted); }
+  .week .line1 { font-size: 13px; font-weight: 600; color: #fff; margin-top: 3px; }
+  .week .line2 { font-size: 11.5px; color: var(--rail-muted); margin-top: 2px; }
+
+  nav.tree { flex: 1; overflow-y: auto; padding: 10px 14px 12px; }
+  .sect {
+    font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--rail-muted); padding: 14px 10px 6px;
+  }
+
+  .navlink {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 9px 10px; border: 0; background: none; border-radius: 9px;
+    font-size: 13.5px; color: var(--rail-text); text-align: left; text-decoration: none;
+  }
+  .navlink:hover { background: var(--navy-raise); }
+  .navlink .ic { color: var(--rail-muted); display: grid; place-items: center; }
+
+  .group-head {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 9px 10px; border: 0; background: none; border-radius: 9px; text-align: left;
+    color: var(--rail-text);
+  }
+  .group-head:hover { background: var(--navy-raise); }
+  .dot { width: 8px; height: 8px; border-radius: 999px; flex-shrink: 0; }
+  .dot.writing { background: #5b9de8; }
+  .dot.maths { background: var(--hm-green); }
+  .group-head .name { font-size: 13.5px; font-weight: 600; }
+  .group-head .meta { margin-left: auto; font-size: 11px; color: var(--rail-muted); }
+  .group-head .chev { color: var(--rail-muted); transition: transform .15s ease; }
+  .group[data-open="true"] .chev { transform: rotate(90deg); }
+
+  .items { display: none; padding: 2px 0 4px 16px; }
+  .group[data-open="true"] .items { display: block; }
+
+  .item {
+    display: flex; align-items: center; gap: 9px;
+    padding: 7px 10px; border-radius: 8px;
+    font-size: 13px; color: var(--rail-text); text-decoration: none;
+  }
+  .item:hover { background: var(--navy-raise); }
+  .item.active { background: #fff; color: var(--navy); font-weight: 700; }
+  .item .score { margin-left: auto; font-size: 10.5px; font-weight: 700; }
+  .score.strong { color: var(--hm-green); }
+  .score.mid { color: var(--hm-amber); }
+  .score.weak { color: var(--hm-red); }
+  .score.none { color: var(--rail-muted); font-weight: 500; }
+  .item.active .score.mid { color: #b07708; }
+
+  .strip { display: none; gap: 3px; padding: 5px 10px 8px 26px; }
+  .group[data-open="false"] .strip { display: flex; flex-wrap: wrap; }
+  .strip i { width: 9px; height: 9px; border-radius: 2.5px; }
+
+  .rail-foot { padding: 12px 14px 14px; }
+  .upnext {
+    border-radius: 12px; padding: 11px 13px; margin-bottom: 10px;
+    background: var(--navy-raise);
+    display: flex; align-items: center; gap: 11px;
+  }
+  .upnext .flag { width: 8px; height: 8px; border-radius: 999px; background: var(--amber); flex-shrink: 0; }
+  .upnext .t { flex: 1; min-width: 0; }
+  .upnext .tag { font-size: 9.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--amber); }
+  .upnext .title { font-size: 12px; font-weight: 600; color: #fff; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .upnext button {
+    background: var(--green); color: #fff; border: 0; border-radius: 7px;
+    font-size: 11.5px; font-weight: 700; padding: 6px 12px; flex-shrink: 0;
+  }
+
+  /* ============ Main mock content ============ */
+  .stage { flex: 1; padding: 30px 34px; min-width: 0; }
+  .stage .hello { font-size: 23px; font-weight: 700; letter-spacing: -.01em; }
+  .stage .sub { color: var(--muted); font-size: 13.5px; margin: 6px 0 24px; }
+  .panel {
+    background: var(--paper); border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px 20px; margin-bottom: 16px;
+  }
+  .panel h3 { font-size: 12px; font-weight: 700; letter-spacing: .06em; margin-bottom: 14px; color: var(--muted); }
+  .hm-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .hm-row label { width: 130px; font-size: 12.5px; color: var(--muted); }
+  .hm-cells { display: flex; gap: 5px; }
+  .hm-cells i { width: 26px; height: 18px; border-radius: 4px; }
+  .lm-red { background: #dd5b50; } .lm-amber { background: #f2a71b; } .lm-green { background: #2e9e5b; }
+
+  /* ============ Notes ============ */
+  .notes { max-width: 1180px; margin: 26px auto 60px; padding: 0 20px; }
+  .notes h2 { font-size: 19px; font-weight: 700; margin-bottom: 14px; }
+  .notes-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+  .note { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+  .note b { display: block; font-size: 13.5px; margin-bottom: 5px; }
+  .note p { font-size: 12.5px; color: var(--muted); line-height: 1.55; }
+
+  /* mini focus-rail illustration inside a note */
+  .focus-demo { display: flex; gap: 10px; align-items: stretch; margin-top: 10px; }
+  .mini-rail {
+    width: 44px; background: var(--navy); border-radius: 8px; padding: 8px 0;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+  }
+  .mini-rail i { width: 22px; height: 22px; border-radius: 6px; background: var(--navy-raise); }
+  .mini-rail i.on { background: var(--amber); }
+  .mini-stage {
+    flex: 1; border: 1px solid var(--line); border-radius: 8px; background: var(--canvas);
+    display: grid; place-items: center; font-size: 11px; color: var(--muted); min-height: 96px;
+  }
+</style>
+</head>
+<body>
+
+<div class="concept-bar">
+  <h1>Concept 2 · <em>Evening Navy</em></h1>
+  <p>A solid deep-navy rail (flat colour, no gradient) that makes the workspace pop, with a
+     weekly momentum ring, per-topic scores in the nav, and a one-tap "Up next" worksheet.</p>
+</div>
+
+<div class="frame">
+<div class="app">
+
+  <!-- ======= SIDEBAR ======= -->
+  <aside class="rail">
+    <div class="brand">
+      <div class="mark">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+          <path d="M11 1 4 11h5l-1 8 8-11h-5l1-7z" fill="#102a4a"/>
+        </svg>
+      </div>
+      <h2>Selective Coach<span>NSW Selective Prep</span></h2>
+    </div>
+
+    <div class="week">
+      <div class="ring">
+        <svg width="52" height="52" viewBox="0 0 52 52">
+          <circle cx="26" cy="26" r="22" fill="none" stroke="#1a3a61" stroke-width="5"/>
+          <circle cx="26" cy="26" r="22" fill="none" stroke="#2e9e5b" stroke-width="5"
+                  stroke-linecap="round" stroke-dasharray="138.2" stroke-dashoffset="55.3"/>
+        </svg>
+        <div class="val">3/5</div>
+      </div>
+      <div>
+        <div class="label">This week</div>
+        <div class="line1">3 of 5 sessions done</div>
+        <div class="line2">Nice pace — keep it up!</div>
+      </div>
+    </div>
+
+    <nav class="tree">
+      <a class="navlink" href="#">
+        <span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg></span>
+        Dashboard
+      </a>
+
+      <div class="sect">Subjects</div>
+
+      <!-- Writing -->
+      <div class="group" data-open="true">
+        <button class="group-head" onclick="toggle(this)">
+          <span class="dot writing"></span>
+          <span class="name">Writing</span>
+          <span class="meta">11 types</span>
+          <svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 5l7 7-7 7"/></svg>
+        </button>
+        <div class="items">
+          <a class="item" href="#">Narrative / Creative<span class="score strong">82%</span></a>
+          <a class="item active" href="#">Persuasive<span class="score mid">64%</span></a>
+          <a class="item" href="#">News Report<span class="score weak">41%</span></a>
+          <a class="item" href="#">Letter<span class="score mid">58%</span></a>
+          <a class="item" href="#">Diary Entry<span class="score none">—</span></a>
+          <a class="item" href="#">Speech<span class="score none">—</span></a>
+        </div>
+      </div>
+
+      <!-- Mathematics collapsed with micro-heatmap -->
+      <div class="group" data-open="false">
+        <button class="group-head" onclick="toggle(this)">
+          <span class="dot maths"></span>
+          <span class="name">Mathematics</span>
+          <span class="meta">20 topics</span>
+          <svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 5l7 7-7 7"/></svg>
+        </button>
+        <div class="strip" title="20 topics at a glance">
+          <i style="background:var(--hm-green)"></i><i style="background:var(--hm-green)"></i><i style="background:var(--hm-amber)"></i><i style="background:var(--hm-red)"></i><i style="background:var(--hm-amber)"></i><i style="background:var(--hm-green)"></i><i style="background:var(--hm-none)"></i><i style="background:var(--hm-amber)"></i><i style="background:var(--hm-red)"></i><i style="background:var(--hm-green)"></i><i style="background:var(--hm-none)"></i><i style="background:var(--hm-none)"></i><i style="background:var(--hm-amber)"></i><i style="background:var(--hm-green)"></i><i style="background:var(--hm-none)"></i><i style="background:var(--hm-amber)"></i><i style="background:var(--hm-none)"></i><i style="background:var(--hm-red)"></i><i style="background:var(--hm-none)"></i><i style="background:var(--hm-none)"></i>
+        </div>
+        <div class="items">
+          <a class="item" href="#">Arithmetic<span class="score strong">88%</span></a>
+          <a class="item" href="#">Fractions<span class="score weak">39%</span></a>
+          <a class="item" href="#">Probability<span class="score mid">61%</span></a>
+        </div>
+      </div>
+
+      <div class="sect">Coach</div>
+      <a class="navlink" href="#">
+        <span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 3v6c0 5-3.4 8.8-8 10-4.6-1.2-8-5-8-10V5l8-3z"/></svg></span>
+        Admin
+      </a>
+    </nav>
+
+    <div class="rail-foot">
+      <div class="upnext">
+        <span class="flag"></span>
+        <div class="t">
+          <div class="tag">Up next</div>
+          <div class="title">Fractions &amp; Probability · 12 q</div>
+        </div>
+        <button>Start</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ======= MAIN (context only) ======= -->
+  <main class="stage">
+    <div class="hello">Good afternoon, Kaustuv.</div>
+    <div class="sub">Three practice sessions this week — Fractions is the one to watch.</div>
+
+    <div class="panel">
+      <h3>WRITING · STRENGTH BY TEXT TYPE</h3>
+      <div class="hm-row"><label>Narrative</label><div class="hm-cells"><i class="lm-green"></i><i class="lm-green"></i><i class="lm-amber"></i></div></div>
+      <div class="hm-row"><label>Persuasive</label><div class="hm-cells"><i class="lm-amber"></i><i class="lm-amber"></i><i class="lm-green"></i></div></div>
+      <div class="hm-row"><label>News Report</label><div class="hm-cells"><i class="lm-red"></i><i class="lm-amber"></i></div></div>
+    </div>
+
+    <div class="panel">
+      <h3>MATHEMATICS · STRENGTH BY TOPIC</h3>
+      <div class="hm-row"><label>Arithmetic</label><div class="hm-cells"><i class="lm-green"></i><i class="lm-green"></i><i class="lm-green"></i></div></div>
+      <div class="hm-row"><label>Fractions</label><div class="hm-cells"><i class="lm-red"></i><i class="lm-red"></i><i class="lm-amber"></i></div></div>
+      <div class="hm-row"><label>Probability</label><div class="hm-cells"><i class="lm-amber"></i><i class="lm-green"></i></div></div>
+    </div>
+  </main>
+
+</div>
+</div>
+
+<section class="notes">
+  <h2>Why this works &amp; further suggestions</h2>
+  <div class="notes-grid">
+    <div class="note"><b>Dark rail, bright workspace</b>
+      <p>A flat deep navy (derived from brand blue #1c6dd0 — a single solid colour, not a gradient) frames the work area so the heatmap and practice screens feel brighter and more focused. The white active pill is impossible to miss.</p></div>
+    <div class="note"><b>Momentum ring: encouragement, quantified</b>
+      <p>"3 of 5 sessions this week" turns practice into a gentle streak rather than a grade. It celebrates effort (sessions done) instead of only scores — kinder for a nervous 11-year-old.</p></div>
+    <div class="note"><b>Scores in the nav, colour-coded</b>
+      <p>Each topic shows its latest average in heatmap colours; untouched topics show a quiet "—" instead of an alarming zero. The collapsed Mathematics section still shows all 20 topics as a micro-heatmap strip.</p></div>
+    <div class="note"><b>Focus mode during timed practice</b>
+      <p>When the countdown starts, the rail collapses to a 44-px icon strip — navigation disappears, distraction disappears, and only a small amber timer chip remains.</p>
+      <div class="focus-demo">
+        <div class="mini-rail"><i class="on"></i><i></i><i></i></div>
+        <div class="mini-stage">Timed practice — calm, full-width, no nav</div>
+      </div></div>
+    <div class="note"><b>Section labels give the rail a spine</b>
+      <p>"Subjects" and "Coach" separate the student's world from the parent's. Admin lives under Coach rather than floating at the bottom behind an unexplained teal border.</p></div>
+    <div class="note"><b>Beyond the sidebar</b>
+      <p>Carry the amber "Up next" language everywhere a pending worksheet appears so students learn one signal; keep buttons solid brand colours (never gradients); and add a subtle press animation on Start — one moment of delight where it matters.</p></div>
+  </div>
+</section>
+
+<script>
+  function toggle(btn) {
+    const g = btn.closest('.group');
+    g.dataset.open = g.dataset.open === 'true' ? 'false' : 'true';
+  }
+</script>
+</body>
+</html>
