@@ -260,6 +260,9 @@ export async function clearDemoData() {
   // Math demo data
   await prisma.mathAttempt.deleteMany({ where: { isDemo: true } });
   await prisma.mathWorksheet.deleteMany({ where: { isDemo: true } });
+  // Deleting a worksheet cascades to its persisted questions (H5); sweep stimulus
+  // groups left with no questions (bank groups always keep theirs).
+  await prisma.mathStimulusGroup.deleteMany({ where: { questions: { none: {} } } });
 
   return { message: 'Demo data cleared successfully. Your real attempts have not been touched.' };
 }
