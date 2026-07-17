@@ -18,22 +18,15 @@ every agent, on any model, without exception):
 
 ## Open
 
-- [ ] **M6** — Failed math test submission is silent (console-only catch, student returned to a
-  frozen test); add the H1-style "couldn't save / Try Again" panel to MathTimedPractice.
-  Proof: `e2e/m6-m10.spec.ts` (M6 test)
-- [ ] **M7** — Demo writing worksheet is pre-H3 shape (3 prompts, "Persuasive + Discussion"
-  title, two prompts unreachable; Admin hardcodes "1 prompt"); replace with two one-prompt
-  demo worksheets with H4-consistent Prompt rows, derive the Admin label, clear demo worksheet
-  prompts on demo clear. Proof: `e2e/m6-m10.spec.ts` (M7 test)
-- [ ] **M8** — PracticeHome average counts unanalysed attempts as 0; average only attempts with
-  an analysis score. Proof: `e2e/m6-m10.spec.ts` (M8 test)
-- [ ] **M9** — All Topics page claims every math attempt as its history; filter to
-  `topicId === null && source === 'practice'`. Proof: `e2e/m6-m10.spec.ts` (M9 test)
-- [ ] **M10** — `POST /api/math/attempts` trusts the client payload (mismatched/non-integer/empty
-  arrays, duplicate or unknown question ids, unknown topicId → 500); validate and 400 each.
-  Proof: `e2e/m6-m10.spec.ts` (M10 tests)
+*(none — review2's Low findings (L3–L14) are not yet claimed; see docs/review2.md)*
 
 ## Done
+
+- [x] **M10** — `POST /api/math/attempts` trusted the client payload (mismatched/non-integer/empty arrays, duplicate or unknown question ids accepted; unknown topicId → 500 FK error); all now rejected with 400s, valid payloads score as before — commit `99719b2` · proof: `e2e/m6-m10.spec.ts` (M10 test: six bad payloads 400, valid 201 with correct score) · user signed off 2026-07-18
+- [x] **M9** — All Topics page claimed every math attempt as its history/average; now filtered to `topicId === null && source === 'practice'` — commit `d2ebe55` · proof: `e2e/m6-m10.spec.ts` (M9 test) + `docs/screenshots/m9-all-topics-history.png` · user signed off 2026-07-18
+- [x] **M8** — PracticeHome average counted unanalysed attempts as 0; now averages only attempts with an analysis score (matches heatmap/ScoreHistory) — commit `3071dbe` · proof: `e2e/m6-m10.spec.ts` (M8 test) + `docs/screenshots/m8-practice-average.png` · user signed off 2026-07-18
+- [x] **M7** — Demo writing worksheet was pre-H3 shape (3 prompts, "Persuasive + Discussion" title, two prompts unreachable; Admin hardcoded "1 prompt"); demo now creates two one-prompt worksheets with H4-consistent Prompt rows, demo clear removes attempt-free demo prompts, Admin label derived — commit `7d05105` · proof: `e2e/m6-m10.spec.ts` (M7 test) + `docs/screenshots/m7-demo-worksheets.png` · user signed off 2026-07-18
+- [x] **M6** — Failed math test submission was silent (console-only catch, frozen test); now shows the H1-style "We couldn't save your answers / Try Again" panel — commit `64e5cea` · proof: `e2e/m6-m10.spec.ts` (M6 test: aborted save shows panel, retry lands on review) + `docs/screenshots/m6-save-error.png` · user signed off 2026-07-18
 
 - [x] **H4** — Worksheet writing attempts were analysed against the wrong prompt (bank prompt attached as `promptId` while the student answered the worksheet's generated prompt); worksheet save now creates a real `Prompt` row (`source: 'worksheet'`), `POST /api/attempts` resolves the worksheet prompt server-side (covers pre-fix worksheets), bank-prompt hack removed from PracticeHome/PendingWorksheets/Sidebar via shared `lib/worksheet-start.ts`, worksheet prompts excluded from random practice — commit `296192f` · proof: `e2e/h4-worksheet-prompt.spec.ts` + live gpt-4o-mini analysis grading the worksheet prompt (`docs/screenshots/h4-*`) · user signed off 2026-07-18
 - [x] **H5** — Deleting a math worksheet promoted its persisted questions into topic practice banks (`ON DELETE SET NULL` + banks defined as `worksheetId: null`, reachable via the demo load → start → clear cycle); `MathQuestion.worksheet` is now `ON DELETE CASCADE` and `clearDemoData` sweeps emptied stimulus groups. Known trade-off: a real attempt on a demo worksheet loses question detail after demo clear (the attempt row survives) — commit `a938623` · proof: `e2e/h5-worksheet-delete-leak.spec.ts` (topic banks byte-identical across the demo cycle) · user signed off 2026-07-18
