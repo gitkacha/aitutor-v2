@@ -17,6 +17,7 @@ export default function TimedPractice() {
   const [running, setRunning] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
+  const [saveError, setSaveError] = useState(false);
   const startTimeRef = useRef(Date.now());
   const submittedRef = useRef(false);
 
@@ -27,6 +28,7 @@ export default function TimedPractice() {
     submittedRef.current = true;
     setRunning(false);
     setSubmitting(true);
+    setSaveError(false);
 
     try {
       const elapsed = Math.round((Date.now() - startTimeRef.current) / 1000);
@@ -46,6 +48,7 @@ export default function TimedPractice() {
       console.error('Failed to save attempt:', err);
       setSubmitting(false);
       submittedRef.current = false;
+      setSaveError(true);
     }
   }, [text, prompt, type, worksheetId, timeLeft, navigate]);
 
@@ -73,6 +76,20 @@ export default function TimedPractice() {
   if (!prompt || !type) {
     navigate(`/practice/${typeSlug}`, { replace: true });
     return null;
+  }
+
+  if (saveError) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center space-y-4 max-w-md">
+          <p className="text-lg font-semibold text-gray-900">We couldn't save your writing</p>
+          <p className="text-gray-600">
+            Something went wrong while saving. Your writing is still here — nothing is lost.
+          </p>
+          <Button onClick={submitAttempt}>Try Again</Button>
+        </div>
+      </div>
+    );
   }
 
   if (submitting) {

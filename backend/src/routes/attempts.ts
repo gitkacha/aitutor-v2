@@ -7,7 +7,8 @@ const router = Router();
 router.post('/', asyncHandler(async (req: Request, res: Response) => {
   const { typeId, promptId, text, startedAt, finishedAt, timeTaken, source, worksheetId } = req.body;
 
-  if (!typeId || !promptId || !text || !startedAt || !finishedAt || timeTaken === undefined) {
+  // `text` may legitimately be an empty string — a timed-out attempt with nothing written.
+  if (!typeId || !promptId || typeof text !== 'string' || !startedAt || !finishedAt || timeTaken === undefined) {
     res.status(400).json({ error: 'Missing required fields', status: 400 });
     return;
   }
