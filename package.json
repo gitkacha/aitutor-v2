@@ -7,7 +7,7 @@
     "db:migrate": "npm run db:migrate -w backend",
     "db:seed": "npm run db:seed -w backend",
     "db:reset": "npm run db:reset -w backend",
-    "postinstall": "npm run db:migrate -w backend && npm run db:seed -w backend",
+    "postinstall": "npm run db:deploy -w backend && npm run db:seed -w backend",
     "e2e": "playwright test",
     "e2e:backend": "cd backend && rm -f prisma/e2e.db prisma/e2e.db-journal && DATABASE_URL=file:./e2e.db PORT=3105 OPENROUTER_API_KEY= OPENAI_API_KEY=sk-e2e-test OPENAI_BASE_URL=http://127.0.0.1:3106/v1 sh -c 'npx prisma migrate deploy && npx tsx prisma/seed.ts && npx tsx src/index.ts'",
     "e2e:frontend": "cd frontend && BACKEND_PORT=3105 npx vite --port 5273 --strictPort"
