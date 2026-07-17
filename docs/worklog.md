@@ -18,14 +18,14 @@ every agent, on any model, without exception):
 
 ## Open
 
-- [ ] **M2** — "All Topics" test isn't capped at 35 questions, and shuffling splits stimulus groups (`docs/review.md` §Medium) — *claimed 2026-07-17, plan approved*
-- [ ] **M3** — `GET /api/math/attempts?topic=<bad-slug>` drops the filter and returns everything (`docs/review.md` §Medium) — *claimed 2026-07-17, plan approved*
-- [ ] **M5** — Heatmap shows "Loading…" forever on fetch errors; loading and error states conflated (`docs/review.md` §Medium) — *claimed 2026-07-17, plan approved*
 - [ ] **L2** — Replace hand-rolled countdown timer and heatmap with mature libraries, per CLAUDE.md guidance (`docs/review.md` §Look & feel)
 - [ ] **W-5** — Minor sweep from `docs/review.md` §Minor: `postinstall` runs `migrate dev`; fallback prompt count mismatch (1 vs 3); `fetchJSON` sends Content-Type on GETs; math heatmap re-parses `topicBreakdown` per topic
 
 ## Done
 
+- [x] **M5** — Heatmap conflated loading and error; now distinct states with Try Again, per-section on Dashboard (one failed subject no longer hides the other), Admin errors surfaced — commit `c51eea1` · proof: `e2e/m2-m3-m5.spec.ts` (M5 tests) + `docs/screenshots/m5-*` · user signed off 2026-07-17
+- [x] **M3** — Unknown topic filter on `GET /api/math/attempts` returned everything; now 404s like math-questions — commit `431fb16` · proof: `e2e/m2-m3-m5.spec.ts` (M3 tests) · user signed off 2026-07-17
+- [x] **M2** — All Topics test capped at 35 with stimulus groups kept whole and adjacent (`selectTestQuestions` unit shuffle); single-topic keeps full bank — commit `2689846` · proof: `e2e/m2-m3-m5.spec.ts` (M2 test) + `backend/src/__tests__/question-select.test.ts` · user signed off 2026-07-17
 - [x] **W-8** — Visual stimuli for math questions: structured figure specs (protractor, line/bar/pie charts, grids, tables, compass, shapes, rotation, cards) rendered in practice/review/admin; generation emits + verifier re-solves from stimuli; guardrail discards visual references without figures; seed repair from T5 images (10 questions); attempt-review stimulus display added; seed made re-runnable on live dbs — commit `67c13f6` · proof: `e2e/w8-visual-stimuli.spec.ts` (5 tests) + `backend/src/__tests__/stimulus.test.ts` + live screenshots (`docs/screenshots/w8-*`) · user signed off 2026-07-17
 - [x] **H3** — Multi-type writing worksheets kept only `typeIds[0]`; now one tailored prompt and one worksheet per selected type — commit `fcb3245` · proof: `e2e/h3-multitype-worksheet.spec.ts` (2 tests) + live screenshots · user signed off 2026-07-17
 - [x] **H1** — Empty-text auto-submit 400'd and stranded the student at 0:00; empty attempts now save, failures show a visible Try Again panel — commit `eb4e23a` · proof: `e2e/h1-empty-submit.spec.ts` (3 tests, incl. clock-driven 30-min expiry) + live screenshot · user signed off 2026-07-17
