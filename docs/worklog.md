@@ -18,7 +18,6 @@ every agent, on any model, without exception):
 
 ## Open
 
-- [ ] **W-7** — Make the five-step workflow (plan approval → worklog items → implement → verify → manual test + user sign-off before ticking) mandatory in CLAUDE.md and worklog rules — awaiting user review/approval per the rule itself
 - [ ] **H1** — Auto-submit with an empty writing attempt 400s and strands the student (`docs/review.md` §High)
 - [ ] **H2** — Async route errors bypass the Express error middleware; unhandled failures hang requests (`docs/review.md` §High)
 - [ ] **H3** — Multi-type writing worksheets silently drop all but the first selected type (`docs/review.md` §High)
@@ -30,6 +29,7 @@ every agent, on any model, without exception):
 
 ## Done
 
+- [x] **W-7** — Five-step workflow (plan approval → worklog items → implement → verify e2e → manual test + user sign-off before ticking) made mandatory in CLAUDE.md and worklog rules, incl. full-e2e-green gate before manual testing — commits `271afca`, `4c8b690` · proof: docs-only, user reviewed and approved 2026-07-17
 - [x] **W-6** — Work log + verification/testing guidelines (this file, CLAUDE.md sections) — commit: see git log · proof: docs-only, proofread
 - [x] **W-4** — "Evening Navy" sidebar: momentum ring, colour-coded nav scores, Up-next card, focus mode; replaces the gradient WIP — commit `1ad7d2c` · proof: `e2e/sidebar-navy.spec.ts` (4 tests) + live screenshots
 - [x] **L1** — Sidebar gradient (banned element) removed by the Evening Navy redesign — commit `1ad7d2c` · proof: `e2e/sidebar-navy.spec.ts`, CLAUDE.md Look-and-feel note
