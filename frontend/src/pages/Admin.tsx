@@ -19,7 +19,8 @@ interface WritingTypeBrief {
 
 export default function Admin() {
   const navigate = useNavigate();
-  const { data: writingHeatmap, refresh: refreshWriting } = useHeatmap();
+  const { data: writingHeatmap, loading: writingHeatmapLoading, error: writingHeatmapError, refresh: refreshWriting } = useHeatmap();
+  const [mathHeatmapError, setMathHeatmapError] = useState<string | null>(null);
   const [writingTypes, setWritingTypes] = useState<WritingTypeBrief[]>([]);
   const [mathHeatmap, setMathHeatmap] = useState<MathHeatmapEntry[]>([]);
   const [mathTopics, setMathTopics] = useState<MathTopic[]>([]);
@@ -50,14 +51,16 @@ export default function Admin() {
       api.getTypes().then(setWritingTypes).catch(() => {});
       api.getWorksheets().then(setWritingWorksheets).catch(() => {});
     } else if (activeTab === 'math') {
-      mathApi.getHeatmap().then(setMathHeatmap).catch(() => {});
+      refreshMath();
       mathApi.getTopics().then(setMathTopics).catch(() => {});
       mathApi.getWorksheets().then(setMathWorksheets).catch(() => {});
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   const refreshMath = () => {
-    mathApi.getHeatmap().then(setMathHeatmap).catch(() => {});
+    setMathHeatmapError(null);
+    mathApi.getHeatmap().then(setMathHeatmap).catch((e) => setMathHeatmapError(e.message));
   };
 
   // Writing worksheet generation
@@ -230,6 +233,9 @@ export default function Admin() {
             <Heatmap
               data={writingHeatmap}
               onSelect={(entry) => navigate(`/history/${entry.typeSlug}`)}
+              loading={writingHeatmapLoading}
+              error={writingHeatmapError}
+              onRetry={refreshWriting}
             />
           </div>
 
@@ -384,6 +390,8 @@ export default function Admin() {
                 attemptCount: d.attemptCount,
               }))}
               onSelect={(entry) => navigate(`/math-history/${entry.typeSlug}`)}
+              error={mathHeatmapError}
+              onRetry={refreshMath}
             />
           </div>
 

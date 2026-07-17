@@ -5,6 +5,9 @@ interface HeatmapProps {
   data: HeatmapEntry[];
   onSelect?: (entry: HeatmapEntry) => void;
   basePath?: string; // 'math' for math topics, undefined for writing
+  loading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
 }
 
 function getScoreColor(score: number | null): string {
@@ -21,11 +24,30 @@ function getScoreLabel(score: number | null): string {
   return `${score}`;
 }
 
-export default function Heatmap({ data, onSelect, basePath }: HeatmapProps) {
+export default function Heatmap({ data, onSelect, basePath, loading, error, onRetry }: HeatmapProps) {
   const navigate = useNavigate();
   const prefix = basePath ? `/${basePath}` : '';
 
-  if (data.length === 0) {
+  // Loading and error are distinct states (M5) — a failed fetch must never look like
+  // an eternal load.
+  if (error) {
+    return (
+      <div className="text-center py-12 space-y-3">
+        <p className="text-gray-700 font-medium">Couldn't load this heatmap</p>
+        <p className="text-sm text-gray-500">{error}</p>
+        {onRetry && (
+          <button
+            onClick={onRetry}
+            className="px-4 py-2 rounded-lg bg-brand-blue text-white text-sm font-medium hover:bg-brand-blue/90"
+          >
+            Try Again
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (loading || data.length === 0) {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500">Loading heatmap data...</p>

@@ -8,16 +8,21 @@ import { BarChart3, Calculator } from 'lucide-react';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { data: writingData, loading: writingLoading, error: writingError } = useHeatmap();
+  const { data: writingData, loading: writingLoading, error: writingError, refresh: refreshWriting } = useHeatmap();
   const [mathData, setMathData] = useState<MathHeatmapEntry[]>([]);
   const [mathLoading, setMathLoading] = useState(true);
+  const [mathError, setMathError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadMath = () => {
+    setMathLoading(true);
+    setMathError(null);
     mathApi.getHeatmap()
       .then(setMathData)
-      .catch(() => {})
+      .catch((e) => setMathError(e.message))
       .finally(() => setMathLoading(false));
-  }, []);
+  };
+
+  useEffect(loadMath, []);
 
   const handleWritingSelect = (entry: HeatmapEntry) => {
     if (entry.attemptCount > 0) {
@@ -35,18 +40,10 @@ export default function Dashboard() {
     }
   };
 
-  if (writingLoading || mathLoading) {
+  if (writingLoading && mathLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-blue" />
-      </div>
-    );
-  }
-
-  if (writingError) {
-    return (
-      <div className="text-center py-20">
-        <p className="text-red-500">Failed to load data: {writingError}</p>
       </div>
     );
   }
@@ -67,7 +64,13 @@ export default function Dashboard() {
           <BarChart3 size={18} className="text-brand-blue" />
           <h2 className="text-lg font-semibold text-gray-900">Writing</h2>
         </div>
-        <Heatmap data={writingData} onSelect={handleWritingSelect} />
+        <Heatmap
+          data={writingData}
+          onSelect={handleWritingSelect}
+          loading={writingLoading}
+          error={writingError}
+          onRetry={refreshWriting}
+        />
       </div>
 
       {/* Mathematics Section */}
@@ -92,6 +95,9 @@ export default function Dashboard() {
             attemptCount: entry.attemptCount,
           })}
           basePath="math"
+          loading={mathLoading}
+          error={mathError}
+          onRetry={loadMath}
         />
       </div>
 

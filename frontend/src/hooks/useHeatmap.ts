@@ -15,6 +15,7 @@ export function useHeatmap() {
 
   const refresh = () => {
     setLoading(true);
+    setError(null);
     api.getHeatmap()
       .then(setData)
       .catch((e) => setError(e.message))
