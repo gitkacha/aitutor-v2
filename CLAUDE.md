@@ -38,10 +38,13 @@ user's explicit approval. Do not write code and do not create worklog items befo
 to step 1.
 4. **Verify and test thoroughly** using the "Verification and testing" sequence below (failing e2e
 test first, RED→GREEN, full suites, isolated e2e stack, live screenshot check for UI).
-5. **Manual testing and user sign-off before ticking.** After automated verification passes, hand
-over for manual testing: have the dev servers running, state what was changed and what to check,
-and **ask for the user's explicit approval**. Only after the user approves may the worklog item be
-ticked done (with commit hash + proof). Agent-declared success is never sufficient to tick a box.
+5. **Manual testing and user sign-off before ticking.** Manual testing may be requested **only
+after step 4 is fully green**: the new e2e spec has passed, and the full `npm run e2e` and
+`npm test` suites pass. Asking the user to manually test unverified or partially tested work is a
+violation of this workflow. Then hand over: have the dev servers running, state what was changed,
+what to check, and which e2e specs prove it, and **ask for the user's explicit approval**. Only
+after the user approves may the worklog item be ticked done (with commit hash + proof).
+Agent-declared success is never sufficient to tick a box.
 
 If a step cannot be completed (for example, the user is not available to approve), the item stays
 unchecked and the work is reported as unverified — never tick a box to tidy up.

@@ -8,6 +8,8 @@ every agent, on any model, without exception):
 
 - Items are created **only after the user has approved a plan** (workflow step 2), and always
   **before any code is written**.
+- Manual testing may be requested **only after e2e verification is fully green** (new spec plus
+  the full `npm run e2e` and `npm test` suites) — never hand unverified work to the user.
 - Tick an item **only after the user has manually tested and explicitly approved** (workflow
   step 5), and only with proof: the e2e spec (or test run) that demonstrates it, plus the commit
   hash. Passing tests alone, or "it should work now", does not tick a box.
