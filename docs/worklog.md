@@ -18,21 +18,12 @@ every agent, on any model, without exception):
 
 ## Open
 
-- [ ] **H4** — Worksheet writing attempts are analysed against the wrong prompt: attempts store
-  the type's first bank prompt as `promptId` while the student answers the worksheet's generated
-  prompt, so AI feedback grades the wrong task (and a type with no bank prompts strands the
-  student on an unrecoverable Try-Again panel). Fix: worksheet save creates a real `Prompt` row
-  (`source: 'worksheet'`); `POST /api/attempts` resolves the worksheet prompt server-side;
-  frontend hack removed from PracticeHome/PendingWorksheets/Sidebar via a shared helper.
-  Proof: `e2e/h4-worksheet-prompt.spec.ts` (see docs/review2.md § H4)
-- [ ] **H5** — Deleting a math worksheet leaks its persisted questions into topic practice banks
-  (`ON DELETE SET NULL` + banks defined as `worksheetId: null`); reachable via demo
-  load → start demo worksheet → clear demo. Fix: `onDelete: Cascade` on
-  `MathQuestion.worksheet`, orphan stimulus-group sweep in `clearDemoData`. Known trade-off: a
-  real attempt on a demo worksheet loses question detail after demo clear (attempt survives).
-  Proof: `e2e/h5-worksheet-delete-leak.spec.ts` (see docs/review2.md § H5)
+*(none — review2's Medium/Low findings are not yet claimed; see docs/review2.md)*
 
 ## Done
+
+- [x] **H4** — Worksheet writing attempts were analysed against the wrong prompt (bank prompt attached as `promptId` while the student answered the worksheet's generated prompt); worksheet save now creates a real `Prompt` row (`source: 'worksheet'`), `POST /api/attempts` resolves the worksheet prompt server-side (covers pre-fix worksheets), bank-prompt hack removed from PracticeHome/PendingWorksheets/Sidebar via shared `lib/worksheet-start.ts`, worksheet prompts excluded from random practice — commit `296192f` · proof: `e2e/h4-worksheet-prompt.spec.ts` + live gpt-4o-mini analysis grading the worksheet prompt (`docs/screenshots/h4-*`) · user signed off 2026-07-18
+- [x] **H5** — Deleting a math worksheet promoted its persisted questions into topic practice banks (`ON DELETE SET NULL` + banks defined as `worksheetId: null`, reachable via the demo load → start → clear cycle); `MathQuestion.worksheet` is now `ON DELETE CASCADE` and `clearDemoData` sweeps emptied stimulus groups. Known trade-off: a real attempt on a demo worksheet loses question detail after demo clear (the attempt row survives) — commit `a938623` · proof: `e2e/h5-worksheet-delete-leak.spec.ts` (topic banks byte-identical across the demo cycle) · user signed off 2026-07-18
 
 - [x] **W-5** — Minor sweep: `postinstall` → `prisma migrate deploy` (new `db:deploy`); `fetchJSON` sends Content-Type only on bodied requests (placeholder frontend suite replaced with real tests); math heatmap single-pass aggregation (`aggregateMathHeatmap`); fallback prompt count already superseded by H3's per-type generation — commit `e862c68` · proof: `frontend/src/__tests__/api.test.ts`, `backend/src/__tests__/math-heatmap-aggregate.test.ts`, fresh-db install simulation · user signed off 2026-07-17
 - [x] **L2** — Countdown now timestamp-driven via `react-countdown` (no drift, keeps counting in background tabs, survives Timer unmounts); heatmap deliberately stays custom (semantic card grid — reviewer concurred; exception recorded in CLAUDE.md) — commit `55c852c` · proof: `e2e/l2-timer.spec.ts` (clock-jump drift test) + 40/40 e2e regression net + live 0s-drift check · user signed off 2026-07-17
