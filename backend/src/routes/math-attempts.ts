@@ -77,9 +77,11 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
     const topic = await prisma.mathTopic.findUnique({
       where: { slug: topicSlug },
     });
-    if (topic) {
-      where.topicId = topic.id;
+    if (!topic) {
+      // Same contract as math-questions: an unknown slug is an error, never "everything".
+      return res.status(404).json({ error: 'Topic not found' });
     }
+    where.topicId = topic.id;
   }
 
   const attempts = await prisma.mathAttempt.findMany({
