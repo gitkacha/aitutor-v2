@@ -19,6 +19,7 @@ export default function MathTimedPractice() {
   const [running, setRunning] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
+  const [saveError, setSaveError] = useState(false);
   const startTimeRef = useRef(Date.now());
   const submittedRef = useRef(false);
   const hasStarted = useRef(false);
@@ -61,6 +62,7 @@ export default function MathTimedPractice() {
     submittedRef.current = true;
     setRunning(false);
     setSubmitting(true);
+    setSaveError(false);
 
     try {
       const elapsed = Math.round((Date.now() - startTimeRef.current) / 1000);
@@ -81,9 +83,11 @@ export default function MathTimedPractice() {
 
       navigate(`/math-attempt/${attempt.id}`, { replace: true });
     } catch (err) {
+      // A failed save must be visible, never a silent return to a frozen test (M6).
       console.error('Failed to save attempt:', err);
       setSubmitting(false);
       submittedRef.current = false;
+      setSaveError(true);
     }
   }, [questions, answers, topicSlug, totalTime, timeLeft, navigate, isWorksheet, worksheetId]);
 
@@ -115,6 +119,20 @@ export default function MathTimedPractice() {
 
   if (questions.length === 0) {
     return <div className="text-center py-20 text-gray-500">No questions available for this topic.</div>;
+  }
+
+  if (saveError) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center space-y-4 max-w-md">
+          <p className="text-lg font-semibold text-gray-900">We couldn't save your answers</p>
+          <p className="text-gray-600">
+            Something went wrong while saving. Your answers are still here — nothing is lost.
+          </p>
+          <Button onClick={submitAttempt}>Try Again</Button>
+        </div>
+      </div>
+    );
   }
 
   if (submitting) {

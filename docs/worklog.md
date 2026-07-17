@@ -18,7 +18,20 @@ every agent, on any model, without exception):
 
 ## Open
 
-*(none — review2's Medium/Low findings are not yet claimed; see docs/review2.md)*
+- [ ] **M6** — Failed math test submission is silent (console-only catch, student returned to a
+  frozen test); add the H1-style "couldn't save / Try Again" panel to MathTimedPractice.
+  Proof: `e2e/m6-m10.spec.ts` (M6 test)
+- [ ] **M7** — Demo writing worksheet is pre-H3 shape (3 prompts, "Persuasive + Discussion"
+  title, two prompts unreachable; Admin hardcodes "1 prompt"); replace with two one-prompt
+  demo worksheets with H4-consistent Prompt rows, derive the Admin label, clear demo worksheet
+  prompts on demo clear. Proof: `e2e/m6-m10.spec.ts` (M7 test)
+- [ ] **M8** — PracticeHome average counts unanalysed attempts as 0; average only attempts with
+  an analysis score. Proof: `e2e/m6-m10.spec.ts` (M8 test)
+- [ ] **M9** — All Topics page claims every math attempt as its history; filter to
+  `topicId === null && source === 'practice'`. Proof: `e2e/m6-m10.spec.ts` (M9 test)
+- [ ] **M10** — `POST /api/math/attempts` trusts the client payload (mismatched/non-integer/empty
+  arrays, duplicate or unknown question ids, unknown topicId → 500); validate and 400 each.
+  Proof: `e2e/m6-m10.spec.ts` (M10 tests)
 
 ## Done
 
