@@ -22,6 +22,9 @@ model Prompt {
   id        Int       @id @default(autoincrement())
   text      String
   typeId    Int
+  // 'bank' = seeded practice prompt; 'worksheet' = created for a saved worksheet so
+  // attempts and analysis reference the task the student actually answered (H4).
+  source    String    @default("bank")
   isDemo    Boolean   @default(false)
   type      WritingType @relation(fields: [typeId], references: [id])
   attempts  Attempt[]
@@ -100,7 +103,9 @@ model MathQuestion {
   isDemo          Boolean            @default(false)
   topic           MathTopic          @relation(fields: [topicId], references: [id])
   stimulusGroup   MathStimulusGroup? @relation(fields: [stimulusGroupId], references: [id])
-  worksheet       MathWorksheet?     @relation(fields: [worksheetId], references: [id])
+  // A worksheet's persisted questions die with it — SET NULL would promote them into
+  // the `worksheetId: null` topic practice banks (H5).
+  worksheet       MathWorksheet?     @relation(fields: [worksheetId], references: [id], onDelete: Cascade)
 }
 
 model MathAttempt {

@@ -14,7 +14,8 @@ router.get('/', asyncHandler(async (_req: Request, res: Response) => {
 router.get('/:slug', asyncHandler(async (req: Request, res: Response) => {
   const type = await prisma.writingType.findUnique({
     where: { slug: req.params.slug },
-    include: { prompts: true },
+    // Worksheet-created prompts (H4) are not part of the random-practice rotation.
+    include: { prompts: { where: { source: 'bank' } } },
   });
   if (!type) {
     res.status(404).json({ error: 'Writing type not found', status: 404 });

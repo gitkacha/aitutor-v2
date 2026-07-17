@@ -213,7 +213,8 @@ export const api = {
   getAttempts: (typeSlug?: string) =>
     fetchJSON<Attempt[]>(`/attempts${typeSlug ? `?type=${typeSlug}` : ''}`),
   getAttempt: (id: number) => fetchJSON<Attempt>(`/attempts/${id}`),
-  createAttempt: (data: Partial<Attempt> & { text: string; promptId: number; typeId: number }) =>
+  // promptId is omitted for worksheet attempts — the backend resolves the worksheet's prompt (H4).
+  createAttempt: (data: Partial<Attempt> & { text: string; promptId?: number; typeId: number }) =>
     fetchJSON<Attempt>('/attempts', {
       method: 'POST',
       body: JSON.stringify(data),

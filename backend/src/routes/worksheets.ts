@@ -50,15 +50,22 @@ router.post('/save', asyncHandler(async (req: Request, res: Response) => {
     });
 
     const worksheets = await Promise.all(
-      types.map((type, i) =>
-        prisma.worksheet.create({
+      types.map(async (type, i) => {
+        const promptText = prompts[i] ?? prompts[0];
+        const worksheet = await prisma.worksheet.create({
           data: {
             title: types.length === 1 ? title : `Worksheet: ${type.name}`,
             typeId: type.id,
-            prompts: JSON.stringify([prompts[i] ?? prompts[0]]),
+            prompts: JSON.stringify([promptText]),
           },
-        })
-      )
+        });
+        // The worksheet's prompt is a real Prompt row so attempts reference the task the
+        // student actually answers and the analysis grades against it (H4).
+        await prisma.prompt.create({
+          data: { typeId: type.id, text: promptText, source: 'worksheet' },
+        });
+        return worksheet;
+      })
     );
 
     res.status(201).json(worksheets);

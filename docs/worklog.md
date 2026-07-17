@@ -18,7 +18,19 @@ every agent, on any model, without exception):
 
 ## Open
 
-*(none — review backlog clear)*
+- [ ] **H4** — Worksheet writing attempts are analysed against the wrong prompt: attempts store
+  the type's first bank prompt as `promptId` while the student answers the worksheet's generated
+  prompt, so AI feedback grades the wrong task (and a type with no bank prompts strands the
+  student on an unrecoverable Try-Again panel). Fix: worksheet save creates a real `Prompt` row
+  (`source: 'worksheet'`); `POST /api/attempts` resolves the worksheet prompt server-side;
+  frontend hack removed from PracticeHome/PendingWorksheets/Sidebar via a shared helper.
+  Proof: `e2e/h4-worksheet-prompt.spec.ts` (see docs/review2.md § H4)
+- [ ] **H5** — Deleting a math worksheet leaks its persisted questions into topic practice banks
+  (`ON DELETE SET NULL` + banks defined as `worksheetId: null`); reachable via demo
+  load → start demo worksheet → clear demo. Fix: `onDelete: Cascade` on
+  `MathQuestion.worksheet`, orphan stimulus-group sweep in `clearDemoData`. Known trade-off: a
+  real attempt on a demo worksheet loses question detail after demo clear (attempt survives).
+  Proof: `e2e/h5-worksheet-delete-leak.spec.ts` (see docs/review2.md § H5)
 
 ## Done
 

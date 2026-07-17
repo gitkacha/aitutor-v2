@@ -8,15 +8,47 @@ router.post('/', asyncHandler(async (req: Request, res: Response) => {
   const { typeId, promptId, text, startedAt, finishedAt, timeTaken, source, worksheetId } = req.body;
 
   // `text` may legitimately be an empty string — a timed-out attempt with nothing written.
-  if (!typeId || !promptId || typeof text !== 'string' || !startedAt || !finishedAt || timeTaken === undefined) {
+  // A worksheet attempt needs no promptId: the worksheet's own prompt is resolved below (H4).
+  if (!typeId || (!promptId && !worksheetId) || typeof text !== 'string' || !startedAt || !finishedAt || timeTaken === undefined) {
     res.status(400).json({ error: 'Missing required fields', status: 400 });
     return;
   }
 
+  let resolvedTypeId = typeId;
+  let resolvedPromptId = promptId;
+  if (worksheetId) {
+    // The attempt must reference the prompt the student actually answered — the
+    // worksheet's generated prompt, not a bank prompt (H4). Find-or-create keeps one
+    // Prompt row per worksheet prompt text and covers worksheets saved before H4.
+    const worksheet = await prisma.worksheet.findUnique({ where: { id: worksheetId } });
+    if (!worksheet) {
+      res.status(400).json({ error: 'Worksheet not found', status: 400 });
+      return;
+    }
+    let promptText = '';
+    try {
+      promptText = (JSON.parse(worksheet.prompts || '[]')[0] as string) || '';
+    } catch {
+      promptText = '';
+    }
+    if (!promptText) {
+      res.status(400).json({ error: 'Worksheet has no prompt', status: 400 });
+      return;
+    }
+    const existing = await prisma.prompt.findFirst({
+      where: { typeId: worksheet.typeId, text: promptText },
+    });
+    const prompt = existing ?? (await prisma.prompt.create({
+      data: { typeId: worksheet.typeId, text: promptText, source: 'worksheet' },
+    }));
+    resolvedTypeId = worksheet.typeId;
+    resolvedPromptId = prompt.id;
+  }
+
   const attempt = await prisma.attempt.create({
     data: {
-      typeId,
-      promptId,
+      typeId: resolvedTypeId,
+      promptId: resolvedPromptId,
       text,
       startedAt: new Date(startedAt),
       finishedAt: new Date(finishedAt),

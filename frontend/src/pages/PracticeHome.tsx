@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api, WritingType, Attempt, Worksheet } from '@/lib/api';
+import { worksheetStartState } from '@/lib/worksheet-start';
 import { Button } from '@/components/ui/button';
 import { Clock, ArrowRight, FileText } from 'lucide-react';
 
@@ -37,18 +38,7 @@ export default function PracticeHome() {
 
   const handleStartWorksheet = (worksheet: Worksheet) => {
     if (!type) return;
-    const prompts: string[] = JSON.parse(worksheet.prompts);
-    const promptText = prompts[0] || '';
-    // Use the first real prompt from the type for FK compliance
-    const realPrompt = type.prompts?.[0];
-    navigate(`/practice/${type.slug}/start`, {
-      state: {
-        prompt: realPrompt || { id: 0, text: promptText, typeId: type.id },
-        type,
-        worksheetId: worksheet.id,
-        worksheetPromptText: promptText,
-      },
-    });
+    navigate(`/practice/${type.slug}/start`, { state: worksheetStartState(type, worksheet) });
   };
 
   if (loading) {

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { api, mathApi, WritingType, MathTopic, Worksheet, MathWorksheet } from '@/lib/api';
+import { worksheetStartState } from '@/lib/worksheet-start';
 import { ChevronRight, Home, Menu, Shield, X, Zap } from 'lucide-react';
 
 // "Evening Navy" sidebar (docs/mocks/example2.html): a solid deep-navy rail with
@@ -123,16 +124,7 @@ export default function Sidebar() {
       const brief = types.find((t) => t.id === upNext.ws.typeId);
       if (!brief) return;
       const full = await api.getType(brief.slug);
-      const prompts: string[] = JSON.parse(upNext.ws.prompts || '[]');
-      const promptText = prompts[0] || '';
-      navigate(`/practice/${full.slug}/start`, {
-        state: {
-          prompt: full.prompts?.[0] || { id: 0, text: promptText, typeId: full.id },
-          type: full,
-          worksheetId: upNext.ws.id,
-          worksheetPromptText: promptText,
-        },
-      });
+      navigate(`/practice/${full.slug}/start`, { state: worksheetStartState(full, upNext.ws) });
     }
   };
 

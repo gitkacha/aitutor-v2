@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, mathApi, Worksheet, MathWorksheet, WritingType } from '@/lib/api';
+import { worksheetStartState } from '@/lib/worksheet-start';
 import { Button } from '@/components/ui/button';
 import { Calculator, ClipboardList, Pencil } from 'lucide-react';
 
@@ -39,17 +40,7 @@ export default function PendingWorksheets({ mode, refreshKey = 0 }: PendingWorks
     const brief = types.find((t) => t.id === ws.typeId);
     if (!brief) return;
     const full = await api.getType(brief.slug);
-    const prompts: string[] = JSON.parse(ws.prompts || '[]');
-    const promptText = prompts[0] || '';
-    const realPrompt = full.prompts?.[0];
-    navigate(`/practice/${full.slug}/start`, {
-      state: {
-        prompt: realPrompt || { id: 0, text: promptText, typeId: full.id },
-        type: full,
-        worksheetId: ws.id,
-        worksheetPromptText: promptText,
-      },
-    });
+    navigate(`/practice/${full.slug}/start`, { state: worksheetStartState(full, ws) });
   };
 
   const typeName = (typeId: number) => types.find((t) => t.id === typeId)?.name || 'Writing';

@@ -37,7 +37,9 @@ export default function TimedPractice() {
       const elapsed = Math.round((Date.now() - startTimeRef.current) / 1000);
       const attempt = await api.createAttempt({
         text,
-        promptId: prompt?.id || 0,
+        // Worksheet attempts carry no promptId — the backend resolves the worksheet's
+        // own prompt so the analysis grades the task the student answered (H4).
+        ...(worksheetId ? {} : { promptId: prompt?.id || 0 }),
         typeId: type?.id || 0,
         startedAt: new Date(startTimeRef.current).toISOString(),
         finishedAt: new Date().toISOString(),
