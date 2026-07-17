@@ -24,7 +24,7 @@ async function getDemoType(typeName: string) {
 
 async function getDemoPrompt(typeId: number) {
   const prompts = await prisma.prompt.findMany({
-    where: { typeId },
+    where: { typeId, source: 'bank' },
     take: 1,
   });
   return prompts[0];
@@ -88,31 +88,48 @@ export async function loadDemoData() {
     }
   }
 
-  // Create a demo worksheet with one attempt
+  // Create demo worksheets — post-H3 model: one worksheet per type with exactly one
+  // prompt, each backed by its own Prompt row (source 'worksheet') so attempts and
+  // analysis reference the worksheet's actual task (H4). One is attempted, one pending.
   const demoType = await getDemoType('persuasive');
+  const discussionType = await getDemoType('discussion');
   if (demoType) {
-    const demoPrompt = await getDemoPrompt(demoType.id);
+    const persuasivePromptText = 'Argue whether schools should have a four-day week.';
     const worksheet = await prisma.worksheet.create({
       data: {
-        title: 'Worksheet: Persuasive + Discussion',
+        title: 'Worksheet: Persuasive',
         typeId: demoType.id,
-        prompts: JSON.stringify([
-          'Argue whether schools should have a four-day week.',
-          'Discuss the pros and cons of homework.',
-          'Write a persuasive letter to your local council about a community issue.',
-        ]),
+        prompts: JSON.stringify([persuasivePromptText]),
         isDemo: true,
       },
     });
+    const worksheetPrompt = await prisma.prompt.create({
+      data: { typeId: demoType.id, text: persuasivePromptText, source: 'worksheet', isDemo: true },
+    });
 
-    if (demoPrompt) {
+    if (discussionType) {
+      const discussionPromptText = 'Discuss the pros and cons of banning homework in primary schools.';
+      await prisma.worksheet.create({
+        data: {
+          title: 'Worksheet: Discussion',
+          typeId: discussionType.id,
+          prompts: JSON.stringify([discussionPromptText]),
+          isDemo: true,
+        },
+      });
+      await prisma.prompt.create({
+        data: { typeId: discussionType.id, text: discussionPromptText, source: 'worksheet', isDemo: true },
+      });
+    }
+
+    {
       const wsStartedAt = new Date(now - 2 * DAY - 1800 * 1000);
       const wsFinishedAt = new Date(wsStartedAt.getTime() + 1200 * 1000);
 
       await prisma.attempt.create({
         data: {
           typeId: demoType.id,
-          promptId: demoPrompt.id,
+          promptId: worksheetPrompt.id,
           text: 'I believe that schools should have a four-day week because it would give students more time to rest and pursue other interests. Many students feel tired after five days of school and having an extra day off would help them recharge. Additionally, families could spend more quality time together on the long weekend. However, some people argue that less school time means less learning. But I think students would actually learn better if they were more rested and focused during the four days they are at school. In conclusion, a four-day school week would benefit students, families, and even teachers by creating a better balance between school and life.',
           startedAt: wsStartedAt,
           finishedAt: wsFinishedAt,
@@ -257,6 +274,9 @@ export async function clearDemoData() {
   await prisma.analysis.deleteMany({ where: { isDemo: true } });
   await prisma.attempt.deleteMany({ where: { isDemo: true } });
   await prisma.worksheet.deleteMany({ where: { isDemo: true } });
+  // Demo worksheet prompts go with their worksheets; a prompt referenced by a real
+  // (non-demo) attempt is kept so that attempt's analysis context survives.
+  await prisma.prompt.deleteMany({ where: { isDemo: true, attempts: { none: {} } } });
   // Math demo data
   await prisma.mathAttempt.deleteMany({ where: { isDemo: true } });
   await prisma.mathWorksheet.deleteMany({ where: { isDemo: true } });

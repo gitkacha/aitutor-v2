@@ -348,7 +348,7 @@ export default function Admin() {
                           <div>
                             <p className="text-sm font-medium text-gray-900">{ws.title}</p>
                             <p className="text-xs text-gray-400">
-                              1 prompt · Created {new Date(ws.createdAt).toLocaleDateString()}
+                              {prompts.length} prompt{prompts.length !== 1 ? 's' : ''} · Created {new Date(ws.createdAt).toLocaleDateString()}
                             </p>
                           </div>
                         </div>
