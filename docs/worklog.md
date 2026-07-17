@@ -18,9 +18,9 @@ every agent, on any model, without exception):
 
 ## Open
 
-- [ ] **M2** — "All Topics" test isn't capped at 35 questions, and shuffling splits stimulus groups (`docs/review.md` §Medium)
-- [ ] **M3** — `GET /api/math/attempts?topic=<bad-slug>` drops the filter and returns everything (`docs/review.md` §Medium)
-- [ ] **M5** — Heatmap shows "Loading…" forever on fetch errors; loading and error states conflated (`docs/review.md` §Medium)
+- [ ] **M2** — "All Topics" test isn't capped at 35 questions, and shuffling splits stimulus groups (`docs/review.md` §Medium) — *claimed 2026-07-17, plan approved*
+- [ ] **M3** — `GET /api/math/attempts?topic=<bad-slug>` drops the filter and returns everything (`docs/review.md` §Medium) — *claimed 2026-07-17, plan approved*
+- [ ] **M5** — Heatmap shows "Loading…" forever on fetch errors; loading and error states conflated (`docs/review.md` §Medium) — *claimed 2026-07-17, plan approved*
 - [ ] **L2** — Replace hand-rolled countdown timer and heatmap with mature libraries, per CLAUDE.md guidance (`docs/review.md` §Look & feel)
 - [ ] **W-5** — Minor sweep from `docs/review.md` §Minor: `postinstall` runs `migrate dev`; fallback prompt count mismatch (1 vs 3); `fetchJSON` sends Content-Type on GETs; math heatmap re-parses `topicBreakdown` per topic
 

@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { getWorksheetQuestionRows } from '../services/math-worksheet.service';
 import { asyncHandler } from '../lib/async-handler';
+import { selectTestQuestions, MAX_TEST_QUESTIONS } from '../lib/question-select';
 
 const router = Router();
 
@@ -23,6 +24,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
   }
 
   let questions;
+  let cap: number | null;
   if (topicSlug) {
     const topic = await prisma.mathTopic.findUnique({
       where: { slug: topicSlug },
@@ -35,23 +37,18 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
       orderBy: { id: 'asc' },
       include: { stimulusGroup: true, topic: true },
     });
+    cap = null; // single-topic practice uses the topic's full bank
   } else {
-    // All topics — 35 questions mixed
     questions = await prisma.mathQuestion.findMany({
       where: { worksheetId: null },
       orderBy: { id: 'asc' },
       include: { stimulusGroup: true, topic: true },
     });
+    cap = MAX_TEST_QUESTIONS; // "All Topics" is a 35-question mixed test
   }
 
-  // Shuffle questions using Fisher-Yates
-  const shuffled = [...questions];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-
-  res.json(shuffled);
+  // Shuffled with stimulus groups kept whole and adjacent (M2).
+  res.json(selectTestQuestions(questions, cap));
 }));
 
 export default router;
