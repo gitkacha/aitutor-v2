@@ -18,9 +18,6 @@ every agent, on any model, without exception):
 
 ## Open
 
-- [ ] **H1** — Auto-submit with an empty writing attempt 400s and strands the student (`docs/review.md` §High)
-- [ ] **H2** — Async route errors bypass the Express error middleware; unhandled failures hang requests (`docs/review.md` §High)
-- [ ] **H3** — Multi-type writing worksheets silently drop all but the first selected type (`docs/review.md` §High)
 - [ ] **M2** — "All Topics" test isn't capped at 35 questions, and shuffling splits stimulus groups (`docs/review.md` §Medium)
 - [ ] **M3** — `GET /api/math/attempts?topic=<bad-slug>` drops the filter and returns everything (`docs/review.md` §Medium)
 - [ ] **M5** — Heatmap shows "Loading…" forever on fetch errors; loading and error states conflated (`docs/review.md` §Medium)
@@ -29,6 +26,9 @@ every agent, on any model, without exception):
 
 ## Done
 
+- [x] **H3** — Multi-type writing worksheets kept only `typeIds[0]`; now one tailored prompt and one worksheet per selected type — commit `fcb3245` · proof: `e2e/h3-multitype-worksheet.spec.ts` (2 tests) + live screenshots · user signed off 2026-07-17
+- [x] **H1** — Empty-text auto-submit 400'd and stranded the student at 0:00; empty attempts now save, failures show a visible Try Again panel — commit `eb4e23a` · proof: `e2e/h1-empty-submit.spec.ts` (3 tests, incl. clock-driven 30-min expiry) + live screenshot · user signed off 2026-07-17
+- [x] **H2** — Async route errors bypassed the error middleware (a malformed body crashed the backend); all 24 handlers wrapped in `asyncHandler`, defensive JSON parsing — commit `7653b97` · proof: `e2e/h2-async-errors.spec.ts` (2 tests) + `backend/src/__tests__/async-handler.test.ts` · user signed off 2026-07-17
 - [x] **W-7** — Five-step workflow (plan approval → worklog items → implement → verify e2e → manual test + user sign-off before ticking) made mandatory in CLAUDE.md and worklog rules, incl. full-e2e-green gate before manual testing — commits `271afca`, `4c8b690` · proof: docs-only, user reviewed and approved 2026-07-17
 - [x] **W-6** — Work log + verification/testing guidelines (this file, CLAUDE.md sections) — commit: see git log · proof: docs-only, proofread
 - [x] **W-4** — "Evening Navy" sidebar: momentum ring, colour-coded nav scores, Up-next card, focus mode; replaces the gradient WIP — commit `1ad7d2c` · proof: `e2e/sidebar-navy.spec.ts` (4 tests) + live screenshots
