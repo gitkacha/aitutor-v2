@@ -151,41 +151,43 @@ All comments must reference specific parts of the student's text.`;
   return parseAnalysisResponse(content);
 }
 
+// One tailored prompt per selected type (H3), index-aligned with the types sorted by name —
+// the same order the /generate route returns its `types` array in.
 export async function generateWorksheetPrompts(typeIds: number[]): Promise<string[]> {
   const types = await prisma.writingType.findMany({
     where: { id: { in: typeIds } },
+    orderBy: { name: 'asc' },
   });
 
-  const typeDescriptions = types
-    .map((t) => `${t.name}: ${t.expectedStructure}`)
-    .join('\n');
+  return Promise.all(
+    types.map(async (t) => {
+      const prompt = `You are a writing tutor creating practice worksheets for a student preparing for the NSW Selective High School Placement Test.
+The student needs practice with this text type:
 
-  const prompt = `You are a writing tutor creating practice worksheets for a student preparing for the NSW Selective High School Placement Test.
-The student needs practice with the following text type(s):
+${t.name}: ${t.expectedStructure}
 
-${typeDescriptions}
-
-Generate exactly 1 writing prompt targeting these text types. It should be a complete, engaging topic suitable for a Year 6 student.
+Generate exactly 1 writing prompt for this text type. It should be a complete, engaging topic suitable for a Year 6 student.
 Respond with ONLY a JSON array of strings, no markdown, no code fences:
 ["prompt text"]`;
 
-  try {
-    const content = await chatCompletion(generationModel(), prompt, 2000, 0.8);
-    const arrayMatch = content.match(/\[[\s\S]*\]/);
-    if (arrayMatch) {
-      return JSON.parse(arrayMatch[0]);
-    }
-    return getFallbackPrompts();
-  } catch (error) {
-    console.error('Worksheet prompt generation failed:', error);
-    return getFallbackPrompts();
-  }
+      try {
+        const content = await chatCompletion(generationModel(), prompt, 2000, 0.8);
+        const arrayMatch = content.match(/\[[\s\S]*\]/);
+        const parsed = arrayMatch ? JSON.parse(arrayMatch[0]) : [];
+        if (Array.isArray(parsed) && typeof parsed[0] === 'string' && parsed[0].trim()) {
+          return parsed[0];
+        }
+        return getFallbackPrompt(t.name);
+      } catch (error) {
+        console.error(`Worksheet prompt generation failed for ${t.name}:`, error);
+        return getFallbackPrompt(t.name);
+      }
+    })
+  );
 }
 
-function getFallbackPrompts(): string[] {
-  return [
-    'Write a persuasive text arguing for or against school uniforms.',
-  ];
+function getFallbackPrompt(typeName: string): string {
+  return `Write a ${typeName.toLowerCase()} about a school event that matters to you.`;
 }
 
 export type { AnalysisResult };

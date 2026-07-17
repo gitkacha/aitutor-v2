@@ -223,7 +223,7 @@ export const api = {
       body: JSON.stringify({ typeIds }),
     }),
   saveWorksheet: (title: string, typeIds: number[], prompts: string[]) =>
-    fetchJSON<Worksheet>('/worksheets/save', {
+    fetchJSON<Worksheet[]>('/worksheets/save', {
       method: 'POST',
       body: JSON.stringify({ title, typeIds, prompts }),
     }),

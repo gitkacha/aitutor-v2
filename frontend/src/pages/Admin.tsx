@@ -90,11 +90,15 @@ export default function Admin() {
     try {
       const typeIds = generatedTypeInfo.map((t) => t.id);
       const title = `Worksheet: ${generatedTypeInfo.map((t) => t.name).join(' + ')}`;
-      await api.saveWorksheet(title, typeIds, generatedPrompts);
+      const saved = await api.saveWorksheet(title, typeIds, generatedPrompts);
       setShowWritingReview(false);
       setGeneratedPrompts([]);
       setGeneratedTypeInfo([]);
-      setMessage(`Writing worksheet "${title}" saved successfully!`);
+      setMessage(
+        saved.length === 1
+          ? `Writing worksheet "${saved[0].title}" saved successfully!`
+          : `${saved.length} writing worksheets saved — one per text type.`
+      );
       refreshWriting();
       setWorksheetRefresh(n => n + 1);
       api.getWorksheets().then(setWritingWorksheets).catch(() => {});
@@ -232,7 +236,7 @@ export default function Admin() {
             <div className="bg-white rounded-xl p-6 border border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900 mb-2">Generate Writing Worksheet</h2>
               <p className="text-sm text-gray-500 mb-4">
-                Select one or more text types, or leave empty for auto-selection. Generates 1 targeted writing prompt for the selected text types.
+                Select one or more text types, or leave empty for auto-selection. Generates one targeted prompt per selected text type — each becomes its own worksheet.
               </p>
 
               {/* Writing type selector */}
@@ -277,7 +281,7 @@ export default function Admin() {
 
               <Button onClick={handleGenerateWriting} disabled={generating}>
                 <Plus className="mr-2" size={18} />
-                {generating ? 'Generating...' : 'Generate 1-Prompt Worksheet'}
+                {generating ? 'Generating...' : 'Generate Worksheet'}
               </Button>
             </div>
           ) : (
@@ -295,10 +299,11 @@ export default function Admin() {
                 </div>
               </div>
               <p className="text-sm text-gray-500">
-                1 prompt generated for {generatedTypeInfo.map(t => t.name).join(', ')}. Review and save to make it available to the student.
+                {generatedPrompts.length} prompt{generatedPrompts.length !== 1 ? 's' : ''} generated — one per text type ({generatedTypeInfo.map(t => t.name).join(', ')}). Saving creates a worksheet for each type.
               </p>
               {generatedPrompts.map((prompt, i) => {
-                const type = generatedTypeInfo[i % generatedTypeInfo.length] || generatedTypeInfo[0];
+                // prompts are index-aligned with types (one tailored prompt per type)
+                const type = generatedTypeInfo[i] || generatedTypeInfo[0];
                 return (
                   <div key={i} className="bg-white rounded-xl p-4 border border-gray-200">
                     <div className="flex items-start gap-3">

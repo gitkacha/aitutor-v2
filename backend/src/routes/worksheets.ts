@@ -35,21 +35,33 @@ router.post('/generate', asyncHandler(async (req: Request, res: Response) => {
 router.post('/save', asyncHandler(async (req: Request, res: Response) => {
   const { title, typeIds, prompts } = req.body;
 
-  if (!title || !typeIds || !prompts) {
+  if (!title || !Array.isArray(typeIds) || typeIds.length === 0 || !Array.isArray(prompts)) {
     res.status(400).json({ error: 'Missing required fields: title, typeIds, prompts', status: 400 });
     return;
   }
 
   try {
-    const worksheet = await prisma.worksheet.create({
-      data: {
-        title,
-        typeId: typeIds[0],
-        prompts: JSON.stringify(prompts),
-      },
+    // A writing attempt is always a single text type, so a multi-type selection becomes one
+    // worksheet per type (H3). prompts[i] belongs to types[i], both sorted by name — the
+    // order /generate returned them in.
+    const types = await prisma.writingType.findMany({
+      where: { id: { in: typeIds } },
+      orderBy: { name: 'asc' },
     });
 
-    res.status(201).json(worksheet);
+    const worksheets = await Promise.all(
+      types.map((type, i) =>
+        prisma.worksheet.create({
+          data: {
+            title: types.length === 1 ? title : `Worksheet: ${type.name}`,
+            typeId: type.id,
+            prompts: JSON.stringify([prompts[i] ?? prompts[0]]),
+          },
+        })
+      )
+    );
+
+    res.status(201).json(worksheets);
   } catch (error) {
     console.error('Worksheet save failed:', error);
     res.status(500).json({ error: 'Failed to save worksheet', status: 500 });
