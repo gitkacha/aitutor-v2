@@ -45,10 +45,16 @@ export default function MathTimedPractice() {
   const totalTime = isWorksheet
     ? questions.length * 60
     : Math.min(questions.length * 69, 2400);
-  // Track elapsed ticks and derive timeLeft, so the countdown is always relative to
-  // the questions actually loaded (questions arrive async after first render).
-  const [elapsedTicks, setElapsedTicks] = useState(0);
-  const timeLeft = Math.max(0, totalTime - elapsedTicks);
+  // Fixed end timestamp (L2), anchored to when the questions actually loaded — the
+  // countdown derives from Date.now() so it never drifts and survives Timer unmounts.
+  const [endTime, setEndTime] = useState<number | null>(null);
+  const [timeLeft, setTimeLeft] = useState(0);
+  useEffect(() => {
+    if (questions.length > 0 && endTime === null) {
+      setEndTime(Date.now() + totalTime * 1000);
+      setTimeLeft(totalTime);
+    }
+  }, [questions, totalTime, endTime]);
 
   const submitAttempt = useCallback(async () => {
     if (submittedRef.current) return;
@@ -83,8 +89,8 @@ export default function MathTimedPractice() {
 
   const handleTimeUp = useCallback(() => submitAttempt(), [submitAttempt]);
 
-  const handleTick = useCallback(() => {
-    setElapsedTicks(t => t + 1);
+  const handleTick = useCallback((remainingSeconds: number) => {
+    setTimeLeft(remainingSeconds);
   }, []);
 
   // Warn before unload
@@ -144,13 +150,15 @@ export default function MathTimedPractice() {
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Top bar: progress + timer */}
       <div className="flex items-center gap-4">
-        <Timer
-          timeLeft={timeLeft}
-          total={totalTime}
-          onTick={handleTick}
-          onTimeUp={handleTimeUp}
-          running={running}
-        />
+        {endTime !== null && (
+          <Timer
+            endTime={endTime}
+            total={totalTime}
+            onTick={handleTick}
+            onTimeUp={handleTimeUp}
+            running={running}
+          />
+        )}
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <div className="flex-1 bg-gray-200 rounded-full h-2">

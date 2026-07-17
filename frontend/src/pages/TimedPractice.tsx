@@ -19,6 +19,9 @@ export default function TimedPractice() {
   const [confirmed, setConfirmed] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const startTimeRef = useRef(Date.now());
+  // Fixed end timestamp (L2): survives Timer unmounts (confirm/error screens), so the
+  // countdown always reflects real elapsed exam time.
+  const endTimeRef = useRef(startTimeRef.current + TOTAL_TIME * 1000);
   const submittedRef = useRef(false);
 
   const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
@@ -57,9 +60,9 @@ export default function TimedPractice() {
     submitAttempt();
   }, [submitAttempt]);
 
-  // Handle tick
-  const handleTick = useCallback(() => {
-    setTimeLeft((t) => Math.max(0, t - 1));
+  // Timer derives remaining time from timestamps (L2); mirror it into state for timeTaken.
+  const handleTick = useCallback((remainingSeconds: number) => {
+    setTimeLeft(remainingSeconds);
   }, []);
 
   // Warn before unload if text entered
@@ -122,7 +125,7 @@ export default function TimedPractice() {
       {/* Timer row */}
       <div className="flex items-center gap-6">
         <Timer
-          timeLeft={timeLeft}
+          endTime={endTimeRef.current}
           total={TOTAL_TIME}
           onTick={handleTick}
           onTimeUp={handleTimeUp}

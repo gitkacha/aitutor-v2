@@ -18,8 +18,8 @@ every agent, on any model, without exception):
 
 ## Open
 
-- [ ] **L2** — Replace hand-rolled countdown timer and heatmap with mature libraries, per CLAUDE.md guidance (`docs/review.md` §Look & feel)
-- [ ] **W-5** — Minor sweep from `docs/review.md` §Minor: `postinstall` runs `migrate dev`; fallback prompt count mismatch (1 vs 3); `fetchJSON` sends Content-Type on GETs; math heatmap re-parses `topicBreakdown` per topic
+- [ ] **L2** — Replace hand-rolled countdown timer and heatmap with mature libraries, per CLAUDE.md guidance (`docs/review.md` §Look & feel) — *claimed 2026-07-17, plan approved: timer → react-countdown (timestamp-driven); heatmap deliberately stays custom (semantic card grid; reviewer concurred)*
+- [ ] **W-5** — Minor sweep from `docs/review.md` §Minor: `postinstall` runs `migrate dev`; fallback prompt count mismatch (1 vs 3); `fetchJSON` sends Content-Type on GETs; math heatmap re-parses `topicBreakdown` per topic — *claimed 2026-07-17, plan approved*
 
 ## Done
 

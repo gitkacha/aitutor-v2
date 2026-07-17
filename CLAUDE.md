@@ -90,7 +90,9 @@ writing attempts and generating worksheet content. Keep these calls isolated beh
 layer so the rest of the app doesn't care how the analysis was produced. Use **gpt-4o-mini**
 as the model to start with.
 - **Prefer popular, well-supported libraries over custom code** — for the data tables, the heatmap
-and charts, and the countdown timer. Don't hand-roll what a mature library does well.
+and charts, and the countdown timer. Don't hand-roll what a mature library does well. (Charts use
+Recharts; the countdown uses react-countdown. The topic-grid "heatmap" is a deliberate custom
+exception — it's a semantic card grid with navigation, not a matrix chart.)
 - Keep the implementation simple and conventional. Library, data and structure choices are the
 Coding Agent's call, as long as the requirements and the success criteria are met.
 
