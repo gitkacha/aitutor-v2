@@ -30,9 +30,11 @@ export default function PracticeHome() {
       .finally(() => setLoading(false));
   }, [typeSlug, navigate]);
 
-  const averageScore = attempts.length > 0
+  // Average only analysed attempts — a pending or failed analysis is not a zero (M8).
+  const scoredAttempts = attempts.filter((a) => a.analysis?.overallScore != null);
+  const averageScore = scoredAttempts.length > 0
     ? Math.round(
-        attempts.reduce((sum, a) => sum + (a.analysis?.overallScore ?? 0), 0) / attempts.length
+        scoredAttempts.reduce((sum, a) => sum + a.analysis!.overallScore, 0) / scoredAttempts.length
       )
     : null;
 
