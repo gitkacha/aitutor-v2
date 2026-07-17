@@ -1,9 +1,10 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
+import { asyncHandler } from '../lib/async-handler';
 
 const router = Router();
 
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', asyncHandler(async (req: Request, res: Response) => {
   const { typeId, promptId, text, startedAt, finishedAt, timeTaken, source, worksheetId } = req.body;
 
   if (!typeId || !promptId || !text || !startedAt || !finishedAt || timeTaken === undefined) {
@@ -25,9 +26,9 @@ router.post('/', async (req: Request, res: Response) => {
   });
 
   res.status(201).json(attempt);
-});
+}));
 
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', asyncHandler(async (req: Request, res: Response) => {
   const { type } = req.query;
   const where = type
     ? { type: { slug: type as string } }
@@ -40,9 +41,9 @@ router.get('/', async (req: Request, res: Response) => {
   });
 
   res.json(attempts);
-});
+}));
 
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
   const attempt = await prisma.attempt.findUnique({
     where: { id: parseInt(req.params.id) },
     include: { analysis: true, type: true, prompt: true },
@@ -54,6 +55,6 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 
   res.json(attempt);
-});
+}));
 
 export default router;

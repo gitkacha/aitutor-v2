@@ -1,11 +1,12 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { generateWorksheetPrompts } from '../services/ai.service';
+import { asyncHandler } from '../lib/async-handler';
 
 const router = Router();
 
 // POST /api/worksheets/generate — generate prompts without saving (preview)
-router.post('/generate', async (req: Request, res: Response) => {
+router.post('/generate', asyncHandler(async (req: Request, res: Response) => {
   const { typeIds } = req.body;
 
   if (!typeIds || !Array.isArray(typeIds) || typeIds.length === 0) {
@@ -28,10 +29,10 @@ router.post('/generate', async (req: Request, res: Response) => {
     console.error('Worksheet generation failed:', error);
     res.status(500).json({ error: 'Failed to generate worksheet', status: 500 });
   }
-});
+}));
 
 // POST /api/worksheets/save — save an admin-reviewed worksheet
-router.post('/save', async (req: Request, res: Response) => {
+router.post('/save', asyncHandler(async (req: Request, res: Response) => {
   const { title, typeIds, prompts } = req.body;
 
   if (!title || !typeIds || !prompts) {
@@ -53,18 +54,18 @@ router.post('/save', async (req: Request, res: Response) => {
     console.error('Worksheet save failed:', error);
     res.status(500).json({ error: 'Failed to save worksheet', status: 500 });
   }
-});
+}));
 
-router.get('/', async (_req: Request, res: Response) => {
+router.get('/', asyncHandler(async (_req: Request, res: Response) => {
   const worksheets = await prisma.worksheet.findMany({
     orderBy: { createdAt: 'desc' },
     include: { attempts: { include: { analysis: true } } },
   });
   res.json(worksheets);
-});
+}));
 
 // GET /api/worksheets/available/:typeId — get worksheets for a specific writing type
-router.get('/available/:typeId', async (req: Request, res: Response) => {
+router.get('/available/:typeId', asyncHandler(async (req: Request, res: Response) => {
   const typeId = parseInt(req.params.typeId);
   if (isNaN(typeId)) {
     return res.status(400).json({ error: 'Invalid typeId', status: 400 });
@@ -82,6 +83,6 @@ router.get('/available/:typeId', async (req: Request, res: Response) => {
 
   // Filter out worksheets where all attempts are demo (or show them? show them)
   res.json(worksheets);
-});
+}));
 
 export default router;

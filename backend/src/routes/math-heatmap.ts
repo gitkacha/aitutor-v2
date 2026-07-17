@@ -1,9 +1,10 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
+import { asyncHandler } from '../lib/async-handler';
 
 const router = Router();
 
-router.get('/', async (_req: Request, res: Response) => {
+router.get('/', asyncHandler(async (_req: Request, res: Response) => {
   const topics = await prisma.mathTopic.findMany({
     orderBy: { name: 'asc' },
   });
@@ -36,6 +37,6 @@ router.get('/', async (_req: Request, res: Response) => {
   });
 
   res.json(heatmap);
-});
+}));
 
 export default router;

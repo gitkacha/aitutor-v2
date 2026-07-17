@@ -1,16 +1,17 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
+import { asyncHandler } from '../lib/async-handler';
 
 const router = Router();
 
-router.get('/', async (_req: Request, res: Response) => {
+router.get('/', asyncHandler(async (_req: Request, res: Response) => {
   const types = await prisma.writingType.findMany({
     orderBy: { name: 'asc' },
   });
   res.json(types);
-});
+}));
 
-router.get('/:slug', async (req: Request, res: Response) => {
+router.get('/:slug', asyncHandler(async (req: Request, res: Response) => {
   const type = await prisma.writingType.findUnique({
     where: { slug: req.params.slug },
     include: { prompts: true },
@@ -20,6 +21,6 @@ router.get('/:slug', async (req: Request, res: Response) => {
     return;
   }
   res.json(type);
-});
+}));
 
 export default router;

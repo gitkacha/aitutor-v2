@@ -2,11 +2,12 @@ import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { generateMathWorksheetQuestions } from '../services/ai.service';
 import { createWorksheetQuestionRows, validateWorksheetQuestions } from '../services/math-worksheet.service';
+import { asyncHandler } from '../lib/async-handler';
 
 const router = Router();
 
 // POST /api/math/worksheets/generate — AI-generate 35-question worksheet
-router.post('/generate', async (req: Request, res: Response) => {
+router.post('/generate', asyncHandler(async (req: Request, res: Response) => {
   const { topicIds } = req.body; // Array of topic slugs, empty = all topics
   const questionCount = Math.max(5, Math.min(50, parseInt(req.body.questionCount) || 35));
 
@@ -46,10 +47,10 @@ router.post('/generate', async (req: Request, res: Response) => {
     console.error('Worksheet generation failed:', error);
     res.status(502).json({ error: error?.message || 'Worksheet generation failed' });
   }
-});
+}));
 
 // POST /api/math/worksheets/save — save an admin-reviewed worksheet
-router.post('/save', async (req: Request, res: Response) => {
+router.post('/save', asyncHandler(async (req: Request, res: Response) => {
   const { title, topicIds, questions } = req.body;
 
   if (!title || !questions) {
@@ -80,10 +81,10 @@ router.post('/save', async (req: Request, res: Response) => {
     console.error('Worksheet save failed:', error);
     res.status(500).json({ error: 'Failed to save worksheet' });
   }
-});
+}));
 
 // GET /api/math/worksheets — list all worksheets
-router.get('/', async (_req: Request, res: Response) => {
+router.get('/', asyncHandler(async (_req: Request, res: Response) => {
   const worksheets = await prisma.mathWorksheet.findMany({
     orderBy: { createdAt: 'desc' },
     include: {
@@ -94,6 +95,6 @@ router.get('/', async (_req: Request, res: Response) => {
   });
 
   res.json(worksheets);
-});
+}));
 
 export default router;

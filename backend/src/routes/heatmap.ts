@@ -1,9 +1,10 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
+import { asyncHandler } from '../lib/async-handler';
 
 const router = Router();
 
-router.get('/', async (_req: Request, res: Response) => {
+router.get('/', asyncHandler(async (_req: Request, res: Response) => {
   const types = await prisma.writingType.findMany({
     include: {
       attempts: {
@@ -34,6 +35,6 @@ router.get('/', async (_req: Request, res: Response) => {
   });
 
   res.json(heatmap);
-});
+}));
 
 export default router;

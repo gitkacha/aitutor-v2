@@ -1,10 +1,11 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { getWorksheetQuestionRows } from '../services/math-worksheet.service';
+import { asyncHandler } from '../lib/async-handler';
 
 const router = Router();
 
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', asyncHandler(async (req: Request, res: Response) => {
   const topicSlug = req.query.topic as string | undefined;
   const worksheetParam = req.query.worksheet as string | undefined;
 
@@ -51,6 +52,6 @@ router.get('/', async (req: Request, res: Response) => {
   }
 
   res.json(shuffled);
-});
+}));
 
 export default router;

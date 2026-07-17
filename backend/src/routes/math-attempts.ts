@@ -1,19 +1,27 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
+import { asyncHandler } from '../lib/async-handler';
 
 const router = Router();
 
 // POST /api/math/attempts — save a completed attempt
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', asyncHandler(async (req: Request, res: Response) => {
   const { topicId, questions, answers, startedAt, finishedAt, timeTaken, source, worksheetId } = req.body;
 
   if (!questions || !answers || !startedAt || !finishedAt || timeTaken == null) {
     return res.status(400).json({ error: 'Missing required fields: questions, answers, startedAt, finishedAt, timeTaken' });
   }
 
-  // Compute score and topic breakdown
-  const questionIds: number[] = JSON.parse(questions);
-  const answerIndices: number[] = JSON.parse(answers);
+  // Compute score and topic breakdown; questions/answers are client-supplied JSON strings.
+  let questionIds: number[];
+  let answerIndices: number[];
+  try {
+    questionIds = JSON.parse(questions);
+    answerIndices = JSON.parse(answers);
+    if (!Array.isArray(questionIds) || !Array.isArray(answerIndices)) throw new Error('not arrays');
+  } catch {
+    return res.status(400).json({ error: 'questions and answers must be valid JSON arrays' });
+  }
 
   const questionRecords = await prisma.mathQuestion.findMany({
     where: { id: { in: questionIds } },
@@ -58,10 +66,10 @@ router.post('/', async (req: Request, res: Response) => {
   });
 
   res.status(201).json(attempt);
-});
+}));
 
 // GET /api/math/attempts — list attempts
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', asyncHandler(async (req: Request, res: Response) => {
   const topicSlug = req.query.topic as string | undefined;
 
   const where: any = {};
@@ -81,10 +89,10 @@ router.get('/', async (req: Request, res: Response) => {
   });
 
   res.json(attempts);
-});
+}));
 
 // GET /api/math/attempts/:id — single attempt with full question details
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) {
     return res.status(400).json({ error: 'Invalid attempt ID' });
@@ -115,6 +123,6 @@ router.get('/:id', async (req: Request, res: Response) => {
     answersArray: JSON.parse(attempt.answers),
     breakdown: JSON.parse(attempt.topicBreakdown),
   });
-});
+}));
 
 export default router;

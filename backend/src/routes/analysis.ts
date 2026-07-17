@@ -1,10 +1,11 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { analyzeAttempt } from '../services/ai.service';
+import { asyncHandler } from '../lib/async-handler';
 
 const router = Router();
 
-router.post('/:attemptId', async (req: Request, res: Response) => {
+router.post('/:attemptId', asyncHandler(async (req: Request, res: Response) => {
   const attemptId = parseInt(req.params.attemptId);
 
   try {
@@ -42,6 +43,6 @@ router.post('/:attemptId', async (req: Request, res: Response) => {
     console.error('Analysis failed:', error);
     res.status(502).json({ error: `Analysis failed: ${error?.message || 'unknown error'}`, status: 502 });
   }
-});
+}));
 
 export default router;
