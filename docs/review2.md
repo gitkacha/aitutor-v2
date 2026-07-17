@@ -18,6 +18,15 @@ these can be claimed in `docs/worklog.md` without collisions.
 > verified live with a real gpt-4o-mini analysis that graded against the worksheet prompt.
 > The Medium/Low findings below remain open; status tracking lives in `docs/worklog.md`.
 
+> **Update (2026-07-18, later):** **M6–M10 are fixed**, proven by `e2e/m6-m10.spec.ts`
+> (five tests, all watched RED first): the math test now shows a visible "couldn't save /
+> Try Again" panel (M6); demo writing worksheets follow the one-prompt-per-type model with
+> H4-consistent Prompt rows and a derived Admin label (M7); type averages cover only
+> analysed attempts (M8); the All Topics page lists only All Topics tests (M9); and
+> `POST /api/math/attempts` rejects malformed payloads — mismatched/non-integer/empty
+> arrays, duplicate or unknown question ids, unknown topicId — with 400s (M10).
+> Full suites: 47/47 e2e, 21/21 unit. Only the Low findings remain open.
+
 ---
 
 ## 1. State of the app

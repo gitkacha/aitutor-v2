@@ -23,10 +23,35 @@ router.post('/', asyncHandler(async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'questions and answers must be valid JSON arrays' });
   }
 
+  // Validate the payload beyond parseability (M10): silent acceptance of malformed data
+  // deflates scores and breaks the review page.
+  const isIntArray = (arr: unknown[]): boolean => arr.every((v) => Number.isInteger(v));
+  if (
+    questionIds.length === 0 ||
+    questionIds.length !== answerIndices.length ||
+    !isIntArray(questionIds) ||
+    !isIntArray(answerIndices)
+  ) {
+    return res.status(400).json({ error: 'questions and answers must be equal-length non-empty integer arrays' });
+  }
+  if (new Set(questionIds).size !== questionIds.length) {
+    return res.status(400).json({ error: 'questions must not contain duplicate ids' });
+  }
+  if (topicId != null) {
+    const topic = await prisma.mathTopic.findUnique({ where: { id: topicId } });
+    if (!topic) {
+      return res.status(400).json({ error: 'Unknown topicId' });
+    }
+  }
+
   const questionRecords = await prisma.mathQuestion.findMany({
     where: { id: { in: questionIds } },
     include: { topic: true },
   });
+
+  if (questionRecords.length !== questionIds.length) {
+    return res.status(400).json({ error: 'Unknown question id(s)' });
+  }
 
   const questionMap = new Map(questionRecords.map(q => [q.id, q]));
 
