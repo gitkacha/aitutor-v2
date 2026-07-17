@@ -18,11 +18,12 @@ every agent, on any model, without exception):
 
 ## Open
 
-- [ ] **L2** — Replace hand-rolled countdown timer and heatmap with mature libraries, per CLAUDE.md guidance (`docs/review.md` §Look & feel) — *claimed 2026-07-17, plan approved: timer → react-countdown (timestamp-driven); heatmap deliberately stays custom (semantic card grid; reviewer concurred)*
-- [ ] **W-5** — Minor sweep from `docs/review.md` §Minor: `postinstall` runs `migrate dev`; fallback prompt count mismatch (1 vs 3); `fetchJSON` sends Content-Type on GETs; math heatmap re-parses `topicBreakdown` per topic — *claimed 2026-07-17, plan approved*
+*(none — review backlog clear)*
 
 ## Done
 
+- [x] **W-5** — Minor sweep: `postinstall` → `prisma migrate deploy` (new `db:deploy`); `fetchJSON` sends Content-Type only on bodied requests (placeholder frontend suite replaced with real tests); math heatmap single-pass aggregation (`aggregateMathHeatmap`); fallback prompt count already superseded by H3's per-type generation — commit `e862c68` · proof: `frontend/src/__tests__/api.test.ts`, `backend/src/__tests__/math-heatmap-aggregate.test.ts`, fresh-db install simulation · user signed off 2026-07-17
+- [x] **L2** — Countdown now timestamp-driven via `react-countdown` (no drift, keeps counting in background tabs, survives Timer unmounts); heatmap deliberately stays custom (semantic card grid — reviewer concurred; exception recorded in CLAUDE.md) — commit `55c852c` · proof: `e2e/l2-timer.spec.ts` (clock-jump drift test) + 40/40 e2e regression net + live 0s-drift check · user signed off 2026-07-17
 - [x] **M5** — Heatmap conflated loading and error; now distinct states with Try Again, per-section on Dashboard (one failed subject no longer hides the other), Admin errors surfaced — commit `c51eea1` · proof: `e2e/m2-m3-m5.spec.ts` (M5 tests) + `docs/screenshots/m5-*` · user signed off 2026-07-17
 - [x] **M3** — Unknown topic filter on `GET /api/math/attempts` returned everything; now 404s like math-questions — commit `431fb16` · proof: `e2e/m2-m3-m5.spec.ts` (M3 tests) · user signed off 2026-07-17
 - [x] **M2** — All Topics test capped at 35 with stimulus groups kept whole and adjacent (`selectTestQuestions` unit shuffle); single-topic keeps full bank — commit `2689846` · proof: `e2e/m2-m3-m5.spec.ts` (M2 test) + `backend/src/__tests__/question-select.test.ts` · user signed off 2026-07-17
