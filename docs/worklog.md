@@ -18,7 +18,6 @@ every agent, on any model, without exception):
 
 ## Open
 
-- [ ] **W-8** — Visual stimuli for math questions: structured figure specs (protractor, line/bar/pie charts, grids, tables, compass, shapes, rotation, cards) rendered in practice/review/admin; generation emits + verifier audits stimuli; guardrail rejects visual references without figures; seed repair for stripped T5 images (protractor ×2, beach pie chart, Hettie line graph) — *claimed 2026-07-17, plan approved*
 - [ ] **M2** — "All Topics" test isn't capped at 35 questions, and shuffling splits stimulus groups (`docs/review.md` §Medium)
 - [ ] **M3** — `GET /api/math/attempts?topic=<bad-slug>` drops the filter and returns everything (`docs/review.md` §Medium)
 - [ ] **M5** — Heatmap shows "Loading…" forever on fetch errors; loading and error states conflated (`docs/review.md` §Medium)
@@ -27,6 +26,7 @@ every agent, on any model, without exception):
 
 ## Done
 
+- [x] **W-8** — Visual stimuli for math questions: structured figure specs (protractor, line/bar/pie charts, grids, tables, compass, shapes, rotation, cards) rendered in practice/review/admin; generation emits + verifier re-solves from stimuli; guardrail discards visual references without figures; seed repair from T5 images (10 questions); attempt-review stimulus display added; seed made re-runnable on live dbs — commit `67c13f6` · proof: `e2e/w8-visual-stimuli.spec.ts` (5 tests) + `backend/src/__tests__/stimulus.test.ts` + live screenshots (`docs/screenshots/w8-*`) · user signed off 2026-07-17
 - [x] **H3** — Multi-type writing worksheets kept only `typeIds[0]`; now one tailored prompt and one worksheet per selected type — commit `fcb3245` · proof: `e2e/h3-multitype-worksheet.spec.ts` (2 tests) + live screenshots · user signed off 2026-07-17
 - [x] **H1** — Empty-text auto-submit 400'd and stranded the student at 0:00; empty attempts now save, failures show a visible Try Again panel — commit `eb4e23a` · proof: `e2e/h1-empty-submit.spec.ts` (3 tests, incl. clock-driven 30-min expiry) + live screenshot · user signed off 2026-07-17
 - [x] **H2** — Async route errors bypassed the error middleware (a malformed body crashed the backend); all 24 handlers wrapped in `asyncHandler`, defensive JSON parsing — commit `7653b97` · proof: `e2e/h2-async-errors.spec.ts` (2 tests) + `backend/src/__tests__/async-handler.test.ts` · user signed off 2026-07-17
