@@ -22,7 +22,9 @@ export default function MathPracticeHome() {
         mathApi.getAttempts(),
         mathApi.getWorksheets(),
       ]).then(([a, ws]) => {
-        setAttempts(a);
+        // This page's history is All Topics tests only — single-topic practice has a
+        // topicId and worksheet attempts have source 'worksheet' (M9).
+        setAttempts(a.filter((x) => x.topicId === null && x.source === 'practice'));
         setWorksheets(ws);
       }).catch(() => {}).finally(() => setLoading(false));
       setTopic({
