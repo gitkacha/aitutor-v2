@@ -159,15 +159,23 @@ async function main() {
       create: typeData,
     });
 
-    await prisma.prompt.deleteMany({ where: { typeId: created.id } });
+    // Re-runnable on a live database: prompts referenced by attempts must survive
+    // (deleting them violates the Attempt→Prompt FK), and existing prompts are kept
+    // rather than duplicated.
+    await prisma.prompt.deleteMany({ where: { typeId: created.id, attempts: { none: {} } } });
 
     for (const promptText of prompts) {
-      await prisma.prompt.create({
-        data: {
-          text: promptText,
-          typeId: created.id,
-        },
+      const existing = await prisma.prompt.findFirst({
+        where: { text: promptText, typeId: created.id },
       });
+      if (!existing) {
+        await prisma.prompt.create({
+          data: {
+            text: promptText,
+            typeId: created.id,
+          },
+        });
+      }
     }
 
     console.log(`  ✓ ${typeData.name} (${prompts.length} prompts)`);
@@ -210,6 +218,121 @@ interface MathQSeed {
   percentCorrect: number;
   stimulusGroup?: string;
 }
+
+// Structured visual stimuli (W-8) — parameters recovered from the T5-Maths reference
+// paper (docs/superpowers/plans/T5-Maths.pdf), whose images were stripped at import.
+const STIM = {
+  protractorCircle: JSON.stringify({
+    version: 1,
+    text: 'The circle with the cut-out section is placed on the protractor.',
+    figures: [{ kind: 'protractor', rays: [15, 115] }],
+  }),
+  protractorTriangles: JSON.stringify({
+    version: 1,
+    text: 'Two triangles are placed on the protractor. Triangle A sits between the left pair of rays, Triangle B between the right pair.',
+    figures: [{ kind: 'protractor', rays: [20, 50, 125, 160], joinPairs: [[20, 50], [125, 160]] }],
+  }),
+  beachPie: JSON.stringify({
+    version: 1,
+    text: 'Number of beach visitors categorised by age.',
+    figures: [{
+      kind: 'pie-chart',
+      sectors: [
+        { label: 'Under 20', percent: 25, showPercent: false },
+        { label: '21 to 40', percent: 40, showPercent: false },
+        { label: '41 to 60', percent: 20 },
+        { label: 'Above 60', percent: 15 },
+      ],
+    }],
+  }),
+  budgetPie: JSON.stringify({
+    version: 1,
+    text: "Jeremy's business expenses. Sector sizes are drawn to scale; the Overhead amount is not labelled.",
+    figures: [{
+      kind: 'pie-chart',
+      sectors: [
+        { label: 'Rent', percent: 28, showPercent: false },
+        { label: 'Electricity', percent: 13, showPercent: false },
+        { label: 'Taxes', percent: 35, showPercent: false },
+        { label: 'Overhead', percent: 24, showPercent: false },
+      ],
+    }],
+  }),
+  hettieGraph: JSON.stringify({
+    version: 1,
+    text: 'The following line graph details the time and distance that Hettie travels by bicycle in a day.',
+    figures: [{
+      kind: 'line-chart',
+      title: 'Distance Travelled by Hettie in a Day',
+      xLabel: 'Time of day',
+      yLabel: 'Distance travelled (km)',
+      points: [
+        { x: '9 am', y: 0 }, { x: '10 am', y: 2 }, { x: '11 am', y: 2 },
+        { x: '12 pm', y: 12 }, { x: '1 pm', y: 20 }, { x: '2 pm', y: 32 },
+        { x: '3 pm', y: 40 }, { x: '4 pm', y: 40 }, { x: '5 pm', y: 48 },
+      ],
+    }],
+  }),
+  tilePattern: JSON.stringify({
+    version: 1,
+    text: 'Black tiles placed so far (columns A to F):',
+    figures: [{
+      kind: 'grid',
+      rows: 4,
+      cols: 6,
+      rowLabels: ['1', '2', '3', '4'],
+      colLabels: ['A', 'B', 'C', 'D', 'E', 'F'],
+      filled: [[1, 0], [0, 1], [2, 2], [3, 3], [1, 4], [0, 5]],
+    }],
+  }),
+  unitSquares: JSON.stringify({
+    version: 1,
+    text: 'The original shape, and the new shape formed after rearranging the identical squares:',
+    figures: [
+      {
+        kind: 'grid', rows: 3, cols: 4,
+        filled: [[0, 0], [0, 1], [0, 2], [0, 3], [1, 0], [1, 1], [1, 2], [1, 3], [2, 0], [2, 1], [2, 2], [2, 3]],
+      },
+      {
+        kind: 'grid', rows: 4, cols: 6,
+        filled: [[0, 2], [0, 5], [1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [2, 0], [2, 1], [3, 0], [3, 1], [3, 2]],
+      },
+    ],
+  }),
+  rotationShape: JSON.stringify({
+    version: 1,
+    text: 'The shape on the left is rotated to create the shape on the right.',
+    figures: [{ kind: 'rotation', shape: 'flag', beforeDeg: 0, afterDeg: 225 }],
+  }),
+  compassNorth: JSON.stringify({
+    version: 1,
+    text: 'The compass drawn on the playground ground. Chris starts facing North.',
+    figures: [{ kind: 'compass', facing: 'N' }],
+  }),
+  fractionCards: JSON.stringify({
+    version: 1,
+    text: "Shona's cards:",
+    figures: [{ kind: 'cards', values: ['4/5', '0.15', '1/3', '5/8', '0.40', '1 1/5', '1.25'] }],
+  }),
+  greyArrowShape: JSON.stringify({
+    version: 1,
+    text: 'The grey shape (all measurements are shown; 64 mm = 6.4 cm, 30 mm = 3.0 cm):',
+    figures: [{
+      kind: 'shape',
+      unit: 'cm',
+      vertices: [
+        [0, 0], [3.5, 0], [3.5, 6.4], [0.5, 6.4], [6, 9.67], [11.5, 6.4],
+        [8.5, 6.4], [8.5, 0], [12, 0], [12, 12], [0, 12],
+      ],
+      sideLabels: [
+        { side: 0, label: '3.5 cm' }, { side: 1, label: '64 mm' }, { side: 2, label: '30 mm' },
+        { side: 3, label: '64 mm' }, { side: 4, label: '64 mm' }, { side: 5, label: '30 mm' },
+        { side: 6, label: '64 mm' }, { side: 7, label: '3.5 cm' }, { side: 8, label: '12 cm' },
+        { side: 9, label: '12 cm' }, { side: 10, label: '12 cm' },
+      ],
+    }],
+  }),
+};
 
 const MATH_QUESTIONS: MathQSeed[] = [
   {
@@ -259,6 +382,7 @@ const MATH_QUESTIONS: MathQSeed[] = [
     correctIndex: 4,
     explanation: 'The size of the smaller angle as shown on the protractor is 115° − 15° = 100°. Since a full circle is 360°, the size of the larger angle must be 360° − 100° = 260°. Therefore, the answer is Option E.',
     percentCorrect: 66.32,
+    stimulusGroup: STIM.protractorCircle,
   },
   {
     topicSlug: 'arithmetic',
@@ -315,6 +439,7 @@ const MATH_QUESTIONS: MathQSeed[] = [
     correctIndex: 2,
     explanation: 'The next 3 black tiles are in G3, H4, I2. Therefore, the answer is Option C.',
     percentCorrect: 77.89,
+    stimulusGroup: STIM.tilePattern,
   },
   {
     topicSlug: 'number-place-values',
@@ -347,6 +472,7 @@ const MATH_QUESTIONS: MathQSeed[] = [
     correctIndex: 3,
     explanation: 'Convert all fractions to decimals: 4/5 = 0.80, 1/3 = 0.33, 5/8 = 0.625, 1 1/5 = 1.20. Ascending order: 0.15, 0.33, 0.40, 0.625, 0.80, 1.20, 1.25. The middle number is 0.625 = 5/8. Therefore, the answer is Option D.',
     percentCorrect: 58.35,
+    stimulusGroup: STIM.fractionCards,
   },
   {
     topicSlug: 'lowest-common-multiple',
@@ -371,6 +497,7 @@ const MATH_QUESTIONS: MathQSeed[] = [
     correctIndex: 0,
     explanation: 'Convert mm to cm: 64 mm = 6.4 cm, 30 mm = 3.0 cm. Perimeter = 12 + 12 + 12 + 3.5 + 6.4 + 3.0 + 6.4 + 6.4 + 3.0 + 6.4 + 3.5 = 74.6 cm. Therefore, the answer is Option A.',
     percentCorrect: 35.22,
+    stimulusGroup: STIM.greyArrowShape,
   },
   {
     topicSlug: 'directions',
@@ -379,6 +506,7 @@ const MATH_QUESTIONS: MathQSeed[] = [
     correctIndex: 4,
     explanation: 'He starts at North. 3 half turns clockwise = 1 half turn clockwise → He faces South. 5 quarter turns anticlockwise = 1 quarter turn anticlockwise → He faces East. Therefore, the answer is Option E.',
     percentCorrect: 50.13,
+    stimulusGroup: STIM.compassNorth,
   },
   {
     topicSlug: 'weight',
@@ -395,6 +523,7 @@ const MATH_QUESTIONS: MathQSeed[] = [
     correctIndex: 2,
     explanation: 'Total of known values: 27 + 13 + 34 = 74. Based on the visual size of the Overhead slice (almost a third of the pie), 23 seems most reasonable, as it brings the total close to 100 and the portion size fits well with the visual. Therefore, the answer is Option C.',
     percentCorrect: 67.35,
+    stimulusGroup: STIM.budgetPie,
   },
   {
     topicSlug: 'arithmetic',
@@ -411,7 +540,7 @@ const MATH_QUESTIONS: MathQSeed[] = [
     correctIndex: 0,
     explanation: 'From 9 am to 12 pm, Hettie travelled 2 + 10 = 12 km. Therefore, the answer is Option A.',
     percentCorrect: 34.70,
-    stimulusGroup: 'The following line graph details the time and distance that Hettie travels by bicycle in a day. The graph shows distance travelled (km) on the y-axis and time of day on the x-axis from 9 am to 5 pm. Key points: at 9 am distance = 0 km, at 10 am distance = 2 km, at 11 am distance = 2 km, at 12 pm distance = 12 km, at 1 pm distance = 20 km, at 2 pm distance = 32 km, at 3 pm distance = 40 km, at 4 pm distance = 40 km, at 5 pm distance = 48 km.',
+    stimulusGroup: STIM.hettieGraph,
   },
   {
     topicSlug: 'speed-distance-time',
@@ -420,7 +549,7 @@ const MATH_QUESTIONS: MathQSeed[] = [
     correctIndex: 1,
     explanation: 'Time when Hettie\'s bicycle was stationary: 10:00 am – 11:00 am (1 hour), 3:00 pm – 4:00 pm (1 hour). Total time bicycle was stationary = 1 + 1 = 2 hours. Therefore, the answer is Option B.',
     percentCorrect: 49.87,
-    stimulusGroup: 'The following line graph details the time and distance that Hettie travels by bicycle in a day. The graph shows distance travelled (km) on the y-axis and time of day on the x-axis from 9 am to 5 pm. Key points: at 9 am distance = 0 km, at 10 am distance = 2 km, at 11 am distance = 2 km, at 12 pm distance = 12 km, at 1 pm distance = 20 km, at 2 pm distance = 32 km, at 3 pm distance = 40 km, at 4 pm distance = 40 km, at 5 pm distance = 48 km.',
+    stimulusGroup: STIM.hettieGraph,
   },
   {
     topicSlug: 'speed-distance-time',
@@ -429,7 +558,7 @@ const MATH_QUESTIONS: MathQSeed[] = [
     correctIndex: 2,
     explanation: '(a) Speed 9 am–12 pm = (2+0+10)/3 = 4 km/h. (b) Speed 10 am–1 pm = (0+10+8)/3 = 6 km/h. (c) Speed 11 am–1 pm = (10+8)/2 = 9 km/h. (d) Speed 11 am–2 pm = (10+8+12)/3 = 10 km/h. (e) Speed 1 pm–5 pm = (12+8+0+8)/4 = 7 km/h. Therefore, the answer is Option C.',
     percentCorrect: 30.33,
-    stimulusGroup: 'The following line graph details the time and distance that Hettie travels by bicycle in a day. The graph shows distance travelled (km) on the y-axis and time of day on the x-axis from 9 am to 5 pm. Key points: at 9 am distance = 0 km, at 10 am distance = 2 km, at 11 am distance = 2 km, at 12 pm distance = 12 km, at 1 pm distance = 20 km, at 2 pm distance = 32 km, at 3 pm distance = 40 km, at 4 pm distance = 40 km, at 5 pm distance = 48 km.',
+    stimulusGroup: STIM.hettieGraph,
   },
   {
     topicSlug: 'speed-distance-time',
@@ -438,7 +567,7 @@ const MATH_QUESTIONS: MathQSeed[] = [
     correctIndex: 3,
     explanation: 'Average speed over whole day = (2 + 0 + 10 + 8 + 12 + 8 + 0 + 8) / 8 = 48 / 8 = 6 km/h. Therefore, the answer is Option D.',
     percentCorrect: 36.25,
-    stimulusGroup: 'The following line graph details the time and distance that Hettie travels by bicycle in a day. The graph shows distance travelled (km) on the y-axis and time of day on the x-axis from 9 am to 5 pm. Key points: at 9 am distance = 0 km, at 10 am distance = 2 km, at 11 am distance = 2 km, at 12 pm distance = 12 km, at 1 pm distance = 20 km, at 2 pm distance = 32 km, at 3 pm distance = 40 km, at 4 pm distance = 40 km, at 5 pm distance = 48 km.',
+    stimulusGroup: STIM.hettieGraph,
   },
   {
     topicSlug: 'perimeter',
@@ -447,6 +576,7 @@ const MATH_QUESTIONS: MathQSeed[] = [
     correctIndex: 1,
     explanation: 'Since a shape made of 12 identical squares has an area of 48 cm², the area of each small square must be 48 ÷ 12 = 4 cm². Since the area of a small square is 4 cm², each side must be √4 = 2 cm. Thus, the perimeter of the new shape must be 24 × 2 = 48 cm. Therefore, the answer is Option B.',
     percentCorrect: 42.67,
+    stimulusGroup: STIM.unitSquares,
   },
   {
     topicSlug: 'rotation',
@@ -455,6 +585,7 @@ const MATH_QUESTIONS: MathQSeed[] = [
     correctIndex: 1,
     explanation: 'The shape can either be rotated 135° anti-clockwise or 225° clockwise. Therefore, the answer is Option B.',
     percentCorrect: 65.55,
+    stimulusGroup: STIM.rotationShape,
   },
   {
     topicSlug: 'fractions',
@@ -479,6 +610,7 @@ const MATH_QUESTIONS: MathQSeed[] = [
     correctIndex: 4,
     explanation: 'Statement 1: From the pie graph, there is less than 50% of visitors aged between 21 and 40 at the beach. This statement is incorrect. Statement 2: The sector for visitors under 20 has an angle of 90°, meaning the sector represents 25% of the total pie chart. This statement is correct. Statement 3: If there were 18 visitors above the age of 60, then 15% would represent 18 visitors. Thus, 100% would represent 18 ÷ 0.15 = 120 visitors. This statement is correct. Therefore, the answer is Option E.',
     percentCorrect: 55.78,
+    stimulusGroup: STIM.beachPie,
   },
   {
     topicSlug: 'protractor-skills',
@@ -487,6 +619,7 @@ const MATH_QUESTIONS: MathQSeed[] = [
     correctIndex: 4,
     explanation: 'Triangle A: 50° − 20° = 30°. Triangle B: 160° − 125° = 35°. Total = 30° + 35° = 65°. 180° − 65° = 115°. Therefore, the answer is Option E.',
     percentCorrect: 43.19,
+    stimulusGroup: STIM.protractorTriangles,
   },
   {
     topicSlug: 'algebra',
@@ -556,6 +689,13 @@ async function seedMath() {
           explanation: q.explanation,
           percentCorrect: q.percentCorrect,
         },
+      });
+    } else if (q.stimulusGroup && existing.stimulusGroupId !== stimulusGroupMap[q.stimulusGroup]) {
+      // Re-seeding an existing database: attach/upgrade the stimulus (W-8 repair) without
+      // touching anything else about the question.
+      await prisma.mathQuestion.update({
+        where: { id: existing.id },
+        data: { stimulusGroupId: stimulusGroupMap[q.stimulusGroup] },
       });
     }
     console.log(`  ✓ Q${i + 1}: ${q.topicSlug} (${q.percentCorrect}%)`);

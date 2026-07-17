@@ -1,4 +1,5 @@
 import prisma from '../lib/prisma';
+import { validateStimulus, StimulusSpec } from '../lib/stimulus';
 
 // OpenAI API per CLAUDE.md. OPENAI_BASE_URL is overridable so tests can point the
 // service at a local stub; production use needs no configuration beyond the API key.
@@ -216,7 +217,12 @@ interface GeneratedMathQuestion {
   explanation: string;
   topicSlug: string;
   topicName: string;
+  stimulus?: StimulusSpec;
 }
+
+// Question text that points at a visual ("shown below", "the graph") is unanswerable
+// unless the question actually carries a figure (W-8).
+const VISUAL_REFERENCE = /(shown|below|above|diagram|figure|picture|graph|chart|protractor|image)/i;
 
 // One LLM call reliably produces only a handful of long-form questions before drifting
 // or stopping short (35 asked, ~25 delivered), so generation runs in small batches and
@@ -246,8 +252,11 @@ function hasDistinctOptions(options: string[]): boolean {
 // same option the generator claimed. Catches self-inconsistent keys (e.g. an
 // explanation that computes 1/2 while the key points at 4/5).
 async function verifyQuestionKey(q: GeneratedMathQuestion): Promise<boolean> {
+  const stimulusBlock = q.stimulus
+    ? `\nStimulus shown to the student (structured figure data — solve using ONLY this data):\n${JSON.stringify(q.stimulus)}\n`
+    : '';
   const prompt = `You are independently solving a multiple-choice question to audit its answer key.
-
+${stimulusBlock}
 Question:
 ${q.questionText}
 
@@ -270,7 +279,7 @@ Solve the question yourself, step by step, then respond with ONLY a JSON object 
 }
 
 function isValidGeneratedQuestion(q: any, allowedSlugs: Set<string>): boolean {
-  return (
+  const structurallyValid =
     q &&
     typeof q.questionText === 'string' &&
     q.questionText.length > 0 &&
@@ -282,8 +291,14 @@ function isValidGeneratedQuestion(q: any, allowedSlugs: Set<string>): boolean {
     q.correctIndex < 5 &&
     typeof q.explanation === 'string' &&
     typeof q.topicSlug === 'string' &&
-    allowedSlugs.has(q.topicSlug)
-  );
+    allowedSlugs.has(q.topicSlug);
+  if (!structurallyValid) return false;
+
+  // A stimulus, if present, must be a well-formed figure spec.
+  if (q.stimulus !== undefined && !validateStimulus(q.stimulus)) return false;
+  // Guardrail: a question that references a visual must actually carry one.
+  if (q.stimulus === undefined && VISUAL_REFERENCE.test(q.questionText)) return false;
+  return true;
 }
 
 async function generateQuestionBatch(topics: MathTopicForGen[], count: number): Promise<any[]> {
@@ -306,6 +321,26 @@ ${exemplars.map(e => `- ${e!.topic}: ${e!.percentCorrect}% correct (hard). Examp
 
 For each question, provide a detailed "Question Feedback" style explanation.
 
+VISUAL STIMULI. A question may include an optional "stimulus" field carrying structured
+figure data that the app renders as a real image (charts via a chart library, geometry via
+SVG). Use one when the topic naturally needs a visual (protractor readings, graphs, grids,
+shapes). Format: {"version":1,"text":"<lead-in sentence>","figures":[<figure>]} where a
+figure is ONE of:
+- {"kind":"protractor","rays":[20,50],"joinPairs":[[20,50]]} — rays at degree marks 0-180
+- {"kind":"line-chart","title":"...","xLabel":"...","yLabel":"...","points":[{"x":"9 am","y":0},...]} (same shape for "bar-chart")
+- {"kind":"pie-chart","sectors":[{"label":"Rent","percent":27,"showPercent":false},...]} — percents must sum to 100
+- {"kind":"table","columns":["Size","Price"],"rows":[["Small",6],...]}
+- {"kind":"grid","rows":4,"cols":6,"filled":[[0,2],[1,1]],"rowLabels":["1","2","3","4"],"colLabels":["A","B","C","D","E","F"]}
+- {"kind":"compass","facing":"N"}
+- {"kind":"shape","unit":"cm","vertices":[[0,0],[12,0],[12,12],[0,12]],"sideLabels":[{"side":0,"label":"12 cm"}]}
+- {"kind":"rotation","shape":"arrow","beforeDeg":0,"afterDeg":225}
+- {"kind":"cards","values":["4/5","0.15","1/3"]}
+
+HARD RULE: every question must be fully answerable from its questionText plus its own
+stimulus. NEVER write "shown below", "in the diagram", "on the protractor" or similar
+unless the question includes a stimulus containing that exact figure and all data needed
+to solve it. Questions violating this are discarded.
+
 Respond with ONLY a JSON array (no markdown, no code fences) in this exact format:
 [
   {
@@ -314,7 +349,8 @@ Respond with ONLY a JSON array (no markdown, no code fences) in this exact forma
     "correctIndex": 0,
     "explanation": "Step-by-step reasoning. Therefore, the answer is Option X.",
     "topicSlug": "<slug of this question's topic, one of: ${topics.map(t => t.slug).join(', ')}>",
-    "topicName": "<name of this question's topic>"
+    "topicName": "<name of this question's topic>",
+    "stimulus": <optional, as described above>
   }
 ]
 
@@ -358,6 +394,7 @@ export async function generateMathWorksheetQuestions(
           explanation: q.explanation,
           topicSlug: q.topicSlug,
           topicName: nameBySlug.get(q.topicSlug)!,
+          ...(q.stimulus !== undefined ? { stimulus: q.stimulus } : {}),
         }));
 
       // Audit every candidate's answer key in parallel; keep only confirmed ones.

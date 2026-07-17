@@ -18,6 +18,7 @@ every agent, on any model, without exception):
 
 ## Open
 
+- [ ] **W-8** — Visual stimuli for math questions: structured figure specs (protractor, line/bar/pie charts, grids, tables, compass, shapes, rotation, cards) rendered in practice/review/admin; generation emits + verifier audits stimuli; guardrail rejects visual references without figures; seed repair for stripped T5 images (protractor ×2, beach pie chart, Hettie line graph) — *claimed 2026-07-17, plan approved*
 - [ ] **M2** — "All Topics" test isn't capped at 35 questions, and shuffling splits stimulus groups (`docs/review.md` §Medium)
 - [ ] **M3** — `GET /api/math/attempts?topic=<bad-slug>` drops the filter and returns everything (`docs/review.md` §Medium)
 - [ ] **M5** — Heatmap shows "Loading…" forever on fetch errors; loading and error states conflated (`docs/review.md` §Medium)

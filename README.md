@@ -27,6 +27,7 @@ Open **http://localhost:5173** in your browser.
 - 5-option multiple choice, matching the real trial test format
 - Timed proportionally (~69 seconds per question, max 40 minutes)
 - Stimulus groups for shared-context questions (e.g. a line graph with 4 related questions)
+- **Rendered visual stimuli** — questions that need a picture show a real one: protractors, line/bar/pie charts, tables, grids (magic squares, tile patterns), compass roses, labelled shapes, rotated-shape pairs, and value cards, all rendered from structured figure data (charts via Recharts, geometry via parametric SVG). AI-generated worksheet questions can carry the same figures, the answer-key verifier re-solves each question from exactly what the student sees, and questions referencing a visual without providing one are discarded and regenerated. Upgrading an existing install: run `npm run db:seed` once to attach the repaired figures to the built-in question bank.
 - Instant scoring with per-topic breakdown
 - Full answer review with correct answers highlighted and worked explanations
 

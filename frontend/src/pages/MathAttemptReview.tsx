@@ -4,6 +4,7 @@ import { mathApi, MathAttempt } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
 import MathQuestionCard from '@/components/MathQuestionCard';
+import MathStimulusDisplay from '@/components/MathStimulusDisplay';
 
 export default function MathAttemptReview() {
   const { id } = useParams<{ id: string }>();
@@ -121,6 +122,11 @@ export default function MathAttemptReview() {
                 <span className="text-xs text-gray-400 ml-auto">{q.topic?.name || ''}</span>
               </div>
               <div className="p-4">
+                {q.stimulusGroup && (
+                  <div className="mb-4">
+                    <MathStimulusDisplay stimulus={q.stimulusGroup.stimulus} />
+                  </div>
+                )}
                 <MathQuestionCard
                   question={q}
                   selectedIndex={studentAnswer}

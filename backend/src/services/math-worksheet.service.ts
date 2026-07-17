@@ -1,5 +1,6 @@
 import { Prisma, PrismaClient } from '@prisma/client';
 import prisma from '../lib/prisma';
+import { validateStimulus, StimulusSpec } from '../lib/stimulus';
 
 export interface WorksheetQuestionJson {
   questionText: string;
@@ -8,6 +9,7 @@ export interface WorksheetQuestionJson {
   explanation: string;
   topicSlug: string;
   topicName?: string;
+  stimulus?: StimulusSpec;
 }
 
 type Db = PrismaClient | Prisma.TransactionClient;
@@ -23,7 +25,8 @@ export function validateWorksheetQuestions(questions: unknown): questions is Wor
     Number.isInteger(q.correctIndex) &&
     q.correctIndex >= 0 &&
     q.correctIndex < q.options.length &&
-    typeof q.topicSlug === 'string'
+    typeof q.topicSlug === 'string' &&
+    (q.stimulus === undefined || validateStimulus(q.stimulus))
   );
 }
 
@@ -43,6 +46,15 @@ export async function createWorksheetQuestionRows(
   }
 
   for (const q of questions) {
+    // A structured stimulus (W-8) is persisted as its own MathStimulusGroup row so the
+    // practice and review screens render it through the same path as seeded stimuli.
+    let stimulusGroupId: number | undefined;
+    if (q.stimulus) {
+      const group = await db.mathStimulusGroup.create({
+        data: { stimulus: JSON.stringify(q.stimulus) },
+      });
+      stimulusGroupId = group.id;
+    }
     await db.mathQuestion.create({
       data: {
         topicId: topicBySlug.get(q.topicSlug)!,
@@ -51,6 +63,7 @@ export async function createWorksheetQuestionRows(
         options: JSON.stringify(q.options),
         correctIndex: q.correctIndex,
         explanation: q.explanation,
+        ...(stimulusGroupId !== undefined ? { stimulusGroupId } : {}),
       },
     });
   }

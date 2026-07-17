@@ -6,6 +6,8 @@ import PendingWorksheets from '@/components/PendingWorksheets';
 import { api, mathApi, MathTopic, MathHeatmapEntry, GeneratedMathQuestion, Worksheet, MathWorksheet } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Shield, Plus, Database, Trash2, Calculator, FileText } from 'lucide-react';
+import StimulusFigure from '@/components/StimulusFigure';
+import { validateStimulus, Figure } from '@/lib/stimulus';
 
 type AdminTab = 'writing' | 'math';
 
@@ -479,6 +481,16 @@ export default function Admin() {
                     <div className="flex items-start gap-3">
                       <span className="text-sm font-bold text-gray-400 shrink-0 mt-0.5">Q{i + 1}.</span>
                       <div className="flex-1">
+                        {(q as any).stimulus && validateStimulus((q as any).stimulus) && (
+                          <div className="mb-3 space-y-2">
+                            {(q as any).stimulus.text && (
+                              <p className="text-sm text-gray-700 whitespace-pre-line">{(q as any).stimulus.text}</p>
+                            )}
+                            {(q as any).stimulus.figures.map((figure: Figure, fi: number) => (
+                              <StimulusFigure key={fi} figure={figure} />
+                            ))}
+                          </div>
+                        )}
                         <p className="text-sm text-gray-900 font-medium whitespace-pre-line">{q.questionText}</p>
                         <div className="mt-2 space-y-1">
                           {q.options.map((opt, oi) => (
