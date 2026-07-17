@@ -22,17 +22,42 @@ Mathematics phases and requirements are documented in `docs/superpowers/plans/Ma
 Each plan has its own final success criteria. Build in phase-order within each plan. Do not start a
 phase until every success criterion of the previous phase is demonstrably met.
 
+## Mandatory workflow — every work item, no exceptions
+
+Every work item — bug fix, feature, refactor, or behaviour-affecting change — follows these five
+steps **in this order**. This binds every agent, subagent, and agent team, on any model, in any
+session. No step may be skipped, merged, reordered, or self-waived; being confident, being a more
+capable model, or the change "being small" is never grounds for an exception. If in doubt whether
+something counts as a work item, it does.
+
+1. **Plan first and get approval.** Present a plan (use plan mode where available) and wait for the
+user's explicit approval. Do not write code and do not create worklog items before approval.
+2. **Create worklog items only after the plan is approved.** Add unchecked `- [ ]` items to
+`docs/worklog.md` (or claim existing ones) covering exactly the approved work, before any code.
+3. **Implement.** Only now write code, following the approved plan. Scope creep requires going back
+to step 1.
+4. **Verify and test thoroughly** using the "Verification and testing" sequence below (failing e2e
+test first, RED→GREEN, full suites, isolated e2e stack, live screenshot check for UI).
+5. **Manual testing and user sign-off before ticking.** After automated verification passes, hand
+over for manual testing: have the dev servers running, state what was changed and what to check,
+and **ask for the user's explicit approval**. Only after the user approves may the worklog item be
+ticked done (with commit hash + proof). Agent-declared success is never sufficient to tick a box.
+
+If a step cannot be completed (for example, the user is not available to approve), the item stays
+unchecked and the work is reported as unverified — never tick a box to tidy up.
+
 ## Work log
 
 `docs/worklog.md` is the single source of truth for work items (bugs, features, review findings).
-When asked to fix or build something: add an unchecked `- [ ]` item there (or claim the existing
-one) **before** writing code. Tick it only when the item is verified, recording the commit hash and
-the proof (the e2e spec or test run that demonstrates it). Never delete items — supersede with a
-note. Items completed in a session are part of that session's commit.
+Items are created at step 2 of the mandatory workflow — after plan approval, before code. Tick an
+item only at step 5 — after the user has manually tested and explicitly approved — recording the
+commit hash and the proof (the e2e spec or test run that demonstrates it). Never delete items —
+supersede with a note. Items completed in a session are part of that session's commit.
 
 ## Verification and testing — the definition of done
 
-No fix or feature is "done" on assertion alone. The required sequence:
+This is step 4 of the mandatory workflow. No fix or feature is "done" on assertion alone. The
+required sequence:
 
 1. **Reproduce or specify first.** Bug fixes and features start with a **failing Playwright e2e
 test** (`e2e/*.spec.ts`) that reproduces the problem or specifies the new behaviour. Watch it fail
@@ -44,8 +69,10 @@ tests) must both pass — not just the new spec.
 `dev.db` and never hitting the real OpenAI API.
 4. **Live check for UI changes.** Anything visual additionally gets a run of `npm run dev` and a
 screenshot review of the affected screens before being declared done.
-5. **Close the loop.** Tick the work-log item with commit hash + proof, and reference the proving
-spec in the commit message.
+5. **Close the loop.** Passing tests complete this step but do **not** close the item: hand over
+for manual testing and user sign-off (mandatory workflow step 5). Only after the user approves is
+the work-log item ticked with commit hash + proof, with the proving spec referenced in the commit
+message.
 
 ## High-level technical guidance
 

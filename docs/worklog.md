@@ -3,16 +3,20 @@
 The single source of truth for work items — bugs, features, and review findings. One checkbox
 per item.
 
-**Rules** (see also CLAUDE.md → "Work log"):
+**Rules** (see CLAUDE.md → "Mandatory workflow — every work item, no exceptions"; these bind
+every agent, on any model, without exception):
 
-- Before starting work, add an unchecked item here (or claim an existing one).
-- Tick an item **only with proof**: the e2e spec (or test run) that demonstrates it, plus the
-  commit hash. "It should work now" does not tick a box.
+- Items are created **only after the user has approved a plan** (workflow step 2), and always
+  **before any code is written**.
+- Tick an item **only after the user has manually tested and explicitly approved** (workflow
+  step 5), and only with proof: the e2e spec (or test run) that demonstrates it, plus the commit
+  hash. Passing tests alone, or "it should work now", does not tick a box.
 - Never delete items; superseded ones get a strike-through note instead.
 - IDs from `docs/review.md` are reused (C/H/M/L/T). New items get sequential `W-n` IDs.
 
 ## Open
 
+- [ ] **W-7** — Make the five-step workflow (plan approval → worklog items → implement → verify → manual test + user sign-off before ticking) mandatory in CLAUDE.md and worklog rules — awaiting user review/approval per the rule itself
 - [ ] **H1** — Auto-submit with an empty writing attempt 400s and strands the student (`docs/review.md` §High)
 - [ ] **H2** — Async route errors bypass the Express error middleware; unhandled failures hang requests (`docs/review.md` §High)
 - [ ] **H3** — Multi-type writing worksheets silently drop all but the first selected type (`docs/review.md` §High)
