@@ -18,38 +18,22 @@ every agent, on any model, without exception):
 
 ## Open
 
-- [ ] **L3** — Writing routes 500 on non-numeric ids (`GET /api/attempts/:id`,
-  `POST /api/analysis/:attemptId`); guard → 400. Proof: `e2e/l3-l14.spec.ts` (L3 test)
-- [ ] **L4** — ScoreHistory swallows fetch errors into the empty state; add M5-style error
-  panel with retry, fix always-appended ellipsis and redundant ternary.
-  Proof: `e2e/l3-l14.spec.ts` (L4 test)
-- [ ] **L5** — Unguarded `JSON.parse` of worksheet JSON in five components; shared
-  `parseJsonArray` helper. Proof: `frontend/src/__tests__/parse.test.ts`
-- [ ] **L6** — Heatmap shows "Loading…" for genuinely empty data; split loading vs empty,
-  give Admin math heatmap its missing loading prop. Proof: `e2e/l3-l14.spec.ts` (L6 test)
-- [ ] **L7** — Timer `running` prop can pause but never resume; contract narrowed to one-way
-  (exam clock never pauses) with an explanatory comment. Docs-only.
-- [ ] **L8** — Sidebar fetches both full attempt lists on every navigation just to count
-  sessions, and demo attempts inflate the momentum ring; new `GET /api/stats`
-  (non-demo `sessionsThisWeek`), sidebar uses it. Proof: `e2e/l3-l14.spec.ts` (L8 tests)
-- [ ] **L9** — Backend `tsc --noEmit` fails (TS6059 rootDir/prisma); fix tsconfig, add
-  `typecheck` scripts to both workspaces + root. Proof: `npm run typecheck` passes.
-- [ ] **L10** — Math worksheet titles use slugs; build from topic names via unit-tested
-  helper. (Discoverability half: no change — the All Topics page lists every worksheet.)
-  Proof: `frontend/src/__tests__/math-worksheet-title.test.ts`
-- [ ] **L11** — Frontend `GeneratedMathQuestion` lacks `stimulus`; add the typed field, drop
-  `(q as any)` casts in Admin. Proof: typecheck + w8 e2e regression.
-- [ ] **L12** — Error middleware leaks raw internal messages and always 500s; honour
-  `err.status` (malformed JSON → 400), generic message for true 500s.
-  Proof: `e2e/l3-l14.spec.ts` (L12 tests)
-- [ ] **L13** — MathQuestionCard renders placeholder A–E options on parse failure; render an
-  explicit error instead. Proof: `frontend/src/__tests__/parse.test.ts` (parseOptions)
-- [ ] **L14** — Polish sweep: worksheet save 400 on types/prompts count mismatch;
-  `timeTaken == null` rejection; drop `|| 10` fallback + hardcoded "20"; AttemptDetail
-  spinner label; demo determinism + unused var; grid label-length validation in both
-  stimulus libs. Proof: `e2e/l3-l14.spec.ts` (L14 test) + `stimulus.test.ts` additions
+*(none — review backlog clear: all review.md and review2.md findings closed)*
 
 ## Done
+
+- [x] **L14** — Polish sweep: worksheet save 400s on types/prompts count mismatch, `timeTaken == null` rejected, `|| 10` fallback and hardcoded "20 topic categories" removed, AttemptDetail spinner label fixed, demo data fully deterministic, grid label-length validation in both stimulus libs — commits `c95edf4` (backend), `27eb5a8` (frontend) · proof: `e2e/l3-l14.spec.ts` (L14 test) + `stimulus.test.ts` grid-label cases · user signed off 2026-07-18
+- [x] **L13** — MathQuestionCard rendered placeholder A–E options on parse failure; corrupt options now show an explicit error via `parseOptions` — commit `27eb5a8` · proof: `frontend/src/__tests__/parse.test.ts` · user signed off 2026-07-18
+- [x] **L12** — Error middleware leaked raw internals and always 500'd; now honours `err.status` (malformed JSON → 400) and returns a generic message for true 500s — commit `c95edf4` · proof: `e2e/l3-l14.spec.ts` (L12 test) · user signed off 2026-07-18
+- [x] **L11** — `GeneratedMathQuestion.stimulus` typed; `(q as any)` casts removed from Admin — commit `27eb5a8` · proof: typecheck + w8 e2e regression · user signed off 2026-07-18
+- [x] **L10** — Math worksheet titles now use topic names via `mathWorksheetTitle()`; discoverability half needed no change (the All Topics page lists every worksheet) — commit `27eb5a8` · proof: `frontend/src/__tests__/math-worksheet-title.test.ts` · user signed off 2026-07-18
+- [x] **L9** — Backend typecheck fixed (tsconfig rootDir dropped; `@types/express` pinned to the Express 4 major, which the working typecheck surfaced); `typecheck` scripts added to both workspaces + root — commit `c95edf4` · proof: `npm run typecheck` passes · user signed off 2026-07-18
+- [x] **L8** — Sidebar fetched both full attempt lists per navigation and demo attempts inflated the momentum ring; new `GET /api/stats` (non-demo weekly count), sidebar uses it — commits `c95edf4`/`27eb5a8` · proof: `e2e/l3-l14.spec.ts` (L8 tests) + live check (stats unchanged through a 44-attempt demo load) · user signed off 2026-07-18
+- [x] **L7** — Timer `running` contract narrowed to one-way with rationale (the exam clock never pauses; resume would offset the fixed end timestamp) — commit `27eb5a8` · docs-only · user signed off 2026-07-18
+- [x] **L6** — Empty heatmap data no longer renders as an eternal load; "No heatmap data available." + Admin math heatmap loading prop — commit `27eb5a8` · proof: `e2e/l3-l14.spec.ts` (L6 test) + `docs/screenshots/l6-heatmap-empty.png` · user signed off 2026-07-18
+- [x] **L5** — Unguarded `JSON.parse` of worksheet JSON in five components; shared `parseJsonArray` guards them all — commit `27eb5a8` · proof: `frontend/src/__tests__/parse.test.ts` · user signed off 2026-07-18
+- [x] **L4** — ScoreHistory swallowed fetch errors into the empty state; error panel with retry, truncation-only ellipsis, ternary cleanup — commit `27eb5a8` · proof: `e2e/l3-l14.spec.ts` (L4 test) + `docs/screenshots/l4-history-error.png` · user signed off 2026-07-18
+- [x] **L3** — Writing routes 500'd on non-numeric ids; now 400 like the math routes — commit `c95edf4` · proof: `e2e/l3-l14.spec.ts` (L3 test) · user signed off 2026-07-18
 
 - [x] **M10** — `POST /api/math/attempts` trusted the client payload (mismatched/non-integer/empty arrays, duplicate or unknown question ids accepted; unknown topicId → 500 FK error); all now rejected with 400s, valid payloads score as before — commit `99719b2` · proof: `e2e/m6-m10.spec.ts` (M10 test: six bad payloads 400, valid 201 with correct score) · user signed off 2026-07-18
 - [x] **M9** — All Topics page claimed every math attempt as its history/average; now filtered to `topicId === null && source === 'practice'` — commit `d2ebe55` · proof: `e2e/m6-m10.spec.ts` (M9 test) + `docs/screenshots/m9-all-topics-history.png` · user signed off 2026-07-18
