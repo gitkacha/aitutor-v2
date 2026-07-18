@@ -18,7 +18,36 @@ every agent, on any model, without exception):
 
 ## Open
 
-*(none — review2's Low findings (L3–L14) are not yet claimed; see docs/review2.md)*
+- [ ] **L3** — Writing routes 500 on non-numeric ids (`GET /api/attempts/:id`,
+  `POST /api/analysis/:attemptId`); guard → 400. Proof: `e2e/l3-l14.spec.ts` (L3 test)
+- [ ] **L4** — ScoreHistory swallows fetch errors into the empty state; add M5-style error
+  panel with retry, fix always-appended ellipsis and redundant ternary.
+  Proof: `e2e/l3-l14.spec.ts` (L4 test)
+- [ ] **L5** — Unguarded `JSON.parse` of worksheet JSON in five components; shared
+  `parseJsonArray` helper. Proof: `frontend/src/__tests__/parse.test.ts`
+- [ ] **L6** — Heatmap shows "Loading…" for genuinely empty data; split loading vs empty,
+  give Admin math heatmap its missing loading prop. Proof: `e2e/l3-l14.spec.ts` (L6 test)
+- [ ] **L7** — Timer `running` prop can pause but never resume; contract narrowed to one-way
+  (exam clock never pauses) with an explanatory comment. Docs-only.
+- [ ] **L8** — Sidebar fetches both full attempt lists on every navigation just to count
+  sessions, and demo attempts inflate the momentum ring; new `GET /api/stats`
+  (non-demo `sessionsThisWeek`), sidebar uses it. Proof: `e2e/l3-l14.spec.ts` (L8 tests)
+- [ ] **L9** — Backend `tsc --noEmit` fails (TS6059 rootDir/prisma); fix tsconfig, add
+  `typecheck` scripts to both workspaces + root. Proof: `npm run typecheck` passes.
+- [ ] **L10** — Math worksheet titles use slugs; build from topic names via unit-tested
+  helper. (Discoverability half: no change — the All Topics page lists every worksheet.)
+  Proof: `frontend/src/__tests__/math-worksheet-title.test.ts`
+- [ ] **L11** — Frontend `GeneratedMathQuestion` lacks `stimulus`; add the typed field, drop
+  `(q as any)` casts in Admin. Proof: typecheck + w8 e2e regression.
+- [ ] **L12** — Error middleware leaks raw internal messages and always 500s; honour
+  `err.status` (malformed JSON → 400), generic message for true 500s.
+  Proof: `e2e/l3-l14.spec.ts` (L12 tests)
+- [ ] **L13** — MathQuestionCard renders placeholder A–E options on parse failure; render an
+  explicit error instead. Proof: `frontend/src/__tests__/parse.test.ts` (parseOptions)
+- [ ] **L14** — Polish sweep: worksheet save 400 on types/prompts count mismatch;
+  `timeTaken == null` rejection; drop `|| 10` fallback + hardcoded "20"; AttemptDetail
+  spinner label; demo determinism + unused var; grid label-length validation in both
+  stimulus libs. Proof: `e2e/l3-l14.spec.ts` (L14 test) + `stimulus.test.ts` additions
 
 ## Done
 

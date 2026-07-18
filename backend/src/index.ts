@@ -8,6 +8,7 @@ import heatmapRouter from './routes/heatmap';
 import analysisRouter from './routes/analysis';
 import worksheetsRouter from './routes/worksheets';
 import demoRouter from './routes/demo';
+import statsRouter from './routes/stats';
 import mathTopicsRouter from './routes/math-topics';
 import mathQuestionsRouter from './routes/math-questions';
 import mathAttemptsRouter from './routes/math-attempts';
@@ -26,6 +27,7 @@ app.use('/api/heatmap', heatmapRouter);
 app.use('/api/analysis', analysisRouter);
 app.use('/api/worksheets', worksheetsRouter);
 app.use('/api/demo', demoRouter);
+app.use('/api/stats', statsRouter);
 
 app.use('/api/math/topics', mathTopicsRouter);
 app.use('/api/math/questions', mathQuestionsRouter);

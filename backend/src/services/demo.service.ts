@@ -55,17 +55,18 @@ export async function loadDemoData() {
     const prompt = await getDemoPrompt(type.id);
     if (!prompt) continue;
 
-    // Create 1-2 attempts per type
+    // Create 2 attempts per type — deterministic dates and durations so demo loads
+    // are reproducible (L14).
     for (let j = 0; j < 2; j++) {
-      const daysAgo = Math.floor(Math.random() * 28) + 1;
+      const daysAgo = ((i * 5 + j * 11) % 28) + 1;
       const startedAt = new Date(now - daysAgo * DAY - 1800 * 1000);
-      const finishedAt = new Date(startedAt.getTime() + (Math.floor(Math.random() * 1500) + 300) * 1000);
+      const finishedAt = new Date(startedAt.getTime() + (((i * 7 + j * 13) % 25) * 60 + 300) * 1000);
       const timeTaken = Math.floor((finishedAt.getTime() - startedAt.getTime()) / 1000);
 
       const analysisIndex = (i * 2 + j) % DEMO_ANALYSES.length;
       const analysis = DEMO_ANALYSES[analysisIndex];
 
-      const attempt = await prisma.attempt.create({
+      await prisma.attempt.create({
         data: {
           typeId: type.id,
           promptId: prompt.id,
@@ -161,22 +162,22 @@ export async function loadDemoData() {
   const mathTopics = await prisma.mathTopic.findMany();
   let mathAttemptCount = 0;
 
-  for (const topic of mathTopics) {
+  for (const [t, topic] of mathTopics.entries()) {
     const topicQuestions = await prisma.mathQuestion.findMany({
       where: { topicId: topic.id },
       take: 5,
     });
     if (topicQuestions.length === 0) continue;
 
-    const daysAgo = Math.floor(Math.random() * 28) + 1;
+    const daysAgo = ((t * 3) % 28) + 1;
     const startedAt = new Date(now - daysAgo * DAY - 1800 * 1000);
     const finishedAt = new Date(startedAt.getTime() + 1200 * 1000);
 
     const questionSubset = topicQuestions.slice(0, Math.min(5, topicQuestions.length));
     const qIds = questionSubset.map(q => q.id);
-    const answers = questionSubset.map(q => {
-      // Mix of correct and wrong answers
-      return Math.random() > 0.4 ? q.correctIndex : (q.correctIndex + 1) % 5;
+    // Deterministic mix of correct and wrong answers, varying per topic (L14).
+    const answers = questionSubset.map((q, qi) => {
+      return (qi + t) % 3 !== 0 ? q.correctIndex : (q.correctIndex + 1) % 5;
     });
     const score = questionSubset.filter((q, i) => answers[i] === q.correctIndex).length;
 

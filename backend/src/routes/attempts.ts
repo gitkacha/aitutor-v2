@@ -9,7 +9,7 @@ router.post('/', asyncHandler(async (req: Request, res: Response) => {
 
   // `text` may legitimately be an empty string — a timed-out attempt with nothing written.
   // A worksheet attempt needs no promptId: the worksheet's own prompt is resolved below (H4).
-  if (!typeId || (!promptId && !worksheetId) || typeof text !== 'string' || !startedAt || !finishedAt || timeTaken === undefined) {
+  if (!typeId || (!promptId && !worksheetId) || typeof text !== 'string' || !startedAt || !finishedAt || timeTaken == null) {
     res.status(400).json({ error: 'Missing required fields', status: 400 });
     return;
   }
@@ -77,8 +77,13 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
 }));
 
 router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) {
+    res.status(400).json({ error: 'Invalid attempt ID', status: 400 });
+    return;
+  }
   const attempt = await prisma.attempt.findUnique({
-    where: { id: parseInt(req.params.id) },
+    where: { id },
     include: { analysis: true, type: true, prompt: true },
   });
 

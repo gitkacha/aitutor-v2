@@ -49,9 +49,16 @@ router.post('/save', asyncHandler(async (req: Request, res: Response) => {
       orderBy: { name: 'asc' },
     });
 
+    // One prompt per resolved type — a mismatch means a bad request, never a silent
+    // duplication of prompts[0] (L14).
+    if (types.length === 0 || types.length !== prompts.length) {
+      res.status(400).json({ error: 'typeIds and prompts must resolve to the same count', status: 400 });
+      return;
+    }
+
     const worksheets = await Promise.all(
       types.map(async (type, i) => {
-        const promptText = prompts[i] ?? prompts[0];
+        const promptText = prompts[i];
         const worksheet = await prisma.worksheet.create({
           data: {
             title: types.length === 1 ? title : `Worksheet: ${type.name}`,

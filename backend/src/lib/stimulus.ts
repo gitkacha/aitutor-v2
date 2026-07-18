@@ -138,6 +138,16 @@ function validFigure(f: any): boolean {
         if (!Array.isArray(f.cellValues) || f.cellValues.length !== f.rows) return false;
         if (!f.cellValues.every((r: any) => Array.isArray(r) && r.length === f.cols)) return false;
       }
+      // Labels, when present, must cover the grid exactly (L14) — short arrays render
+      // blank headers.
+      if (f.rowLabels !== undefined) {
+        if (!Array.isArray(f.rowLabels) || f.rowLabels.length !== f.rows ||
+          !f.rowLabels.every((l: unknown) => typeof l === 'string')) return false;
+      }
+      if (f.colLabels !== undefined) {
+        if (!Array.isArray(f.colLabels) || f.colLabels.length !== f.cols ||
+          !f.colLabels.every((l: unknown) => typeof l === 'string')) return false;
+      }
       return true;
     }
     case 'line-chart':

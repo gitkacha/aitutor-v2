@@ -7,6 +7,10 @@ const router = Router();
 
 router.post('/:attemptId', asyncHandler(async (req: Request, res: Response) => {
   const attemptId = parseInt(req.params.attemptId);
+  if (isNaN(attemptId)) {
+    res.status(400).json({ error: 'Invalid attempt ID', status: 400 });
+    return;
+  }
 
   try {
     // Check if analysis already exists

@@ -35,6 +35,14 @@ describe('validateStimulus', () => {
     expect(validateStimulus(wrap({ kind: 'rotation', shape: 'squiggle', beforeDeg: 0, afterDeg: 90 }))).toBe(false);
     expect(validateStimulus(wrap({ kind: 'shape', vertices: [[0, 0], [1, 1]] }))).toBe(false); // < 3 vertices
   });
+
+  it('rejects grid labels that do not match the grid size (L14)', () => {
+    expect(validateStimulus(wrap({ kind: 'grid', rows: 2, cols: 3, rowLabels: ['1'] }))).toBe(false); // 1 label, 2 rows
+    expect(validateStimulus(wrap({ kind: 'grid', rows: 2, cols: 3, colLabels: ['A', 'B'] }))).toBe(false); // 2 labels, 3 cols
+    expect(
+      validateStimulus(wrap({ kind: 'grid', rows: 2, cols: 3, rowLabels: ['1', '2'], colLabels: ['A', 'B', 'C'] }))
+    ).toBe(true);
+  });
 });
 
 describe('parseStimulus', () => {
