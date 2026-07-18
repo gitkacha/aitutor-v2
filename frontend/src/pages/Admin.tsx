@@ -7,7 +7,9 @@ import { api, mathApi, MathTopic, MathHeatmapEntry, GeneratedMathQuestion, Works
 import { Button } from '@/components/ui/button';
 import { Shield, Plus, Database, Trash2, Calculator, FileText } from 'lucide-react';
 import StimulusFigure from '@/components/StimulusFigure';
-import { validateStimulus, Figure } from '@/lib/stimulus';
+import { validateStimulus } from '@/lib/stimulus';
+import { parseJsonArray } from '@/lib/parse';
+import { mathWorksheetTitle } from '@/lib/math-worksheet-title';
 
 type AdminTab = 'writing' | 'math';
 
@@ -21,6 +23,8 @@ export default function Admin() {
   const navigate = useNavigate();
   const { data: writingHeatmap, loading: writingHeatmapLoading, error: writingHeatmapError, refresh: refreshWriting } = useHeatmap();
   const [mathHeatmapError, setMathHeatmapError] = useState<string | null>(null);
+  // Starts true so the math tab's first paint shows "loading", not a no-data flash (L6).
+  const [mathHeatmapLoading, setMathHeatmapLoading] = useState(true);
   const [writingTypes, setWritingTypes] = useState<WritingTypeBrief[]>([]);
   const [mathHeatmap, setMathHeatmap] = useState<MathHeatmapEntry[]>([]);
   const [mathTopics, setMathTopics] = useState<MathTopic[]>([]);
@@ -60,7 +64,11 @@ export default function Admin() {
 
   const refreshMath = () => {
     setMathHeatmapError(null);
-    mathApi.getHeatmap().then(setMathHeatmap).catch((e) => setMathHeatmapError(e.message));
+    setMathHeatmapLoading(true);
+    mathApi.getHeatmap()
+      .then(setMathHeatmap)
+      .catch((e) => setMathHeatmapError(e.message))
+      .finally(() => setMathHeatmapLoading(false));
   };
 
   // Writing worksheet generation
@@ -131,7 +139,7 @@ export default function Admin() {
   const handleSaveWorksheet = async () => {
     setMessage(null);
     try {
-      const title = `Worksheet: ${selectedTopics.length === 0 ? 'All Topics' : selectedTopics.join(', ')}`;
+      const title = mathWorksheetTitle(selectedTopics, mathTopics);
       await mathApi.saveWorksheet(title, selectedTopics, generatedQuestions);
       setShowMathReview(false);
       setGeneratedQuestions([]);
@@ -337,7 +345,7 @@ export default function Admin() {
               <h2 className="text-lg font-semibold text-gray-900 mb-3">Saved Writing Worksheets</h2>
               <div className="space-y-2">
                 {writingWorksheets.map((ws) => {
-                  const prompts: string[] = JSON.parse(ws.prompts || '[]');
+                  const prompts = parseJsonArray<string>(ws.prompts);
                   const atts = (ws.attempts || []) as any[];
                   const scored = atts.filter((a: any) => a.analysis?.overallScore != null);
                   return (
@@ -390,6 +398,7 @@ export default function Admin() {
                 attemptCount: d.attemptCount,
               }))}
               onSelect={(entry) => navigate(`/math-history/${entry.typeSlug}`)}
+              loading={mathHeatmapLoading}
               error={mathHeatmapError}
               onRetry={refreshMath}
             />
@@ -489,12 +498,12 @@ export default function Admin() {
                     <div className="flex items-start gap-3">
                       <span className="text-sm font-bold text-gray-400 shrink-0 mt-0.5">Q{i + 1}.</span>
                       <div className="flex-1">
-                        {(q as any).stimulus && validateStimulus((q as any).stimulus) && (
+                        {q.stimulus && validateStimulus(q.stimulus) && (
                           <div className="mb-3 space-y-2">
-                            {(q as any).stimulus.text && (
-                              <p className="text-sm text-gray-700 whitespace-pre-line">{(q as any).stimulus.text}</p>
+                            {q.stimulus.text && (
+                              <p className="text-sm text-gray-700 whitespace-pre-line">{q.stimulus.text}</p>
                             )}
-                            {(q as any).stimulus.figures.map((figure: Figure, fi: number) => (
+                            {q.stimulus.figures.map((figure, fi) => (
                               <StimulusFigure key={fi} figure={figure} />
                             ))}
                           </div>
@@ -524,7 +533,7 @@ export default function Admin() {
               <h2 className="text-lg font-semibold text-gray-900 mb-3">Saved Mathematics Worksheets</h2>
               <div className="space-y-2">
                 {mathWorksheets.map((ws) => {
-                  const questions: any[] = JSON.parse(ws.questions || '[]');
+                  const questions = parseJsonArray<unknown>(ws.questions);
                   const atts = (ws.attempts || []) as any[];
                   const scored = atts.filter((a: any) => a.score != null);
                   return (

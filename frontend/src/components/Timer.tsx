@@ -15,6 +15,9 @@ interface TimerProps {
 export default function Timer({ endTime, total, running, onTick, onTimeUp }: TimerProps) {
   const apiRef = useRef<CountdownApi | null>(null);
 
+  // `running` is one-way (L7): parents flip it to false at submit and never back — the
+  // exam clock never pauses. Resuming via the countdown API would offset the deadline
+  // and break the fixed-endTime accuracy, so pausing is deliberately permanent.
   useEffect(() => {
     if (!running) apiRef.current?.pause();
   }, [running]);

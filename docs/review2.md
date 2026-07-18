@@ -27,6 +27,20 @@ these can be claimed in `docs/worklog.md` without collisions.
 > arrays, duplicate or unknown question ids, unknown topicId — with 400s (M10).
 > Full suites: 47/47 e2e, 21/21 unit. Only the Low findings remain open.
 
+> **Update (2026-07-18, final):** **L3–L14 are fixed** — see `e2e/l3-l14.spec.ts` plus new
+> unit suites (`parse.test.ts`, `math-worksheet-title.test.ts`, grid-label cases in
+> `stimulus.test.ts`). Highlights: non-numeric ids 400 (L3); ScoreHistory error panel with
+> retry (L4); `parseJsonArray`/`parseOptions` guard all worksheet JSON and corrupt options
+> render an explicit error (L5/L13); empty heatmap data shows "no data" (L6); the Timer's
+> one-way `running` contract is documented (L7); the sidebar counts sessions via the new
+> `GET /api/stats` (demo excluded) instead of fetching full attempt lists (L8);
+> `npm run typecheck` now passes in both workspaces — fixing the tsconfig also surfaced and
+> fixed a wrong `@types/express` major (L9); math worksheet titles use topic names (L10);
+> `GeneratedMathQuestion.stimulus` is typed (L11); the error middleware honours client-error
+> statuses and never leaks internals (L12); and the L14 polish sweep landed (count-mismatch
+> 400, `timeTaken == null`, deterministic demo data, grid label validation, label fixes).
+> **This closes the entire review-2 backlog.**
+
 ---
 
 ## 1. State of the app

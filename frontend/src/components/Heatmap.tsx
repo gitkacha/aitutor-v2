@@ -47,10 +47,19 @@ export default function Heatmap({ data, onSelect, basePath, loading, error, onRe
     );
   }
 
-  if (loading || data.length === 0) {
+  if (loading) {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500">Loading heatmap data...</p>
+      </div>
+    );
+  }
+
+  // A successful-but-empty response is "no data", never an eternal load (L6).
+  if (data.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500">No heatmap data available.</p>
       </div>
     );
   }

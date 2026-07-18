@@ -1,3 +1,5 @@
+import type { StimulusSpec } from './stimulus';
+
 const API_BASE = '/api';
 
 async function fetchJSON<T>(url: string, options?: RequestInit): Promise<T> {
@@ -152,6 +154,7 @@ export interface GeneratedMathQuestion {
   explanation: string;
   topicSlug: string;
   topicName: string;
+  stimulus?: StimulusSpec;
 }
 
 export const mathApi = {
@@ -222,6 +225,7 @@ export const api = {
   triggerAnalysis: (attemptId: number) =>
     fetchJSON<Analysis>(`/analysis/${attemptId}`, { method: 'POST' }),
   getHeatmap: () => fetchJSON<HeatmapEntry[]>('/heatmap'),
+  getStats: () => fetchJSON<{ sessionsThisWeek: number }>('/stats'),
   generateWorksheet: (typeIds: number[]) =>
     fetchJSON<GenerateWritingWorksheetResponse>('/worksheets/generate', {
       method: 'POST',

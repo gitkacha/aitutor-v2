@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api, WritingType, Attempt, Worksheet } from '@/lib/api';
 import { worksheetStartState } from '@/lib/worksheet-start';
+import { parseJsonArray } from '@/lib/parse';
 import { Button } from '@/components/ui/button';
 import { Clock, ArrowRight, FileText } from 'lucide-react';
 
@@ -106,7 +107,7 @@ export default function PracticeHome() {
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Available Worksheets</h2>
           <div className="space-y-3">
             {worksheets.map((ws) => {
-              const prompts: string[] = JSON.parse(ws.prompts);
+              const prompts = parseJsonArray<string>(ws.prompts);
               const promptText = prompts[0] || '';
               return (
                 <div key={ws.id} className="border border-brand-blue/20 rounded-lg p-4 bg-brand-blue/5">

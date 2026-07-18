@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, mathApi, Worksheet, MathWorksheet, WritingType } from '@/lib/api';
 import { worksheetStartState } from '@/lib/worksheet-start';
+import { parseJsonArray } from '@/lib/parse';
 import { Button } from '@/components/ui/button';
 import { Calculator, ClipboardList, Pencil } from 'lucide-react';
 
@@ -32,7 +33,7 @@ export default function PendingWorksheets({ mode, refreshKey = 0 }: PendingWorks
   if (writing.length === 0 && math.length === 0) return null;
 
   const startMathWorksheet = (ws: MathWorksheet) => {
-    const slugs: string[] = JSON.parse(ws.topicIds || '[]');
+    const slugs = parseJsonArray<string>(ws.topicIds);
     navigate(`/math/${slugs[0] || 'all-topics'}/start`, { state: { worksheetId: ws.id } });
   };
 
@@ -58,7 +59,7 @@ export default function PendingWorksheets({ mode, refreshKey = 0 }: PendingWorks
       </p>
       <div className="space-y-2">
         {writing.map((ws) => {
-          const prompts: string[] = JSON.parse(ws.prompts || '[]');
+          const prompts = parseJsonArray<string>(ws.prompts);
           return (
             <div key={`w-${ws.id}`} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-gray-100 hover:bg-gray-50">
               <div className="flex items-start gap-3 min-w-0">
@@ -81,7 +82,7 @@ export default function PendingWorksheets({ mode, refreshKey = 0 }: PendingWorks
           );
         })}
         {math.map((ws) => {
-          const questions: unknown[] = JSON.parse(ws.questions || '[]');
+          const questions = parseJsonArray<unknown>(ws.questions);
           return (
             <div key={`m-${ws.id}`} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-gray-100 hover:bg-gray-50">
               <div className="flex items-start gap-3 min-w-0">

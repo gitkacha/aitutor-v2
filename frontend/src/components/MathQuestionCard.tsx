@@ -1,4 +1,5 @@
 import { MathQuestionFull } from '@/lib/api';
+import { parseOptions } from '@/lib/parse';
 import { cn } from '@/lib/utils';
 
 interface MathQuestionCardProps {
@@ -10,11 +11,19 @@ interface MathQuestionCardProps {
 }
 
 export default function MathQuestionCard({ question, selectedIndex, onSelect, showResult, correctIndex }: MathQuestionCardProps) {
-  let options: string[];
-  try {
-    options = JSON.parse(question.options);
-  } catch {
-    options = ['A', 'B', 'C', 'D', 'E'];
+  const options = parseOptions(question.options);
+
+  // Corrupt options are an explicit error, never placeholder choices a student might
+  // select (L13).
+  if (!options) {
+    return (
+      <div className="bg-white rounded-xl p-6 border border-gray-200">
+        <p className="text-gray-900 font-medium leading-relaxed whitespace-pre-line">{question.questionText}</p>
+        <p className="mt-4 text-sm text-red-600">
+          These answer options couldn't be loaded. Skip this question and let your coach know.
+        </p>
+      </div>
+    );
   }
 
   const labels = ['A', 'B', 'C', 'D', 'E'];

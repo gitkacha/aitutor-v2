@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { api, mathApi, WritingType, MathTopic, Worksheet, MathWorksheet } from '@/lib/api';
 import { worksheetStartState } from '@/lib/worksheet-start';
+import { parseJsonArray } from '@/lib/parse';
 import { ChevronRight, Home, Menu, Shield, X, Zap } from 'lucide-react';
 
 // "Evening Navy" sidebar (docs/mocks/example2.html): a solid deep-navy rail with
@@ -36,13 +37,6 @@ const stripFill: Record<Band, string> = {
 };
 
 const SESSION_GOAL = 5;
-
-function startOfWeek(): Date {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); // back to Monday
-  return d;
-}
 
 type Pending = { kind: 'writing'; ws: Worksheet } | { kind: 'math'; ws: MathWorksheet };
 
@@ -94,11 +88,11 @@ export default function Sidebar() {
       .getHeatmap()
       .then((h) => setMathScores(Object.fromEntries(h.map((e) => [e.topicSlug, e.averageScore]))))
       .catch(() => {});
-    Promise.all([api.getAttempts(), mathApi.getAttempts()])
-      .then(([w, m]) => {
-        const since = startOfWeek().getTime();
-        setSessions([...w, ...m].filter((a) => new Date(a.finishedAt).getTime() >= since).length);
-      })
+    // A count endpoint, not full attempt lists (L8) — and demo attempts never inflate
+    // the momentum ring.
+    api
+      .getStats()
+      .then((s) => setSessions(s.sessionsThisWeek))
       .catch(() => {});
     Promise.all([api.getWorksheets(), mathApi.getWorksheets()])
       .then(([w, m]) => {
@@ -118,7 +112,7 @@ export default function Sidebar() {
     if (!upNext) return;
     setMobileOpen(false);
     if (upNext.kind === 'math') {
-      const slugs: string[] = JSON.parse(upNext.ws.topicIds || '[]');
+      const slugs = parseJsonArray<string>(upNext.ws.topicIds);
       navigate(`/math/${slugs[0] || 'all-topics'}/start`, { state: { worksheetId: upNext.ws.id } });
     } else {
       const brief = types.find((t) => t.id === upNext.ws.typeId);

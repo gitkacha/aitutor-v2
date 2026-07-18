@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { mathApi, MathTopic, MathAttempt, MathWorksheet, GeneratedMathQuestion } from '@/lib/api';
+import { parseJsonArray } from '@/lib/parse';
 import { Button } from '@/components/ui/button';
 import { Clock, Grid3x3, FileText } from 'lucide-react';
 
@@ -31,7 +32,7 @@ export default function MathPracticeHome() {
         id: 0,
         name: 'All Topics',
         slug: 'all-topics',
-        description: 'A full 35-question Mathematical Reasoning test covering all 20 topic categories, just like the real Selective Trial Test.',
+        description: 'A full 35-question Mathematical Reasoning test covering every topic category, just like the real Selective Trial Test.',
         isDemo: false,
       });
     } else {
@@ -44,10 +45,7 @@ export default function MathPracticeHome() {
           setTopic(t);
           setAttempts(a);
           // Filter worksheets that include this topic
-          setWorksheets(ws.filter(w => {
-            const topicIds: string[] = JSON.parse(w.topicIds);
-            return topicIds.includes(topicSlug);
-          }));
+          setWorksheets(ws.filter(w => parseJsonArray<string>(w.topicIds).includes(topicSlug)));
         })
         .catch(() => navigate('/dashboard'))
         .finally(() => setLoading(false));
@@ -79,7 +77,7 @@ export default function MathPracticeHome() {
     return <div className="text-center py-20 text-gray-500">Topic not found.</div>;
   }
 
-  const questionCount = isAllTopics ? 35 : (topic.questions?.length || 10);
+  const questionCount = isAllTopics ? 35 : (topic.questions?.length ?? 0);
   const timeSeconds = Math.min(questionCount * 69, 2400); // 69s per Q, max 40min
 
   return (
@@ -112,7 +110,7 @@ export default function MathPracticeHome() {
           {isAllTopics && (
             <li className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-brand-amber" />
-              Questions are drawn from all 20 topic categories
+              Questions are drawn from every topic category
             </li>
           )}
         </ul>
@@ -154,7 +152,7 @@ export default function MathPracticeHome() {
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Available Worksheets</h2>
           <div className="space-y-3">
             {worksheets.map((ws) => {
-              const questions: GeneratedMathQuestion[] = JSON.parse(ws.questions);
+              const questions = parseJsonArray<GeneratedMathQuestion>(ws.questions);
               return (
                 <div key={ws.id} className="border border-brand-blue/20 rounded-lg p-4 bg-brand-blue/5">
                   <div className="flex items-center justify-between">

@@ -50,8 +50,7 @@ export default function AttemptDetail() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <Loader2 size={32} className="animate-spin text-brand-blue mx-auto" />
-          <p className="text-gray-500 mt-4">Analysing your writing...</p>
-          <p className="text-xs text-gray-400 mt-2">This usually takes a few seconds</p>
+          <p className="text-gray-500 mt-4">Loading attempt...</p>
         </div>
       </div>
     );

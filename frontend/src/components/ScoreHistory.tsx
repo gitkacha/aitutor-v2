@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { api, Attempt } from '@/lib/api';
+import { api, mathApi } from '@/lib/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,42 +14,48 @@ export default function ScoreHistory({ subject = 'writing' }: ScoreHistoryProps)
   const navigate = useNavigate();
   const [attempts, setAttempts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [typeName, setTypeName] = useState('');
+  const [retryToken, setRetryToken] = useState(0);
   const isMath = subject === 'math';
 
   useEffect(() => {
     if (!typeSlug) return;
     setLoading(true);
+    setError(null);
 
-    if (isMath) {
-      Promise.all([
-        import('@/lib/api').then(m => m.mathApi.getAttempts(typeSlug)),
-        import('@/lib/api').then(m => m.mathApi.getTopic(typeSlug)),
-      ])
-        .then(([atts, t]) => {
-          setAttempts(atts);
-          setTypeName(t.name);
-        })
-        .catch(() => {})
-        .finally(() => setLoading(false));
-    } else {
-      Promise.all([
-        api.getAttempts(typeSlug),
-        api.getType(typeSlug),
-      ])
-        .then(([atts, t]) => {
-          setAttempts(atts.filter((a) => a.analysis));
-          setTypeName(t.name);
-        })
-        .catch(() => {})
-        .finally(() => setLoading(false));
-    }
-  }, [typeSlug, isMath]);
+    const load = isMath
+      ? Promise.all([mathApi.getAttempts(typeSlug), mathApi.getTopic(typeSlug)]).then(
+          ([atts, t]): [any[], string] => [atts, t.name]
+        )
+      : Promise.all([api.getAttempts(typeSlug), api.getType(typeSlug)]).then(
+          ([atts, t]): [any[], string] => [atts.filter((a) => a.analysis), t.name]
+        );
+
+    load
+      .then(([atts, name]) => {
+        setAttempts(atts);
+        setTypeName(name);
+      })
+      // A failed fetch is an error state, never the "no attempts yet" empty state (L4).
+      .catch((e: any) => setError(e.message || 'Failed to load'))
+      .finally(() => setLoading(false));
+  }, [typeSlug, isMath, retryToken]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-blue" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-20 space-y-3">
+        <p className="text-gray-700 font-medium">Couldn't load this history</p>
+        <p className="text-sm text-gray-500">{error}</p>
+        <Button onClick={() => setRetryToken((t) => t + 1)}>Try Again</Button>
       </div>
     );
   }
@@ -65,7 +71,7 @@ export default function ScoreHistory({ subject = 'writing' }: ScoreHistoryProps)
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => navigate(isMath ? '/dashboard' : '/dashboard')}>
+        <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
           <ArrowLeft size={18} />
         </Button>
         <h1 className="text-2xl font-bold text-gray-900">{typeName} &mdash; Score History</h1>
@@ -124,8 +130,10 @@ export default function ScoreHistory({ subject = 'writing' }: ScoreHistoryProps)
                       : `Score: ${a.analysis?.overallScore ?? 'Pending'}`}
                   </span>
                 </div>
-                {!isMath && (
-                  <p className="text-sm text-gray-600 mt-1 line-clamp-1">{a.text.slice(0, 100)}...</p>
+                {!isMath && a.text.length > 0 && (
+                  <p className="text-sm text-gray-600 mt-1 line-clamp-1">
+                    {a.text.length > 100 ? `${a.text.slice(0, 100)}…` : a.text}
+                  </p>
                 )}
               </button>
             ))}
