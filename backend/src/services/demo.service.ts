@@ -30,7 +30,9 @@ async function getDemoPrompt(typeId: number) {
   return prompts[0];
 }
 
-export async function loadDemoData() {
+// Demo rows are attributed to the calling user and their workspace (Milestone 2
+// Phase A interim — proper per-workspace demo semantics arrive with B1 scoping).
+export async function loadDemoData(user: { id: number; workspaceId: number }) {
   // Check if demo data already exists
   const existingDemo = await prisma.attempt.findFirst({ where: { isDemo: true } });
   const existingMathDemo = await prisma.mathAttempt.findFirst({ where: { isDemo: true } });
@@ -68,6 +70,7 @@ export async function loadDemoData() {
 
       await prisma.attempt.create({
         data: {
+          userId: user.id,
           typeId: type.id,
           promptId: prompt.id,
           text: getSampleText(typeSlugs[i]),
@@ -98,6 +101,8 @@ export async function loadDemoData() {
     const persuasivePromptText = 'Argue whether schools should have a four-day week.';
     const worksheet = await prisma.worksheet.create({
       data: {
+        workspaceId: user.workspaceId,
+        createdById: user.id,
         title: 'Worksheet: Persuasive',
         typeId: demoType.id,
         prompts: JSON.stringify([persuasivePromptText]),
@@ -112,6 +117,8 @@ export async function loadDemoData() {
       const discussionPromptText = 'Discuss the pros and cons of banning homework in primary schools.';
       await prisma.worksheet.create({
         data: {
+          workspaceId: user.workspaceId,
+          createdById: user.id,
           title: 'Worksheet: Discussion',
           typeId: discussionType.id,
           prompts: JSON.stringify([discussionPromptText]),
@@ -129,6 +136,7 @@ export async function loadDemoData() {
 
       await prisma.attempt.create({
         data: {
+          userId: user.id,
           typeId: demoType.id,
           promptId: worksheetPrompt.id,
           text: 'I believe that schools should have a four-day week because it would give students more time to rest and pursue other interests. Many students feel tired after five days of school and having an extra day off would help them recharge. Additionally, families could spend more quality time together on the long weekend. However, some people argue that less school time means less learning. But I think students would actually learn better if they were more rested and focused during the four days they are at school. In conclusion, a four-day school week would benefit students, families, and even teachers by creating a better balance between school and life.',
@@ -186,6 +194,7 @@ export async function loadDemoData() {
 
     await prisma.mathAttempt.create({
       data: {
+        userId: user.id,
         topicId: topic.id,
         questions: JSON.stringify(qIds),
         answers: JSON.stringify(answers),
@@ -234,6 +243,8 @@ export async function loadDemoData() {
 
     const worksheet = await prisma.mathWorksheet.create({
       data: {
+        workspaceId: user.workspaceId,
+        createdById: user.id,
         title: 'Worksheet: Number Sentences + Probability',
         topicIds: JSON.stringify([firstTopic.slug, secondTopic.slug]),
         questions: JSON.stringify(wsQuestions.map(q => ({
@@ -250,6 +261,7 @@ export async function loadDemoData() {
 
     await prisma.mathAttempt.create({
       data: {
+        userId: user.id,
         topicId: null,
         questions: JSON.stringify(wsQIds),
         answers: JSON.stringify(wsAnswers),

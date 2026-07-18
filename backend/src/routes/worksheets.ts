@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { generateWorksheetPrompts } from '../services/ai.service';
 import { asyncHandler } from '../lib/async-handler';
+import { requireAuth } from '../middleware/auth';
 
 const router = Router();
 
@@ -32,7 +33,7 @@ router.post('/generate', asyncHandler(async (req: Request, res: Response) => {
 }));
 
 // POST /api/worksheets/save — save an admin-reviewed worksheet
-router.post('/save', asyncHandler(async (req: Request, res: Response) => {
+router.post('/save', requireAuth, asyncHandler(async (req: Request, res: Response) => {
   const { title, typeIds, prompts } = req.body;
 
   if (!title || !Array.isArray(typeIds) || typeIds.length === 0 || !Array.isArray(prompts)) {
@@ -61,6 +62,10 @@ router.post('/save', asyncHandler(async (req: Request, res: Response) => {
         const promptText = prompts[i];
         const worksheet = await prisma.worksheet.create({
           data: {
+            // Tenant scoping (Milestone 2 Phase A): worksheets belong to the creator's
+            // workspace; the assignment picker lands in Phase C1.
+            workspaceId: req.user!.workspaceId,
+            createdById: req.user!.id,
             title: types.length === 1 ? title : `Worksheet: ${type.name}`,
             typeId: type.id,
             prompts: JSON.stringify([promptText]),

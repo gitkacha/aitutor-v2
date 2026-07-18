@@ -11,6 +11,18 @@ export default defineConfig({
     baseURL: 'http://localhost:5273',
     trace: 'retain-on-failure',
   },
+  // Milestone 2: a setup project logs the seeded e2e users in and saves their sessions;
+  // the main project runs every spec as the e2e student by default. Admin-only flows
+  // opt into e2e/.auth/admin.json via test.use; auth specs opt out with an empty state.
+  projects: [
+    { name: 'setup', testMatch: /auth\.setup\.ts/ },
+    {
+      name: 'e2e',
+      testIgnore: /auth\.setup\.ts/,
+      dependencies: ['setup'],
+      use: { storageState: 'e2e/.auth/student.json' },
+    },
+  ],
   webServer: [
     {
       command: 'npm run e2e:backend',

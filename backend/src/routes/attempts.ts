@@ -1,10 +1,11 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { asyncHandler } from '../lib/async-handler';
+import { requireAuth } from '../middleware/auth';
 
 const router = Router();
 
-router.post('/', asyncHandler(async (req: Request, res: Response) => {
+router.post('/', requireAuth, asyncHandler(async (req: Request, res: Response) => {
   const { typeId, promptId, text, startedAt, finishedAt, timeTaken, source, worksheetId } = req.body;
 
   // `text` may legitimately be an empty string — a timed-out attempt with nothing written.
@@ -47,6 +48,9 @@ router.post('/', asyncHandler(async (req: Request, res: Response) => {
 
   const attempt = await prisma.attempt.create({
     data: {
+      // Attempts belong to the session user (Milestone 2 Phase A); full read-scoping
+      // lands in Phase B1.
+      userId: req.user!.id,
       typeId: resolvedTypeId,
       promptId: resolvedPromptId,
       text,

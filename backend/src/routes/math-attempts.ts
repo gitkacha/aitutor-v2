@@ -1,11 +1,12 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { asyncHandler } from '../lib/async-handler';
+import { requireAuth } from '../middleware/auth';
 
 const router = Router();
 
 // POST /api/math/attempts — save a completed attempt
-router.post('/', asyncHandler(async (req: Request, res: Response) => {
+router.post('/', requireAuth, asyncHandler(async (req: Request, res: Response) => {
   const { topicId, questions, answers, startedAt, finishedAt, timeTaken, source, worksheetId } = req.body;
 
   if (!questions || !answers || !startedAt || !finishedAt || timeTaken == null) {
@@ -76,6 +77,8 @@ router.post('/', asyncHandler(async (req: Request, res: Response) => {
 
   const attempt = await prisma.mathAttempt.create({
     data: {
+      // Attempts belong to the session user (Milestone 2 Phase A).
+      userId: req.user!.id,
       topicId: topicId ?? null,
       questions,
       answers,

@@ -704,10 +704,36 @@ async function seedMath() {
   console.log('Mathematics seed complete.');
 }
 
+// Test users (Milestone 2): created only when SEED_AUTH_USERS=1 (the e2e stack sets
+// it) so a fresh production install stays clean and goes through first-run setup.
+// Password for both: test1234 (bcrypt hash precomputed — the seed stays dependency-light).
+async function seedAuthUsers() {
+  if (process.env.SEED_AUTH_USERS !== '1') return;
+  console.log('Seeding e2e auth users...');
+  const workspace = await prisma.workspace.upsert({
+    where: { slug: 'e2e-workspace' },
+    update: {},
+    create: { name: 'E2E Workspace', slug: 'e2e-workspace' },
+  });
+  const TEST_HASH = '$2b$10$9GefujP1Mce4pMVlMJNdKOUKH0aerDJd/URYnHKB3O4eJJByjfxQK'; // test1234
+  for (const u of [
+    { role: 'admin', name: 'E2E Admin', email: 'e2e-admin@test.local' },
+    { role: 'student', name: 'E2E Student', email: 'e2e-student@test.local' },
+  ]) {
+    await prisma.user.upsert({
+      where: { email: u.email },
+      update: {},
+      create: { ...u, workspaceId: workspace.id, passwordHash: TEST_HASH },
+    });
+    console.log(`  ✓ ${u.email}`);
+  }
+}
+
 // Run both seeds sequentially
 async function runAllSeeds() {
   await main();
   await seedMath();
+  await seedAuthUsers();
 }
 
 runAllSeeds()
