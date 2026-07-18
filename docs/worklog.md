@@ -18,7 +18,29 @@ every agent, on any model, without exception):
 
 ## Open
 
-*(none — review backlog clear: all review.md and review2.md findings closed)*
+Milestone 2 — multi-user, multi-tenant workspaces. Plan approved 2026-07-18:
+`docs/superpowers/plans/Milestone2-plan.md`. Phases must land in order (A → B → C → D);
+B1∥B2 and C1∥C2 may run in parallel worktrees, merging only with their proving specs
+green. The full suite must be green at every phase boundary.
+
+- [ ] **W-9** — Phase A · Foundation (serial): Workspace/User schema + migration with
+  demo-workspace backfill; identity-provider auth service (local bcrypt implementation) +
+  cookie session + requireAuth/requireAdmin; first-run setup flow; seed e2e/demo users;
+  e2e harness upgrade (login helpers + storageState fixtures) with all existing specs
+  authenticated and green.
+- [ ] **W-10** — Phase B1 · Backend scoping (parallel with W-11): every route behind
+  requireAuth + the scoping contract; authz e2e negative paths (student ↛ other student,
+  student ↛ admin APIs, admin ↛ other workspace).
+- [ ] **W-11** — Phase B2 · Frontend auth shell (parallel with W-10): login/logout/setup
+  screens, auth context + route guards, sidebar identity, student app scoped to self.
+- [ ] **W-12** — Phase C1 · Admin experience (parallel with W-13): student picker at
+  worksheet save (assignments), per-student performance views, workspace members
+  management.
+- [ ] **W-13** — Phase C2 · Student experience (parallel with W-12): assigned-pending
+  lists everywhere, opportunity areas, negative-path e2e hardening.
+- [ ] **W-14** — Phase D · Integration (serial): full suites + typecheck; live fresh-DB
+  multi-user walkthrough + demo-workspace verification; migration dry-run against a copy
+  of dev.db; README + CLAUDE.md updates.
 
 ## Done
 

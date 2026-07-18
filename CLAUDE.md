@@ -19,6 +19,11 @@ Writing phases and requirements are documented in `docs/superpowers/plans/Writin
 
 Mathematics phases and requirements are documented in `docs/superpowers/plans/Mathematics-plan.md`.
 
+Milestone 2 (multi-user, multi-tenant workspaces — approved 2026-07-18) is documented in
+`docs/superpowers/plans/Milestone2-plan.md` and tracked as worklog items W-9…W-14. Note:
+milestone 2 supersedes the "no login" line in the summary above — the app gains password
+login behind a swappable identity-provider layer.
+
 Each plan has its own final success criteria. Build in phase-order within each plan. Do not start a
 phase until every success criterion of the previous phase is demonstrably met.
 
