@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { asyncHandler } from '../lib/async-handler';
 import { requireAuth } from '../middleware/auth';
+import { resolveScopeUserIds, canAccessUser } from '../lib/scope';
 
 const router = Router();
 
@@ -65,11 +66,17 @@ router.post('/', requireAuth, asyncHandler(async (req: Request, res: Response) =
   res.status(201).json(attempt);
 }));
 
-router.get('/', asyncHandler(async (req: Request, res: Response) => {
+// Scoped reads (B1): students see their own attempts; admins their workspace, or one
+// member via ?studentId=.
+router.get('/', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+  const userIds = await resolveScopeUserIds(req, res);
+  if (!userIds) return;
+
   const { type } = req.query;
-  const where = type
-    ? { type: { slug: type as string } }
-    : {};
+  const where = {
+    userId: { in: userIds },
+    ...(type ? { type: { slug: type as string } } : {}),
+  };
 
   const attempts = await prisma.attempt.findMany({
     where,
@@ -80,7 +87,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
   res.json(attempts);
 }));
 
-router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
+router.get('/:id', requireAuth, asyncHandler(async (req: Request, res: Response) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) {
     res.status(400).json({ error: 'Invalid attempt ID', status: 400 });
@@ -91,7 +98,9 @@ router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
     include: { analysis: true, type: true, prompt: true },
   });
 
-  if (!attempt) {
+  // Out-of-scope reads are indistinguishable from missing rows (404, not 403) so ids
+  // don't leak across students or workspaces.
+  if (!attempt || !(await canAccessUser(req, attempt.userId))) {
     res.status(404).json({ error: 'Attempt not found', status: 404 });
     return;
   }

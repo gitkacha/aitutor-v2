@@ -1,4 +1,4 @@
-import { test, expect, APIRequestContext } from '@playwright/test';
+import { test, expect, APIRequestContext, request as pwRequest } from '@playwright/test';
 
 // "Evening Navy" sidebar redesign (docs/mocks/example2.html):
 //   - weekly momentum ring ("N of 5 sessions done") at the top of the rail;
@@ -55,8 +55,12 @@ test.describe('evening navy sidebar', () => {
     await expect(rail.getByRole('link', { name: 'Speech' })).toContainText('—');
   });
 
-  test('Up next card lists the oldest pending worksheet and starts it in one tap', async ({ page, request }) => {
-    const save = await request.post('/api/math/worksheets/save', {
+  test('Up next card lists the oldest pending worksheet and starts it in one tap', async ({ page, request, baseURL }) => {
+    // Worksheet creation is admin-only (Milestone 2 B1); the admin saves it and it is
+    // auto-assigned to every student, so the default e2e student sees it as pending.
+    const admin = await pwRequest.newContext({ baseURL, storageState: { cookies: [], origins: [] } });
+    await admin.post('/api/auth/login', { data: { email: 'e2e-admin@test.local', password: 'test1234' } });
+    const save = await admin.post('/api/math/worksheets/save', {
       data: {
         title: `E2E Sidebar UpNext ${Date.now()}`,
         topicIds: ['arithmetic'],
@@ -66,6 +70,7 @@ test.describe('evening navy sidebar', () => {
       },
     });
     expect(save.status()).toBe(201);
+    await admin.dispose();
 
     const expectedTitle = await oldestPendingTitle(request);
     expect(expectedTitle).toBeTruthy();

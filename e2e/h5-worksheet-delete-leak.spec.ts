@@ -16,6 +16,9 @@ async function topicQuestionCounts(request: APIRequestContext): Promise<Record<s
   return counts;
 }
 
+// Milestone 2 B1: these flows create worksheets / load demo data — admin-only routes.
+test.use({ storageState: 'e2e/.auth/admin.json' });
+
 test.describe('H5 — deleting a math worksheet must not leak questions into topic banks', () => {
   test('demo load → start demo worksheet → clear demo leaves every topic bank unchanged', async ({
     request,

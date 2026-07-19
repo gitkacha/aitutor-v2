@@ -40,11 +40,8 @@ test.describe('W-9 — auth foundation', () => {
   });
 
   test('attempt writes require a session and are attributed to it', async ({ request }) => {
-    const type = await (await request.get('/api/types/persuasive')).json();
     const now = Date.now();
-    const payload = {
-      typeId: type.id,
-      promptId: type.prompts[0].id,
+    const basePayload = {
       text: 'W-9 attribution check.',
       startedAt: new Date(now - 60_000).toISOString(),
       finishedAt: new Date(now).toISOString(),
@@ -52,12 +49,19 @@ test.describe('W-9 — auth foundation', () => {
       source: 'practice',
     };
 
-    const anon = await request.post('/api/attempts', { data: payload });
+    // Curriculum reads require auth too (B1), so an anonymous write can't even resolve
+    // a prompt — post with placeholder ids; the 401 fires before any lookup.
+    const anon = await request.post('/api/attempts', {
+      data: { ...basePayload, typeId: 1, promptId: 1 },
+    });
     expect(anon.status(), 'unauthenticated attempt writes are rejected').toBe(401);
 
     await request.post('/api/auth/login', { data: STUDENT });
     const me = await (await request.get('/api/auth/me')).json();
-    const created = await request.post('/api/attempts', { data: payload });
+    const type = await (await request.get('/api/types/persuasive')).json();
+    const created = await request.post('/api/attempts', {
+      data: { ...basePayload, typeId: type.id, promptId: type.prompts[0].id },
+    });
     expect(created.status()).toBe(201);
     expect((await created.json()).userId, 'attempt belongs to the session user').toBe(me.user.id);
   });

@@ -100,6 +100,9 @@ async function createAttempt(request: APIRequestContext): Promise<number> {
   return (await res.json()).id;
 }
 
+// Milestone 2 B1: these flows create worksheets / load demo data — admin-only routes.
+test.use({ storageState: 'e2e/.auth/admin.json' });
+
 test.describe('model split + verifier pass', () => {
   test('generation and verification use gpt-5-mini; writing analysis uses gpt-4o-mini', async ({ request }) => {
     const log: StubLog = { generationModels: [], verificationModels: [], analysisModels: [] };

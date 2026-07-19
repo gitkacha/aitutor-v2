@@ -27,6 +27,9 @@ function startWritingStub(): Promise<http.Server> {
   return new Promise((resolve) => server.listen(STUB_PORT, '127.0.0.1', () => resolve(server)));
 }
 
+// Milestone 2 B1: these flows create worksheets / load demo data — admin-only routes.
+test.use({ storageState: 'e2e/.auth/admin.json' });
+
 test.describe('H3 — multi-type writing worksheets keep every selected type', () => {
   let stub: http.Server;
   test.beforeAll(async () => {

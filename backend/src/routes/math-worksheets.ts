@@ -3,12 +3,12 @@ import prisma from '../lib/prisma';
 import { generateMathWorksheetQuestions } from '../services/ai.service';
 import { createWorksheetQuestionRows, validateWorksheetQuestions } from '../services/math-worksheet.service';
 import { asyncHandler } from '../lib/async-handler';
-import { requireAuth } from '../middleware/auth';
+import { requireAdmin, requireAuth } from '../middleware/auth';
 
 const router = Router();
 
 // POST /api/math/worksheets/generate — AI-generate 35-question worksheet
-router.post('/generate', asyncHandler(async (req: Request, res: Response) => {
+router.post('/generate', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
   const { topicIds } = req.body; // Array of topic slugs, empty = all topics
   const questionCount = Math.max(5, Math.min(50, parseInt(req.body.questionCount) || 35));
 
@@ -51,7 +51,7 @@ router.post('/generate', asyncHandler(async (req: Request, res: Response) => {
 }));
 
 // POST /api/math/worksheets/save — save an admin-reviewed worksheet
-router.post('/save', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+router.post('/save', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
   const { title, topicIds, questions } = req.body;
 
   if (!title || !questions) {
@@ -74,6 +74,17 @@ router.post('/save', requireAuth, asyncHandler(async (req: Request, res: Respons
         },
       });
       await createWorksheetQuestionRows(created.id, questions, tx);
+      // Interim default (B1): assign to every student in the workspace; the C1
+      // assignment picker replaces this with an explicit studentIds[] selection.
+      const students = await tx.user.findMany({
+        where: { workspaceId: req.user!.workspaceId, role: 'student' },
+        select: { id: true },
+      });
+      if (students.length > 0) {
+        await tx.mathWorksheetAssignment.createMany({
+          data: students.map((s) => ({ worksheetId: created.id, studentId: s.id })),
+        });
+      }
       return created;
     });
 
@@ -87,12 +98,20 @@ router.post('/save', requireAuth, asyncHandler(async (req: Request, res: Respons
   }
 }));
 
-// GET /api/math/worksheets — list all worksheets
-router.get('/', asyncHandler(async (_req: Request, res: Response) => {
+// GET /api/math/worksheets — scoped list (B1): admins see their workspace (with
+// assignments); students see only worksheets assigned to them, with only their own
+// attempts included.
+router.get('/', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user!;
   const worksheets = await prisma.mathWorksheet.findMany({
+    where: user.role === 'admin'
+      ? { workspaceId: user.workspaceId }
+      : { assignments: { some: { studentId: user.id } } },
     orderBy: { createdAt: 'desc' },
     include: {
+      assignments: true,
       attempts: {
+        where: user.role === 'admin' ? {} : { userId: user.id },
         orderBy: { finishedAt: 'desc' },
       },
     },

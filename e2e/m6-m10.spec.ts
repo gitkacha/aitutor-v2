@@ -69,6 +69,7 @@ test.describe('M6 — failed math submission shows a visible error panel with re
 });
 
 test.describe('M7 — demo writing worksheets follow the one-prompt-per-worksheet model', () => {
+  test.use({ storageState: 'e2e/.auth/admin.json' }); // demo load is admin-only (B1)
   test('demo load creates single-prompt worksheets whose attempt references the worksheet prompt', async ({
     request,
   }) => {

@@ -2,12 +2,12 @@ import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { generateWorksheetPrompts } from '../services/ai.service';
 import { asyncHandler } from '../lib/async-handler';
-import { requireAuth } from '../middleware/auth';
+import { requireAdmin, requireAuth } from '../middleware/auth';
 
 const router = Router();
 
 // POST /api/worksheets/generate — generate prompts without saving (preview)
-router.post('/generate', asyncHandler(async (req: Request, res: Response) => {
+router.post('/generate', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
   const { typeIds } = req.body;
 
   if (!typeIds || !Array.isArray(typeIds) || typeIds.length === 0) {
@@ -33,7 +33,7 @@ router.post('/generate', asyncHandler(async (req: Request, res: Response) => {
 }));
 
 // POST /api/worksheets/save — save an admin-reviewed worksheet
-router.post('/save', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+router.post('/save', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
   const { title, typeIds, prompts } = req.body;
 
   if (!title || !Array.isArray(typeIds) || typeIds.length === 0 || !Array.isArray(prompts)) {
@@ -76,6 +76,17 @@ router.post('/save', requireAuth, asyncHandler(async (req: Request, res: Respons
         await prisma.prompt.create({
           data: { typeId: type.id, text: promptText, source: 'worksheet' },
         });
+        // Interim default (B1): assign to every student in the workspace. The C1
+        // assignment picker replaces this with an explicit studentIds[] selection.
+        const students = await prisma.user.findMany({
+          where: { workspaceId: req.user!.workspaceId, role: 'student' },
+          select: { id: true },
+        });
+        if (students.length > 0) {
+          await prisma.worksheetAssignment.createMany({
+            data: students.map((s) => ({ worksheetId: worksheet.id, studentId: s.id })),
+          });
+        }
         return worksheet;
       })
     );
@@ -87,26 +98,45 @@ router.post('/save', requireAuth, asyncHandler(async (req: Request, res: Respons
   }
 }));
 
-router.get('/', asyncHandler(async (_req: Request, res: Response) => {
+// Scoped list (B1): admins see their workspace (with assignments); students see
+// only worksheets assigned to them, with only their own attempts included.
+router.get('/', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user!;
   const worksheets = await prisma.worksheet.findMany({
+    where: user.role === 'admin'
+      ? { workspaceId: user.workspaceId }
+      : { assignments: { some: { studentId: user.id } } },
     orderBy: { createdAt: 'desc' },
-    include: { attempts: { include: { analysis: true } } },
+    include: {
+      assignments: true,
+      attempts: {
+        where: user.role === 'admin' ? {} : { userId: user.id },
+        include: { analysis: true },
+      },
+    },
   });
   res.json(worksheets);
 }));
 
 // GET /api/worksheets/available/:typeId — get worksheets for a specific writing type
-router.get('/available/:typeId', asyncHandler(async (req: Request, res: Response) => {
+router.get('/available/:typeId', requireAuth, asyncHandler(async (req: Request, res: Response) => {
   const typeId = parseInt(req.params.typeId);
   if (isNaN(typeId)) {
     return res.status(400).json({ error: 'Invalid typeId', status: 400 });
   }
 
+  const user = req.user!;
   const worksheets = await prisma.worksheet.findMany({
-    where: { typeId },
+    where: {
+      typeId,
+      ...(user.role === 'admin'
+        ? { workspaceId: user.workspaceId }
+        : { assignments: { some: { studentId: user.id } } }),
+    },
     orderBy: { createdAt: 'desc' },
     include: {
       attempts: {
+        where: user.role === 'admin' ? {} : { userId: user.id },
         select: { id: true, source: true, finishedAt: true, isDemo: true },
       },
     },

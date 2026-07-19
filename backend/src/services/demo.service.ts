@@ -282,17 +282,18 @@ export async function loadDemoData(user: { id: number; workspaceId: number }) {
   return { message: `Demo data loaded: ${attemptCount} writing attempts + ${mathAttemptCount} math attempts.` };
 }
 
-export async function clearDemoData() {
-  // Delete demo analyses, attempts, worksheets, in order
-  await prisma.analysis.deleteMany({ where: { isDemo: true } });
-  await prisma.attempt.deleteMany({ where: { isDemo: true } });
-  await prisma.worksheet.deleteMany({ where: { isDemo: true } });
+export async function clearDemoData(workspaceId: number) {
+  // Delete demo analyses, attempts, worksheets, in order — scoped to the caller's
+  // workspace (B1): one workspace's demo cycle never touches another tenant's rows.
+  await prisma.analysis.deleteMany({ where: { isDemo: true, attempt: { user: { workspaceId } } } });
+  await prisma.attempt.deleteMany({ where: { isDemo: true, user: { workspaceId } } });
+  await prisma.worksheet.deleteMany({ where: { isDemo: true, workspaceId } });
   // Demo worksheet prompts go with their worksheets; a prompt referenced by a real
   // (non-demo) attempt is kept so that attempt's analysis context survives.
   await prisma.prompt.deleteMany({ where: { isDemo: true, attempts: { none: {} } } });
   // Math demo data
-  await prisma.mathAttempt.deleteMany({ where: { isDemo: true } });
-  await prisma.mathWorksheet.deleteMany({ where: { isDemo: true } });
+  await prisma.mathAttempt.deleteMany({ where: { isDemo: true, user: { workspaceId } } });
+  await prisma.mathWorksheet.deleteMany({ where: { isDemo: true, workspaceId } });
   // Deleting a worksheet cascades to its persisted questions (H5); sweep stimulus
   // groups left with no questions (bank groups always keep theirs).
   await prisma.mathStimulusGroup.deleteMany({ where: { questions: { none: {} } } });

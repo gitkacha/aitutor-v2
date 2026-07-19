@@ -5,6 +5,9 @@ import { test, expect } from '@playwright/test';
 // so it never fetched anything. Also: topic detail must not count worksheet
 // questions as part of the topic's practice bank.
 
+// Milestone 2 B1: these flows create worksheets / load demo data — admin-only routes.
+test.use({ storageState: 'e2e/.auth/admin.json' });
+
 test.describe('math score history', () => {
   test('renders history (not an endless spinner) and lists a real attempt', async ({ page, request }) => {
     // Create one real arithmetic attempt via the API so history has data.

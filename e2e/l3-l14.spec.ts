@@ -47,6 +47,7 @@ test.describe('L6 — empty heatmap data is not "loading"', () => {
 });
 
 test.describe('L8 — sidebar momentum comes from /api/stats, demo excluded', () => {
+  test.use({ storageState: 'e2e/.auth/admin.json' }); // demo load / worksheet save are admin-only (B1)
   test('GET /api/stats counts this week non-demo sessions', async ({ request }) => {
     const weekStart = (() => {
       const d = new Date();
@@ -118,6 +119,7 @@ test.describe('L12 — error middleware honours status and hides internals', () 
 });
 
 test.describe('L14 — worksheet save validates prompt/type counts', () => {
+  test.use({ storageState: 'e2e/.auth/admin.json' }); // demo load / worksheet save are admin-only (B1)
   test('two typeIds with one prompt is rejected, not silently duplicated', async ({ request }) => {
     const discussion = await (await request.get('/api/types/discussion')).json();
     const review = await (await request.get('/api/types/review')).json();

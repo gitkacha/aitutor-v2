@@ -50,6 +50,9 @@ async function startWorksheet(page: Page, title: string) {
   await expect(page.getByText(/^\d+ \/ 3$/)).toBeVisible();
 }
 
+// Milestone 2 B1: these flows create worksheets / load demo data — admin-only routes.
+test.use({ storageState: 'e2e/.auth/admin.json' });
+
 test.describe('C2/C3 — math worksheet flow', () => {
   test('C3: worksheet questions show their real answer options', async ({ page, request }) => {
     const title = `E2E Worksheet C3 ${Date.now()}`;

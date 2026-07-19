@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { asyncHandler } from '../lib/async-handler';
 import { requireAuth } from '../middleware/auth';
+import { resolveScopeUserIds, canAccessUser } from '../lib/scope';
 
 const router = Router();
 
@@ -96,11 +97,14 @@ router.post('/', requireAuth, asyncHandler(async (req: Request, res: Response) =
   res.status(201).json(attempt);
 }));
 
-// GET /api/math/attempts — list attempts
-router.get('/', asyncHandler(async (req: Request, res: Response) => {
+// GET /api/math/attempts — list attempts, scoped to the caller (B1).
+router.get('/', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+  const userIds = await resolveScopeUserIds(req, res);
+  if (!userIds) return;
+
   const topicSlug = req.query.topic as string | undefined;
 
-  const where: any = {};
+  const where: any = { userId: { in: userIds } };
   if (topicSlug) {
     const topic = await prisma.mathTopic.findUnique({
       where: { slug: topicSlug },
@@ -122,7 +126,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
 }));
 
 // GET /api/math/attempts/:id — single attempt with full question details
-router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
+router.get('/:id', requireAuth, asyncHandler(async (req: Request, res: Response) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) {
     return res.status(400).json({ error: 'Invalid attempt ID' });
@@ -133,7 +137,8 @@ router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
     include: { topic: true, worksheet: true },
   });
 
-  if (!attempt) {
+  // Out-of-scope reads look like missing rows (B1).
+  if (!attempt || !(await canAccessUser(req, attempt.userId))) {
     return res.status(404).json({ error: 'Attempt not found' });
   }
 

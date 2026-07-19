@@ -89,6 +89,9 @@ async function saveAndStart(page: any, request: APIRequestContext, title: string
   await expect(page.getByText(/^\d+ \/ \d+$/)).toBeVisible();
 }
 
+// Milestone 2 B1: these flows create worksheets / load demo data — admin-only routes.
+test.use({ storageState: 'e2e/.auth/admin.json' });
+
 test.describe('W-8 — visual stimuli for math questions', () => {
   test('seeded protractor questions render a real protractor figure', async ({ page }) => {
     await page.goto('/math/protractor-skills/start');

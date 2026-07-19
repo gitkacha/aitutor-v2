@@ -58,6 +58,9 @@ async function saveMathWorksheet(request: APIRequestContext, title: string) {
   return res.json();
 }
 
+// Milestone 2 B1: these flows create worksheets / load demo data — admin-only routes.
+test.use({ storageState: 'e2e/.auth/admin.json' });
+
 test.describe('W1/a1 — exact-count worksheet generation', () => {
   test('generates exactly the requested questionCount even when the model under-delivers per call', async ({ request }) => {
     const calls = { count: 0 };
