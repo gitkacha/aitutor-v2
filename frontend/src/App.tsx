@@ -1,5 +1,8 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, RequireAuth } from './lib/auth';
 import Sidebar from './components/Sidebar';
+import Login from './pages/Login';
+import Setup from './pages/Setup';
 import Dashboard from './pages/Dashboard';
 import PracticeHome from './pages/PracticeHome';
 import TimedPractice from './pages/TimedPractice';
@@ -10,7 +13,8 @@ import MathPracticeHome from './pages/MathPracticeHome';
 import MathTimedPractice from './pages/MathTimedPractice';
 import MathAttemptReview from './pages/MathAttemptReview';
 
-export default function App() {
+// The signed-in application shell — everything behind the auth guard (W-11).
+function AppShell() {
   return (
     <div className="flex h-screen">
       <Sidebar />
@@ -32,5 +36,24 @@ export default function App() {
         </Routes>
       </main>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/setup" element={<Setup />} />
+        <Route
+          path="/*"
+          element={
+            <RequireAuth>
+              <AppShell />
+            </RequireAuth>
+          }
+        />
+      </Routes>
+    </AuthProvider>
   );
 }

@@ -4,7 +4,8 @@ import { cn } from '@/lib/utils';
 import { api, mathApi, WritingType, MathTopic, Worksheet, MathWorksheet } from '@/lib/api';
 import { worksheetStartState } from '@/lib/worksheet-start';
 import { parseJsonArray } from '@/lib/parse';
-import { ChevronRight, Home, Menu, Shield, X, Zap } from 'lucide-react';
+import { useAuth } from '@/lib/auth';
+import { ChevronRight, Home, LogOut, Menu, Shield, X, Zap } from 'lucide-react';
 
 // "Evening Navy" sidebar (docs/mocks/example2.html): a solid deep-navy rail with
 // a weekly momentum ring, colour-coded per-topic scores, an "Up next" pending
@@ -67,6 +68,7 @@ export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
   // A timed test is running — collapse the rail so nothing competes with it.
   const focusMode = /\/start$/.test(location.pathname);
@@ -333,6 +335,31 @@ export default function Sidebar() {
                 className="shrink-0 bg-brand-green text-white text-[11.5px] font-bold px-3 py-1.5 rounded-lg hover:bg-[#278a4f] transition-colors"
               >
                 Start
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Signed-in identity (W-11) — the guard signs the user out via the auth context. */}
+        {user && (
+          <div className="px-3 pb-3 pt-1 shrink-0 border-t border-rail-raise">
+            <div className="flex items-center gap-2.5 pt-2.5">
+              <div className="w-8 h-8 rounded-full bg-brand-blue grid place-items-center text-white text-[11px] font-bold shrink-0">
+                {user.name.split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-semibold text-white truncate">{user.name}</div>
+                <div className="text-[10px] font-semibold uppercase tracking-[.12em] text-rail-muted">
+                  {user.role === 'admin' ? 'Admin' : 'Student'}
+                </div>
+              </div>
+              <button
+                onClick={() => logout()}
+                title="Sign out"
+                aria-label="Sign out"
+                className="shrink-0 p-2 rounded-lg text-rail-muted hover:bg-rail-raise hover:text-white transition-colors"
+              >
+                <LogOut size={15} />
               </button>
             </div>
           </div>

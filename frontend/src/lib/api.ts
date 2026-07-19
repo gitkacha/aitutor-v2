@@ -210,7 +210,27 @@ export interface GenerateWritingWorksheetResponse {
   prompts: string[];
 }
 
+// ── Auth (Milestone 2) ──
+
+export interface AuthUser {
+  id: number;
+  workspaceId: number;
+  role: string; // 'admin' | 'student'
+  name: string;
+  email: string;
+}
+
 export const api = {
+  login: (email: string, password: string) =>
+    fetchJSON<{ user: AuthUser }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
+  logout: () => fetchJSON<{ ok: boolean }>('/auth/logout', { method: 'POST' }),
+  me: () => fetchJSON<{ user: AuthUser }>('/auth/me'),
+  setupStatus: () => fetchJSON<{ needsSetup: boolean }>('/setup/status'),
+  setup: (data: { workspaceName: string; name: string; email: string; password: string }) =>
+    fetchJSON<{ user: AuthUser }>('/setup', { method: 'POST', body: JSON.stringify(data) }),
   getTypes: () => fetchJSON<WritingType[]>('/types'),
   getType: (slug: string) => fetchJSON<WritingType>(`/types/${slug}`),
   getAttempts: (typeSlug?: string) =>
