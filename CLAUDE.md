@@ -6,7 +6,10 @@ NSW Selective Prep Coach is a practice and progress-tracking tool for the NSW Se
 Placement Test. It runs on your own computer — think of it as a private tutor and test simulator.
 It helps a student practise every subject tested in the Selective exam under real exam time pressure,
 automatically tracks how they perform over time, and helps a parent or tutor spot weak areas and
-generate targeted practice. It runs locally, needs no login, and works entirely on your machine.
+generate targeted practice. It runs locally and works entirely on your machine. It is multi-user
+and multi-tenant: a workspace holds admins and students who each sign in with their own account
+(password auth behind a swappable identity-provider layer); a super-admin can provision further
+workspaces. A brand-new install begins at a first-run setup screen.
 
 The goal is a clean, focused tool that does the essentials really well: a sidebar for choosing a
 subject and topic; timed practice tests that replicate the real exam's conditions; a heatmap showing
@@ -20,9 +23,7 @@ Writing phases and requirements are documented in `docs/superpowers/plans/Writin
 Mathematics phases and requirements are documented in `docs/superpowers/plans/Mathematics-plan.md`.
 
 Milestone 2 (multi-user, multi-tenant workspaces — approved 2026-07-18) is documented in
-`docs/superpowers/plans/Milestone2-plan.md` and tracked as worklog items W-9…W-14. Note:
-milestone 2 supersedes the "no login" line in the summary above — the app gains password
-login behind a swappable identity-provider layer.
+`docs/superpowers/plans/Milestone2-plan.md` and tracked as worklog items W-9…W-15.
 
 Each plan has its own final success criteria. Build in phase-order within each plan. Do not start a
 phase until every success criterion of the previous phase is demonstrably met.
@@ -87,7 +88,7 @@ message.
 Just enough direction to keep things on track — specific choices are left to the Coding Agent.
 
 - Build it as a single web app using **Vite, React and TypeScript**.
-- It runs fully locally and starts with **one simple command**; no accounts, no cloud, no internet
+- It runs fully locally and starts with **one simple command**; no cloud and no internet
 needed to use it, other than the AI calls described below.
 - It stores its data **locally on the machine** in a **SQLite** database file.
 - Use the **OpenAI API** (a `.env`-provided API key) for AI-assisted features: analysis of

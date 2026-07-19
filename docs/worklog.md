@@ -23,26 +23,16 @@ Milestone 2 — multi-user, multi-tenant workspaces. Plan approved 2026-07-18:
 B1∥B2 and C1∥C2 may run in parallel worktrees, merging only with their proving specs
 green. The full suite must be green at every phase boundary.
 
-- [ ] **W-11** — Phase B2 · Frontend auth shell (parallel with W-10): login/logout/setup
-  screens, auth context + route guards, sidebar identity, student app scoped to self.
-- [ ] **W-12** — Phase C1 · Admin experience (parallel with W-13): student picker at
-  worksheet save (assignments), per-student performance views, workspace members
-  management.
-- [ ] **W-13** — Phase C2 · Student experience (parallel with W-12): assigned-pending
-  lists everywhere, opportunity areas, negative-path e2e hardening.
 - [ ] **W-14** — Phase D · Integration (serial): full suites + typecheck; live fresh-DB
   multi-user walkthrough + demo-workspace verification; migration dry-run against a copy
-  of dev.db; README + CLAUDE.md updates.
-- [ ] **W-15** — Super-admin role + workspace provisioning (Milestone 2 addendum, approved
-  2026-07-18, built before W-14): orthogonal `User.isSuperAdmin` flag (demo admin + fresh-
-  install first admin get it, keeping their normal admin role); dedicated `/api/superadmin/*`
-  namespace behind `requireSuperAdmin` for create-workspace-with-first-admin, list workspaces,
-  and read-only per-workspace oversight (members + performance) — leaving `scope.ts` and
-  normal-admin isolation untouched; a `/superadmin` Platform console gated to super-admins.
-  Proof: `e2e/w15-superadmin.spec.ts` + `writing-heatmap-aggregate.test.ts`.
+  of dev.db; README + CLAUDE.md updates. *(in progress)*
 
 ## Done
 
+- [x] **W-15** — Super-admin role + workspace provisioning: orthogonal `User.isSuperAdmin` (demo admin + fresh-install first admin, keeping their normal admin role); `/api/superadmin/*` behind `requireSuperAdmin` for create-workspace-with-first-admin, list, and read-only per-workspace oversight — `scope.ts` and normal-admin isolation untouched; `/superadmin` Platform console gated to super-admins — commit `a4e9dd1` · proof: `e2e/w15-superadmin.spec.ts` (5 tests, RED-first) + `writing-heatmap-aggregate.test.ts` + live console/oversight (`docs/screenshots/w15-*`) · user signed off 2026-07-19
+- [x] **W-13** — Phase C2 · Student experience: Opportunity Areas on the dashboard (weakest scored areas across both subjects, one-tap into practice); assigned-only worksheet lists (delivered by B1's scoping, UI negative-path proven) — commit `3b86f17` · proof: `e2e/w13-student.spec.ts` (2 tests) + `docs/screenshots/w13-opportunity-areas.png` · user signed off 2026-07-19
+- [x] **W-12** — Phase C1 · Admin experience: assignment picker at worksheet save (`studentIds[]`, validated in-workspace, replacing B1's auto-assign-all), per-student performance selector on both heatmaps (`?studentId=`), Workspace Members panel (list + add) — commit `fed8a4e` · proof: `e2e/w12-admin.spec.ts` (3 tests, RED-first) + `docs/screenshots/w12-*` · user signed off 2026-07-19
+- [x] **W-11** — Phase B2 · Frontend auth shell: login/setup screens, auth context bootstrapping from `/api/auth/me`, RequireAuth route guard (redirect + destination restore), sidebar identity + Sign out — commit `3d6a435` · proof: `e2e/w11-auth-ui.spec.ts` (6 tests, RED-first) + `docs/screenshots/w11-*` · user signed off 2026-07-19
 - [x] **W-10** — Phase B1 · Backend tenant scoping/authz: `backend/src/lib/scope.ts` (student sees only self; admin sees workspace or one member via `?studentId=`), `requireAuth`/`requireAdmin` on every route, out-of-scope reads 404, cross-workspace/admin-API access 403, worksheet saves auto-assign to workspace students (interim until C1 picker) — commit `70a1509` (merged to main) · proof: `e2e/w10-scoping.spec.ts` (6 tests, RED-first) + 64/64 e2e, 32/32 unit, typecheck, live authz smoke on dev.db · user signed off 2026-07-19
 - [x] **W-9** — Phase A · Foundation: Workspace/User schema + migration with conditional demo-workspace backfill (all prior data → demo student, fresh installs stay clean); identity-provider auth service (local bcrypt) + cookie session + requireAuth/requireAdmin; first-run setup flow; seeded e2e/demo users; Playwright storageState harness with all 54 prior specs authenticated and green — commit `1c317f2` · proof: `e2e/w9-auth-foundation.spec.ts` (4 tests, RED-first) + full suites + live migration on dev.db · user signed off 2026-07-19
 

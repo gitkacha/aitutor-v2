@@ -1,6 +1,6 @@
 # NSW Selective Prep Coach
 
-A comprehensive practice and progress-tracking tool for students preparing for the **NSW Selective High School Placement Test**. Covers **Writing** (11 text types) and **Mathematical Reasoning** (20 topic categories). It runs locally on your own computer — no login, no cloud, no internet needed (other than optional AI analysis).
+A comprehensive practice and progress-tracking tool for students preparing for the **NSW Selective High School Placement Test**. Covers **Writing** (11 text types) and **Mathematical Reasoning** (20 topic categories). It runs locally on your own computer — no cloud and no internet needed (other than optional AI analysis). It is **multi-user and multi-tenant**: a workspace holds admins (tutors/parents) and students, each signing in with their own account.
 
 ## Quick Start
 
@@ -10,6 +10,23 @@ npm run dev
 ```
 
 Open **http://localhost:5173** in your browser.
+
+**First run:** a brand-new install has no accounts, so you land on a one-time **setup screen** that creates your first workspace and its first admin (who is also the platform super-admin). Sign in with those credentials, then add students and other admins from the Admin page.
+
+**Trying the demo:** if you started from a database that already had practice data, it was migrated into a **Demo Workspace** with two accounts (default password `demo1234`):
+
+| Account | Email | Role |
+|---|---|---|
+| Demo Admin | `demo-admin@demo.local` | admin **+ super-admin** |
+| Demo Student | `demo-student@demo.local` | student |
+
+## Workspaces, accounts & roles
+
+- A **Workspace** is the top-level tenant. Curriculum (writing types, math topics, question banks) is shared globally; attempts, analyses, worksheets and assignments are scoped to a workspace.
+- **Students** sign in and see only their own performance, opportunity areas, and the worksheets assigned to them.
+- **Admins** generate worksheets and assign them to chosen students, view any student's performance in their workspace, and manage workspace members.
+- A **super-admin** (the demo admin, and any fresh-install first admin) can additionally provision new workspaces — each with its own first admin — and view any workspace's members and performance read-only, from a **Platform** console. Per-workspace admins are then delegated all day-to-day actions in their own workspace.
+- **Authentication** is password-based (bcrypt) behind a swappable *identity-provider* interface, so a third-party IdP (e.g. Auth0/OIDC) can replace the local provider without touching routes or UI. Sessions are signed HTTP-only cookies (`SESSION_SECRET`).
 
 ## Features
 
@@ -52,7 +69,10 @@ Open **http://localhost:5173** in your browser.
 - Specific, quotable feedback tied to the student's actual writing
 
 ### Admin Dashboard
-- Toggle to admin view (no login needed — single-student local tool)
+- Signed-in admin view (admins only; students never see it)
+- **Assign worksheets to chosen students** at save time (select-all by default)
+- **Per-student performance** — a selector scopes both heatmaps to any student in the workspace, or the whole-workspace aggregate
+- **Workspace Members** — list members and add new students or admins
 - Tabbed interface for **Writing** and **Mathematics** controls
 - **Generate Writing Worksheet** — AI creates targeted prompts for the weakest text types
 - **Generate Mathematics Worksheet** — select specific topics (or all), choose the question count (5–50, default 35); generation is batched so the worksheet always contains exactly that many questions, at reference-test difficulty. Students get 1 minute per question.
@@ -69,7 +89,12 @@ Open **http://localhost:5173** in your browser.
 
 ## Build Progress
 
-All 12 phases are complete. Both **Writing** and **Mathematics** subjects are fully implemented.
+Milestone 1 (all 12 subject phases) is complete for both **Writing** and **Mathematics**.
+**Milestone 2 — multi-user, multi-tenant workspaces** is complete: workspace/user schema with a
+conditional demo-workspace migration, password auth behind a swappable identity-provider seam,
+per-workspace scoping and authorization, login/first-run-setup UI, the admin assignment picker /
+per-student views / member management, the student opportunity-areas dashboard, and a super-admin
+Platform console for provisioning and read-only oversight.
 
 | Phase | Feature | Status |
 |---|---|---|
@@ -153,12 +178,29 @@ coach/
 | POST | `/api/math/worksheets/save` | Save reviewed math worksheet |
 | GET | `/api/math/worksheets` | List math worksheets |
 
+All data routes require a session; student requests are scoped to the caller, and admins may
+pass `?studentId=` (a member of their workspace) to view one student. Worksheet `save` accepts
+`studentIds[]` to target an assignment.
+
+### Auth, workspaces & platform
+
+| Method | Route | Description |
+|---|---|---|
+| GET | `/api/setup/status` | Whether a first-run setup is needed (zero users) |
+| POST | `/api/setup` | First-run: create the first workspace + admin (super-admin) |
+| POST | `/api/auth/login` · `/logout` | Sign in / out (session cookie) |
+| GET | `/api/auth/me` | The signed-in user, or 401 |
+| GET · POST | `/api/workspace/users` | Admin: list / add members of their own workspace |
+| GET | `/api/superadmin/workspaces` | Super-admin: list all workspaces |
+| POST | `/api/superadmin/workspaces` | Super-admin: create a workspace + its first admin |
+| GET | `/api/superadmin/workspaces/:id` | Super-admin: read-only oversight (members + performance) |
+
 ### Demo Data
 
 | Method | Route | Description |
 |---|---|---|
-| POST | `/api/demo/load` | Seed demo data (both subjects) |
-| POST | `/api/demo/clear` | Remove all demo records |
+| POST | `/api/demo/load` | Seed demo data into the caller's workspace (admin) |
+| POST | `/api/demo/clear` | Remove the caller workspace's demo records (admin) |
 
 ## Configuration
 
@@ -167,6 +209,10 @@ Create a `backend/.env` file to configure the OpenAI API key for AI analysis:
 ```env
 DATABASE_URL="file:./dev.db"
 OPENAI_API_KEY=your-key-here
+
+# Signs the session cookie — set a strong random value in any shared/hosted deployment.
+# A local dev default is used if unset.
+SESSION_SECRET=change-me
 
 # Optional model overrides (defaults shown)
 GENERATION_MODEL=gpt-5-mini
@@ -185,6 +231,9 @@ npm run dev
 
 # Run unit tests
 npm test
+
+# Typecheck both workspaces
+npm run typecheck
 
 # Run end-to-end tests (isolated DB and ports; safe to run alongside dev servers)
 npm run e2e
