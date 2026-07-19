@@ -32,6 +32,9 @@ model User {
   authProvider    String  @default("local")
   providerSubject String?
   passwordHash    String?
+  // Cross-workspace platform capability (W-15): can create workspaces + their first
+  // admin and view any workspace read-only. Orthogonal to `role`.
+  isSuperAdmin    Boolean @default(false)
   isDemo          Boolean @default(false)
   workspace       Workspace @relation(fields: [workspaceId], references: [id])
   attempts        Attempt[]

@@ -33,6 +33,13 @@ green. The full suite must be green at every phase boundary.
 - [ ] **W-14** — Phase D · Integration (serial): full suites + typecheck; live fresh-DB
   multi-user walkthrough + demo-workspace verification; migration dry-run against a copy
   of dev.db; README + CLAUDE.md updates.
+- [ ] **W-15** — Super-admin role + workspace provisioning (Milestone 2 addendum, approved
+  2026-07-18, built before W-14): orthogonal `User.isSuperAdmin` flag (demo admin + fresh-
+  install first admin get it, keeping their normal admin role); dedicated `/api/superadmin/*`
+  namespace behind `requireSuperAdmin` for create-workspace-with-first-admin, list workspaces,
+  and read-only per-workspace oversight (members + performance) — leaving `scope.ts` and
+  normal-admin isolation untouched; a `/superadmin` Platform console gated to super-admins.
+  Proof: `e2e/w15-superadmin.spec.ts` + `writing-heatmap-aggregate.test.ts`.
 
 ## Done
 

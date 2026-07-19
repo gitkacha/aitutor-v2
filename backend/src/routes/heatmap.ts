@@ -3,6 +3,7 @@ import prisma from '../lib/prisma';
 import { asyncHandler } from '../lib/async-handler';
 import { requireAuth } from '../middleware/auth';
 import { resolveScopeUserIds } from '../lib/scope';
+import { aggregateWritingHeatmap } from '../lib/writing-heatmap-aggregate';
 
 const router = Router();
 
@@ -22,26 +23,7 @@ router.get('/', requireAuth, asyncHandler(async (req: Request, res: Response) =>
     orderBy: { name: 'asc' },
   });
 
-  const heatmap = types.map((type) => {
-    const scoredAttempts = type.attempts.filter((a) => a.analysis?.overallScore != null);
-    const averageScore =
-      scoredAttempts.length > 0
-        ? Math.round(
-            scoredAttempts.reduce((sum, a) => sum + a.analysis!.overallScore, 0) /
-              scoredAttempts.length
-          )
-        : null;
-
-    return {
-      typeId: type.id,
-      typeName: type.name,
-      typeSlug: type.slug,
-      averageScore,
-      attemptCount: type.attempts.length,
-    };
-  });
-
-  res.json(heatmap);
+  res.json(aggregateWritingHeatmap(types));
 }));
 
 export default router;

@@ -100,3 +100,14 @@ worktrees against the Phase-A contract and merge only with their proving specs g
    documented and requires no route/UI changes.
 5. All suites green (expanded e2e, unit, `npm run typecheck`); live screenshots of login,
    admin, and student views reviewed; user sign-off per item.
+
+## Addendum — W-15: super-admin role + workspace provisioning (approved 2026-07-18)
+
+Beyond the six phases, a super-admin capability was added (built before Phase D at the
+user's request). `User.isSuperAdmin` is an orthogonal flag (the demo admin and any
+fresh-install first admin get it while keeping their normal admin role). A dedicated
+`/api/superadmin/*` namespace behind `requireSuperAdmin` provides create-workspace-with-
+first-admin, list-workspaces, and read-only per-workspace oversight (members + performance) —
+`scope.ts` and normal-admin tenant isolation are untouched. The frontend adds a `/superadmin`
+Platform console, gated to super-admins. Proof: `e2e/w15-superadmin.spec.ts` (5 tests) +
+`writing-heatmap-aggregate.test.ts`.

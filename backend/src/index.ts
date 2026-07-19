@@ -7,6 +7,7 @@ import { attachUser } from './middleware/auth';
 import authRouter from './routes/auth';
 import setupRouter from './routes/setup';
 import workspaceUsersRouter from './routes/workspace-users';
+import superadminRouter from './routes/superadmin';
 import typesRouter from './routes/types';
 import attemptsRouter from './routes/attempts';
 import heatmapRouter from './routes/heatmap';
@@ -39,6 +40,7 @@ app.use(attachUser);
 app.use('/api/auth', authRouter);
 app.use('/api/setup', setupRouter);
 app.use('/api/workspace/users', workspaceUsersRouter);
+app.use('/api/superadmin', superadminRouter);
 
 app.use('/api/types', typesRouter);
 app.use('/api/attempts', attemptsRouter);

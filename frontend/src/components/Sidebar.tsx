@@ -5,7 +5,7 @@ import { api, mathApi, WritingType, MathTopic, Worksheet, MathWorksheet } from '
 import { worksheetStartState } from '@/lib/worksheet-start';
 import { parseJsonArray } from '@/lib/parse';
 import { useAuth } from '@/lib/auth';
-import { ChevronRight, Home, LogOut, Menu, Shield, X, Zap } from 'lucide-react';
+import { Building2, ChevronRight, Home, LogOut, Menu, Shield, X, Zap } from 'lucide-react';
 
 // "Evening Navy" sidebar (docs/mocks/example2.html): a solid deep-navy rail with
 // a weekly momentum ring, colour-coded per-topic scores, an "Up next" pending
@@ -319,6 +319,13 @@ export default function Sidebar() {
             <Shield size={15} className={location.pathname === '/admin' ? '' : 'text-rail-muted'} />
             Admin
           </Link>
+          {/* Platform console — super-admins only (W-15) */}
+          {user?.isSuperAdmin && (
+            <Link to="/superadmin" onClick={() => setMobileOpen(false)} className={itemClass(location.pathname === '/superadmin')}>
+              <Building2 size={15} className={location.pathname === '/superadmin' ? '' : 'text-rail-muted'} />
+              Platform
+            </Link>
+          )}
         </nav>
 
         {/* Up next — the oldest pending worksheet, one tap away */}

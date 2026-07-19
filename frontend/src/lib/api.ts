@@ -219,7 +219,36 @@ export interface AuthUser {
   role: string; // 'admin' | 'student'
   name: string;
   email: string;
+  isSuperAdmin: boolean;
 }
+
+// ── Super-admin (W-15) ──
+
+export interface WorkspaceSummary {
+  id: number;
+  name: string;
+  slug: string;
+  isDemo: boolean;
+  adminCount: number;
+  studentCount: number;
+}
+
+export interface WorkspaceOversight {
+  workspace: { id: number; name: string; slug: string; isDemo: boolean };
+  members: AuthUser[];
+  writingHeatmap: HeatmapEntry[];
+  mathHeatmap: MathHeatmapEntry[];
+}
+
+export const superAdminApi = {
+  listWorkspaces: () => fetchJSON<{ workspaces: WorkspaceSummary[] }>('/superadmin/workspaces'),
+  createWorkspace: (data: { workspaceName: string; adminName: string; adminEmail: string; adminPassword: string }) =>
+    fetchJSON<{ workspace: WorkspaceSummary; admin: AuthUser }>('/superadmin/workspaces', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getWorkspace: (id: number) => fetchJSON<WorkspaceOversight>(`/superadmin/workspaces/${id}`),
+};
 
 export const api = {
   login: (email: string, password: string) =>

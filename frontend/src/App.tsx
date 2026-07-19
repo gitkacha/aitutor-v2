@@ -1,8 +1,11 @@
+import { ReactNode } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, RequireAuth } from './lib/auth';
+import { AuthProvider, RequireAuth, useAuth } from './lib/auth';
+import { Navigate as Nav } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Login from './pages/Login';
 import Setup from './pages/Setup';
+import SuperAdmin from './pages/SuperAdmin';
 import Dashboard from './pages/Dashboard';
 import PracticeHome from './pages/PracticeHome';
 import TimedPractice from './pages/TimedPractice';
@@ -12,6 +15,12 @@ import Admin from './pages/Admin';
 import MathPracticeHome from './pages/MathPracticeHome';
 import MathTimedPractice from './pages/MathTimedPractice';
 import MathAttemptReview from './pages/MathAttemptReview';
+
+// Super-admin-only route guard (W-15): non-super users are sent to the dashboard.
+function RequireSuperAdmin({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  return user?.isSuperAdmin ? <>{children}</> : <Nav to="/dashboard" replace />;
+}
 
 // The signed-in application shell — everything behind the auth guard (W-11).
 function AppShell() {
@@ -27,6 +36,7 @@ function AppShell() {
           <Route path="/history/:typeSlug" element={<ScoreHistory />} />
           <Route path="/attempt/:id" element={<AttemptDetail />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/superadmin" element={<RequireSuperAdmin><SuperAdmin /></RequireSuperAdmin>} />
           <Route path="/math/:topicSlug" element={<MathPracticeHome />} />
           <Route path="/math/:topicSlug/start" element={<MathTimedPractice />} />
           {/* ScoreHistory reads :typeSlug for both subjects */}

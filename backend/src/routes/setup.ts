@@ -36,6 +36,9 @@ router.post('/', asyncHandler(async (req: Request, res: Response) => {
     data: {
       workspaceId: workspace.id,
       role: 'admin',
+      // The very first admin of a fresh system is the platform super-admin, so more
+      // workspaces can be provisioned later (W-15).
+      isSuperAdmin: true,
       name,
       email,
       passwordHash: await bcrypt.hash(password, 10),

@@ -716,13 +716,16 @@ async function seedAuthUsers() {
     create: { name: 'E2E Workspace', slug: 'e2e-workspace' },
   });
   const TEST_HASH = '$2b$10$9GefujP1Mce4pMVlMJNdKOUKH0aerDJd/URYnHKB3O4eJJByjfxQK'; // test1234
+  // e2e-super mirrors the demo admin's dual role (super-admin + normal admin). e2e-admin
+  // stays a plain admin so the W-10 cross-workspace-denial tests remain valid (W-15).
   for (const u of [
-    { role: 'admin', name: 'E2E Admin', email: 'e2e-admin@test.local' },
-    { role: 'student', name: 'E2E Student', email: 'e2e-student@test.local' },
+    { role: 'admin', name: 'E2E Admin', email: 'e2e-admin@test.local', isSuperAdmin: false },
+    { role: 'student', name: 'E2E Student', email: 'e2e-student@test.local', isSuperAdmin: false },
+    { role: 'admin', name: 'E2E Super', email: 'e2e-super@test.local', isSuperAdmin: true },
   ]) {
     await prisma.user.upsert({
       where: { email: u.email },
-      update: {},
+      update: { isSuperAdmin: u.isSuperAdmin },
       create: { ...u, workspaceId: workspace.id, passwordHash: TEST_HASH },
     });
     console.log(`  ✓ ${u.email}`);
