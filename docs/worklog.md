@@ -23,14 +23,6 @@ Milestone 2 — multi-user, multi-tenant workspaces. Plan approved 2026-07-18:
 B1∥B2 and C1∥C2 may run in parallel worktrees, merging only with their proving specs
 green. The full suite must be green at every phase boundary.
 
-- [ ] **W-9** — Phase A · Foundation (serial): Workspace/User schema + migration with
-  demo-workspace backfill; identity-provider auth service (local bcrypt implementation) +
-  cookie session + requireAuth/requireAdmin; first-run setup flow; seed e2e/demo users;
-  e2e harness upgrade (login helpers + storageState fixtures) with all existing specs
-  authenticated and green.
-- [ ] **W-10** — Phase B1 · Backend scoping (parallel with W-11): every route behind
-  requireAuth + the scoping contract; authz e2e negative paths (student ↛ other student,
-  student ↛ admin APIs, admin ↛ other workspace).
 - [ ] **W-11** — Phase B2 · Frontend auth shell (parallel with W-10): login/logout/setup
   screens, auth context + route guards, sidebar identity, student app scoped to self.
 - [ ] **W-12** — Phase C1 · Admin experience (parallel with W-13): student picker at
@@ -43,6 +35,9 @@ green. The full suite must be green at every phase boundary.
   of dev.db; README + CLAUDE.md updates.
 
 ## Done
+
+- [x] **W-10** — Phase B1 · Backend tenant scoping/authz: `backend/src/lib/scope.ts` (student sees only self; admin sees workspace or one member via `?studentId=`), `requireAuth`/`requireAdmin` on every route, out-of-scope reads 404, cross-workspace/admin-API access 403, worksheet saves auto-assign to workspace students (interim until C1 picker) — commit `70a1509` (merged to main) · proof: `e2e/w10-scoping.spec.ts` (6 tests, RED-first) + 64/64 e2e, 32/32 unit, typecheck, live authz smoke on dev.db · user signed off 2026-07-19
+- [x] **W-9** — Phase A · Foundation: Workspace/User schema + migration with conditional demo-workspace backfill (all prior data → demo student, fresh installs stay clean); identity-provider auth service (local bcrypt) + cookie session + requireAuth/requireAdmin; first-run setup flow; seeded e2e/demo users; Playwright storageState harness with all 54 prior specs authenticated and green — commit `1c317f2` · proof: `e2e/w9-auth-foundation.spec.ts` (4 tests, RED-first) + full suites + live migration on dev.db · user signed off 2026-07-19
 
 - [x] **L14** — Polish sweep: worksheet save 400s on types/prompts count mismatch, `timeTaken == null` rejected, `|| 10` fallback and hardcoded "20 topic categories" removed, AttemptDetail spinner label fixed, demo data fully deterministic, grid label-length validation in both stimulus libs — commits `c95edf4` (backend), `27eb5a8` (frontend) · proof: `e2e/l3-l14.spec.ts` (L14 test) + `stimulus.test.ts` grid-label cases · user signed off 2026-07-18
 - [x] **L13** — MathQuestionCard rendered placeholder A–E options on parse failure; corrupt options now show an explicit error via `parseOptions` — commit `27eb5a8` · proof: `frontend/src/__tests__/parse.test.ts` · user signed off 2026-07-18
