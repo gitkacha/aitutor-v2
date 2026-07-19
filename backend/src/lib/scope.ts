@@ -41,6 +41,35 @@ export async function resolveScopeUserIds(req: Request, res: Response): Promise<
   return members.map((m) => m.id);
 }
 
+// Resolves the student ids a worksheet is assigned to at save time (C1). `studentIds`
+// omitted → every student in the admin's workspace (the picker's select-all default);
+// provided → exactly those, but each must be a student in the admin's workspace, else a
+// 400 is written and null returned.
+export async function resolveAssigneeStudentIds(
+  req: Request,
+  res: Response,
+  studentIds: unknown
+): Promise<number[] | null> {
+  const workspaceStudents = await prisma.user.findMany({
+    where: { workspaceId: req.user!.workspaceId, role: 'student' },
+    select: { id: true },
+  });
+  const allIds = workspaceStudents.map((s) => s.id);
+
+  if (studentIds === undefined || studentIds === null) return allIds;
+
+  if (!Array.isArray(studentIds) || !studentIds.every((v) => Number.isInteger(v))) {
+    res.status(400).json({ error: 'studentIds must be an array of student ids', status: 400 });
+    return null;
+  }
+  const allowed = new Set(allIds);
+  if ((studentIds as number[]).some((id) => !allowed.has(id))) {
+    res.status(400).json({ error: 'studentIds must all be students in your workspace', status: 400 });
+    return null;
+  }
+  return studentIds as number[];
+}
+
 // True when the caller may see rows belonging to `ownerId`: their own rows, or —
 // for admins — rows of any member of their workspace.
 export async function canAccessUser(req: Request, ownerId: number): Promise<boolean> {

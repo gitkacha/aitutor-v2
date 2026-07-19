@@ -183,16 +183,17 @@ export const mathApi = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  getHeatmap: () => fetchJSON<MathHeatmapEntry[]>('/math/heatmap'),
+  getHeatmap: (studentId?: number) =>
+    fetchJSON<MathHeatmapEntry[]>(`/math/heatmap${studentId ? `?studentId=${studentId}` : ''}`),
   generateWorksheet: (topicIds: string[], questionCount?: number) =>
     fetchJSON<{ topics: Array<{ id: number; name: string; slug: string }>; questions: GeneratedMathQuestion[] }>(
       '/math/worksheets/generate',
       { method: 'POST', body: JSON.stringify({ topicIds, questionCount }) }
     ),
-  saveWorksheet: (title: string, topicIds: string[], questions: GeneratedMathQuestion[]) =>
+  saveWorksheet: (title: string, topicIds: string[], questions: GeneratedMathQuestion[], studentIds?: number[]) =>
     fetchJSON<MathWorksheet>('/math/worksheets/save', {
       method: 'POST',
-      body: JSON.stringify({ title, topicIds, questions }),
+      body: JSON.stringify({ title, topicIds, questions, studentIds }),
     }),
   getWorksheets: () => fetchJSON<MathWorksheet[]>('/math/worksheets'),
 };
@@ -244,19 +245,26 @@ export const api = {
     }),
   triggerAnalysis: (attemptId: number) =>
     fetchJSON<Analysis>(`/analysis/${attemptId}`, { method: 'POST' }),
-  getHeatmap: () => fetchJSON<HeatmapEntry[]>('/heatmap'),
+  // studentId (admin only, C1) scopes a heatmap to one workspace student.
+  getHeatmap: (studentId?: number) =>
+    fetchJSON<HeatmapEntry[]>(`/heatmap${studentId ? `?studentId=${studentId}` : ''}`),
   getStats: () => fetchJSON<{ sessionsThisWeek: number }>('/stats'),
   generateWorksheet: (typeIds: number[]) =>
     fetchJSON<GenerateWritingWorksheetResponse>('/worksheets/generate', {
       method: 'POST',
       body: JSON.stringify({ typeIds }),
     }),
-  saveWorksheet: (title: string, typeIds: number[], prompts: string[]) =>
+  // studentIds (C1) targets specific students; omitted assigns to every student.
+  saveWorksheet: (title: string, typeIds: number[], prompts: string[], studentIds?: number[]) =>
     fetchJSON<Worksheet[]>('/worksheets/save', {
       method: 'POST',
-      body: JSON.stringify({ title, typeIds, prompts }),
+      body: JSON.stringify({ title, typeIds, prompts, studentIds }),
     }),
   getWorksheets: () => fetchJSON<Worksheet[]>('/worksheets'),
   loadDemo: () => fetchJSON<{ message: string }>('/demo/load', { method: 'POST' }),
   clearDemo: () => fetchJSON<{ message: string }>('/demo/clear', { method: 'POST' }),
+  // Workspace member management (C1) — admin only.
+  getWorkspaceUsers: () => fetchJSON<{ users: AuthUser[] }>('/workspace/users'),
+  createWorkspaceUser: (data: { name: string; email: string; password: string; role: string }) =>
+    fetchJSON<{ user: AuthUser }>('/workspace/users', { method: 'POST', body: JSON.stringify(data) }),
 };

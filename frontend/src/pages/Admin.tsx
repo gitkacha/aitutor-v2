@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useHeatmap } from '@/hooks/useHeatmap';
 import Heatmap from '@/components/Heatmap';
 import PendingWorksheets from '@/components/PendingWorksheets';
-import { api, mathApi, MathTopic, MathHeatmapEntry, GeneratedMathQuestion, Worksheet, MathWorksheet } from '@/lib/api';
+import { api, mathApi, MathTopic, MathHeatmapEntry, GeneratedMathQuestion, Worksheet, MathWorksheet, AuthUser } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Shield, Plus, Database, Trash2, Calculator, FileText } from 'lucide-react';
+import { Shield, Plus, Database, Trash2, Calculator, FileText, Users, UserPlus } from 'lucide-react';
 import StimulusFigure from '@/components/StimulusFigure';
 import { validateStimulus } from '@/lib/stimulus';
 import { parseJsonArray } from '@/lib/parse';
@@ -21,7 +21,19 @@ interface WritingTypeBrief {
 
 export default function Admin() {
   const navigate = useNavigate();
-  const { data: writingHeatmap, loading: writingHeatmapLoading, error: writingHeatmapError, refresh: refreshWriting } = useHeatmap();
+  // Per-student performance view (C1): undefined = whole-workspace aggregate.
+  const [performanceStudentId, setPerformanceStudentId] = useState<number | undefined>(undefined);
+  const { data: writingHeatmap, loading: writingHeatmapLoading, error: writingHeatmapError, refresh: refreshWriting } = useHeatmap(performanceStudentId);
+
+  // Workspace members (C1)
+  const [workspaceUsers, setWorkspaceUsers] = useState<AuthUser[]>([]);
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [newMember, setNewMember] = useState({ name: '', email: '', password: '', role: 'student' });
+  const students = workspaceUsers.filter((u) => u.role === 'student');
+
+  // Assignment picker (C1): null = every student (select-all default); otherwise the
+  // chosen ids. Applies to whichever worksheet is being saved.
+  const [assignStudentIds, setAssignStudentIds] = useState<number[] | null>(null);
   const [mathHeatmapError, setMathHeatmapError] = useState<string | null>(null);
   // Starts true so the math tab's first paint shows "loading", not a no-data flash (L6).
   const [mathHeatmapLoading, setMathHeatmapLoading] = useState(true);
@@ -62,10 +74,22 @@ export default function Admin() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
+  // Workspace members drive the performance selector, the assignment picker and the
+  // members panel (C1).
+  const loadWorkspaceUsers = () => api.getWorkspaceUsers().then((r) => setWorkspaceUsers(r.users)).catch(() => {});
+  useEffect(() => { loadWorkspaceUsers(); }, []);
+
+  // Re-scope the math heatmap when the selected student changes (writing is handled by
+  // useHeatmap's own dependency).
+  useEffect(() => {
+    if (activeTab === 'math') refreshMath();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [performanceStudentId]);
+
   const refreshMath = () => {
     setMathHeatmapError(null);
     setMathHeatmapLoading(true);
-    mathApi.getHeatmap()
+    mathApi.getHeatmap(performanceStudentId)
       .then(setMathHeatmap)
       .catch((e) => setMathHeatmapError(e.message))
       .finally(() => setMathHeatmapLoading(false));
@@ -89,6 +113,7 @@ export default function Admin() {
       const result = await api.generateWorksheet(typeIds);
       setGeneratedPrompts(result.prompts);
       setGeneratedTypeInfo(result.types);
+      setAssignStudentIds(null); // default: assign to every student
       setShowWritingReview(true);
       setMessage(`Generated ${result.prompts.length} writing prompts.`);
     } catch (e: any) {
@@ -103,7 +128,7 @@ export default function Admin() {
     try {
       const typeIds = generatedTypeInfo.map((t) => t.id);
       const title = `Worksheet: ${generatedTypeInfo.map((t) => t.name).join(' + ')}`;
-      const saved = await api.saveWorksheet(title, typeIds, generatedPrompts);
+      const saved = await api.saveWorksheet(title, typeIds, generatedPrompts, assignStudentIds ?? undefined);
       setShowWritingReview(false);
       setGeneratedPrompts([]);
       setGeneratedTypeInfo([]);
@@ -127,6 +152,7 @@ export default function Admin() {
     try {
       const result = await mathApi.generateWorksheet(selectedTopics, questionCount);
       setGeneratedQuestions(result.questions);
+      setAssignStudentIds(null); // default: assign to every student
       setShowMathReview(true);
       setMessage(`Generated ${result.questions.length} questions across ${result.topics.length} topic(s).`);
     } catch (e: any) {
@@ -140,7 +166,7 @@ export default function Admin() {
     setMessage(null);
     try {
       const title = mathWorksheetTitle(selectedTopics, mathTopics);
-      await mathApi.saveWorksheet(title, selectedTopics, generatedQuestions);
+      await mathApi.saveWorksheet(title, selectedTopics, generatedQuestions, assignStudentIds ?? undefined);
       setShowMathReview(false);
       setGeneratedQuestions([]);
       setMessage(`Worksheet "${title}" saved successfully!`);
@@ -150,6 +176,33 @@ export default function Admin() {
     } catch (e: any) {
       setMessage(`Error: ${e.message}`);
     }
+  };
+
+  // Workspace members (C1)
+  const handleAddMember = async () => {
+    setMessage(null);
+    if (!newMember.name || !newMember.email || newMember.password.length < 8) {
+      setMessage('Error: name, email and a password of at least 8 characters are required.');
+      return;
+    }
+    try {
+      await api.createWorkspaceUser(newMember);
+      setNewMember({ name: '', email: '', password: '', role: 'student' });
+      setShowAddMember(false);
+      setMessage(`Member "${newMember.email}" added.`);
+      loadWorkspaceUsers();
+    } catch (e: any) {
+      setMessage(`Error: ${e.message}`);
+    }
+  };
+
+  const toggleAssignStudent = (id: number) => {
+    // From the select-all default (null), the first toggle materialises the full list
+    // minus the one being removed.
+    setAssignStudentIds((prev) => {
+      const base = prev ?? students.map((s) => s.id);
+      return base.includes(id) ? base.filter((x) => x !== id) : [...base, id];
+    });
   };
 
   // Demo data
@@ -195,6 +248,70 @@ export default function Admin() {
     );
   };
 
+  // Performance student selector (C1): scopes both heatmaps to one student or the
+  // whole workspace.
+  const performanceSelector = students.length > 0 && (
+    <div className="mb-3 flex items-center gap-2">
+      <label htmlFor="perf-student" className="text-sm font-medium text-gray-600">
+        View performance for
+      </label>
+      <select
+        id="perf-student"
+        value={performanceStudentId ?? ''}
+        onChange={(e) => setPerformanceStudentId(e.target.value ? Number(e.target.value) : undefined)}
+        className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
+      >
+        <option value="">All students (workspace)</option>
+        {students.map((s) => (
+          <option key={s.id} value={s.id}>{s.name} ({s.email})</option>
+        ))}
+      </select>
+    </div>
+  );
+
+  // Assignment picker (C1): a checklist shown in the worksheet review step. Null = all.
+  const assignmentPicker = (
+    <div className="bg-white rounded-xl p-4 border border-gray-200">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <UserPlus size={16} className="text-brand-blue" />
+          <h3 className="text-sm font-semibold text-gray-900">Assign to students</h3>
+        </div>
+        <button
+          onClick={() => setAssignStudentIds(assignStudentIds === null ? [] : null)}
+          className="text-xs text-brand-blue hover:underline"
+        >
+          {assignStudentIds === null ? 'Clear all' : 'Select all'}
+        </button>
+      </div>
+      {students.length === 0 ? (
+        <p className="text-xs text-gray-400">No students in this workspace yet — add one below.</p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {students.map((s) => {
+            const checked = assignStudentIds === null || assignStudentIds.includes(s.id);
+            return (
+              <label
+                key={s.id}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs cursor-pointer ${
+                  checked ? 'bg-brand-blue/10 border-brand-blue text-brand-blue' : 'border-gray-200 text-gray-600'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggleAssignStudent(s.id)}
+                  className="accent-brand-blue"
+                />
+                {s.name}
+              </label>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="flex items-center gap-3">
@@ -238,9 +355,10 @@ export default function Admin() {
           {/* Writing Heatmap */}
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-3">Writing Performance</h2>
+            {performanceSelector}
             <Heatmap
               data={writingHeatmap}
-              onSelect={(entry) => navigate(`/history/${entry.typeSlug}`)}
+              onSelect={(entry) => navigate(`/history/${entry.typeSlug}${performanceStudentId ? `?studentId=${performanceStudentId}` : ''}`)}
               loading={writingHeatmapLoading}
               error={writingHeatmapError}
               onRetry={refreshWriting}
@@ -317,6 +435,7 @@ export default function Admin() {
               <p className="text-sm text-gray-500">
                 {generatedPrompts.length} prompt{generatedPrompts.length !== 1 ? 's' : ''} generated — one per text type ({generatedTypeInfo.map(t => t.name).join(', ')}). Saving creates a worksheet for each type.
               </p>
+              {assignmentPicker}
               {generatedPrompts.map((prompt, i) => {
                 // prompts are index-aligned with types (one tailored prompt per type)
                 const type = generatedTypeInfo[i] || generatedTypeInfo[0];
@@ -389,6 +508,7 @@ export default function Admin() {
           {/* Math Heatmap */}
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-3">Mathematics Performance</h2>
+            {performanceSelector}
             <Heatmap
               data={mathHeatmap.map(d => ({
                 typeId: d.topicId,
@@ -397,7 +517,7 @@ export default function Admin() {
                 averageScore: d.averageScore,
                 attemptCount: d.attemptCount,
               }))}
-              onSelect={(entry) => navigate(`/math-history/${entry.typeSlug}`)}
+              onSelect={(entry) => navigate(`/math-history/${entry.typeSlug}${performanceStudentId ? `?studentId=${performanceStudentId}` : ''}`)}
               loading={mathHeatmapLoading}
               error={mathHeatmapError}
               onRetry={refreshMath}
@@ -491,6 +611,7 @@ export default function Admin() {
               <p className="text-sm text-gray-500">
                 {generatedQuestions.length} questions generated. Review and save to make them available to the student.
               </p>
+              {assignmentPicker}
               {generatedQuestions.map((q, i) => {
                 const labels = ['A', 'B', 'C', 'D', 'E'];
                 return (
@@ -573,6 +694,74 @@ export default function Admin() {
           )}
         </>
       )}
+
+      {/* Workspace Members (C1) — always visible */}
+      <div className="bg-white rounded-xl p-6 border border-gray-200">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Users size={18} className="text-brand-blue" />
+            <h2 className="text-lg font-semibold text-gray-900">Workspace Members</h2>
+          </div>
+          {!showAddMember && (
+            <Button size="sm" variant="outline" onClick={() => setShowAddMember(true)}>
+              <UserPlus size={14} className="mr-1" /> Add member
+            </Button>
+          )}
+        </div>
+
+        {showAddMember && (
+          <div className="mb-4 grid gap-3 sm:grid-cols-2 bg-gray-50 rounded-lg p-4 border border-gray-100">
+            <div>
+              <label htmlFor="member-name" className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+              <input id="member-name" value={newMember.name}
+                onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/50" />
+            </div>
+            <div>
+              <label htmlFor="member-email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input id="member-email" type="email" value={newMember.email}
+                onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/50" />
+            </div>
+            <div>
+              <label htmlFor="member-password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <input id="member-password" type="password" value={newMember.password}
+                onChange={(e) => setNewMember({ ...newMember, password: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/50" />
+              <p className="text-xs text-gray-400 mt-1">At least 8 characters.</p>
+            </div>
+            <div>
+              <label htmlFor="member-role" className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+              <select id="member-role" value={newMember.role}
+                onChange={(e) => setNewMember({ ...newMember, role: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/50">
+                <option value="student">Student</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <div className="sm:col-span-2 flex gap-2">
+              <Button size="sm" onClick={handleAddMember}>Add</Button>
+              <Button size="sm" variant="outline" onClick={() => { setShowAddMember(false); setNewMember({ name: '', email: '', password: '', role: 'student' }); }}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-1">
+          {workspaceUsers.map((u) => (
+            <div key={u.id} className="flex items-center justify-between px-3 py-2 rounded-lg border border-gray-100 text-sm">
+              <div>
+                <span className="font-medium text-gray-900">{u.name}</span>
+                <span className="text-gray-400"> · {u.email}</span>
+              </div>
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${u.role === 'admin' ? 'bg-brand-amber/15 text-brand-amber' : 'bg-brand-blue/10 text-brand-blue'}`}>
+                {u.role === 'admin' ? 'Admin' : 'Student'}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* Demo data controls (always visible) */}
       <div className="bg-white rounded-xl p-6 border border-gray-200">

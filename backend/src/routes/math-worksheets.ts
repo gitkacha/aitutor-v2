@@ -4,6 +4,7 @@ import { generateMathWorksheetQuestions } from '../services/ai.service';
 import { createWorksheetQuestionRows, validateWorksheetQuestions } from '../services/math-worksheet.service';
 import { asyncHandler } from '../lib/async-handler';
 import { requireAdmin, requireAuth } from '../middleware/auth';
+import { resolveAssigneeStudentIds } from '../lib/scope';
 
 const router = Router();
 
@@ -52,7 +53,7 @@ router.post('/generate', requireAdmin, asyncHandler(async (req: Request, res: Re
 
 // POST /api/math/worksheets/save — save an admin-reviewed worksheet
 router.post('/save', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
-  const { title, topicIds, questions } = req.body;
+  const { title, topicIds, questions, studentIds } = req.body;
 
   if (!title || !questions) {
     return res.status(400).json({ error: 'Missing required fields: title, questions' });
@@ -60,6 +61,10 @@ router.post('/save', requireAdmin, asyncHandler(async (req: Request, res: Respon
   if (!validateWorksheetQuestions(questions)) {
     return res.status(400).json({ error: 'questions must be a non-empty array of {questionText, options[], correctIndex, explanation, topicSlug}' });
   }
+
+  // Assignment picker (C1): assign to the chosen students, or every student when omitted.
+  const assigneeIds = await resolveAssigneeStudentIds(req, res, studentIds);
+  if (!assigneeIds) return;
 
   try {
     const worksheet = await prisma.$transaction(async (tx) => {
@@ -74,15 +79,10 @@ router.post('/save', requireAdmin, asyncHandler(async (req: Request, res: Respon
         },
       });
       await createWorksheetQuestionRows(created.id, questions, tx);
-      // Interim default (B1): assign to every student in the workspace; the C1
-      // assignment picker replaces this with an explicit studentIds[] selection.
-      const students = await tx.user.findMany({
-        where: { workspaceId: req.user!.workspaceId, role: 'student' },
-        select: { id: true },
-      });
-      if (students.length > 0) {
+      // Assign to the admin-selected students (C1).
+      if (assigneeIds.length > 0) {
         await tx.mathWorksheetAssignment.createMany({
-          data: students.map((s) => ({ worksheetId: created.id, studentId: s.id })),
+          data: assigneeIds.map((studentId) => ({ worksheetId: created.id, studentId })),
         });
       }
       return created;

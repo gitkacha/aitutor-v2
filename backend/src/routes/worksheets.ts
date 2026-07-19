@@ -3,6 +3,7 @@ import prisma from '../lib/prisma';
 import { generateWorksheetPrompts } from '../services/ai.service';
 import { asyncHandler } from '../lib/async-handler';
 import { requireAdmin, requireAuth } from '../middleware/auth';
+import { resolveAssigneeStudentIds } from '../lib/scope';
 
 const router = Router();
 
@@ -34,12 +35,16 @@ router.post('/generate', requireAdmin, asyncHandler(async (req: Request, res: Re
 
 // POST /api/worksheets/save — save an admin-reviewed worksheet
 router.post('/save', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
-  const { title, typeIds, prompts } = req.body;
+  const { title, typeIds, prompts, studentIds } = req.body;
 
   if (!title || !Array.isArray(typeIds) || typeIds.length === 0 || !Array.isArray(prompts)) {
     res.status(400).json({ error: 'Missing required fields: title, typeIds, prompts', status: 400 });
     return;
   }
+
+  // Assignment picker (C1): assign to the chosen students, or every student when omitted.
+  const assigneeIds = await resolveAssigneeStudentIds(req, res, studentIds);
+  if (!assigneeIds) return;
 
   try {
     // A writing attempt is always a single text type, so a multi-type selection becomes one
@@ -76,15 +81,10 @@ router.post('/save', requireAdmin, asyncHandler(async (req: Request, res: Respon
         await prisma.prompt.create({
           data: { typeId: type.id, text: promptText, source: 'worksheet' },
         });
-        // Interim default (B1): assign to every student in the workspace. The C1
-        // assignment picker replaces this with an explicit studentIds[] selection.
-        const students = await prisma.user.findMany({
-          where: { workspaceId: req.user!.workspaceId, role: 'student' },
-          select: { id: true },
-        });
-        if (students.length > 0) {
+        // Assign to the admin-selected students (C1).
+        if (assigneeIds.length > 0) {
           await prisma.worksheetAssignment.createMany({
-            data: students.map((s) => ({ worksheetId: worksheet.id, studentId: s.id })),
+            data: assigneeIds.map((studentId) => ({ worksheetId: worksheet.id, studentId })),
           });
         }
         return worksheet;
