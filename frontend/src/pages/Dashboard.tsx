@@ -4,7 +4,26 @@ import { useHeatmap } from '@/hooks/useHeatmap';
 import { HeatmapEntry, MathHeatmapEntry, mathApi } from '@/lib/api';
 import Heatmap from '@/components/Heatmap';
 import PendingWorksheets from '@/components/PendingWorksheets';
-import { BarChart3, Calculator } from 'lucide-react';
+import { BarChart3, Calculator, Target, ArrowRight } from 'lucide-react';
+
+interface Opportunity {
+  key: string;
+  label: string;
+  score: number;
+  path: string;
+}
+
+// The student's weakest scored areas across both subjects (C2) — where a bit of practice
+// moves the needle most. Only areas with attempts and a score qualify.
+function opportunityAreas(writing: HeatmapEntry[], math: MathHeatmapEntry[]): Opportunity[] {
+  const w: Opportunity[] = writing
+    .filter((d) => d.attemptCount > 0 && d.averageScore != null)
+    .map((d) => ({ key: `w-${d.typeSlug}`, label: d.typeName, score: d.averageScore!, path: `/practice/${d.typeSlug}` }));
+  const m: Opportunity[] = math
+    .filter((d) => d.attemptCount > 0 && d.averageScore != null)
+    .map((d) => ({ key: `m-${d.topicSlug}`, label: d.topicName, score: d.averageScore!, path: `/math/${d.topicSlug}` }));
+  return [...w, ...m].sort((a, b) => a.score - b.score).slice(0, 4);
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -57,6 +76,40 @@ export default function Dashboard() {
 
       {/* Pending worksheets quick view */}
       <PendingWorksheets mode="student" />
+
+      {/* Opportunity areas — the student's weakest scored areas (C2) */}
+      {(() => {
+        const areas = opportunityAreas(writingData, mathData);
+        if (areas.length === 0) return null;
+        return (
+          <section className="bg-white rounded-xl p-6 border border-gray-200">
+            <div className="flex items-center gap-2 mb-1">
+              <Target size={18} className="text-brand-amber" />
+              <h2 className="text-lg font-semibold text-gray-900">Opportunity Areas</h2>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">
+              Where a little more practice will help most, based on your scores so far.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {areas.map((a) => (
+                <button
+                  key={a.key}
+                  onClick={() => navigate(a.path)}
+                  className="flex items-center justify-between gap-3 p-3 rounded-lg border border-gray-100 hover:border-brand-blue/50 hover:bg-gray-50 text-left transition-colors"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{a.label}</p>
+                    <p className="text-xs text-gray-400">Current average: {a.score}%</p>
+                  </div>
+                  <span className="flex items-center gap-1 text-xs font-medium text-brand-blue shrink-0">
+                    Practice <ArrowRight size={14} />
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+        );
+      })()}
 
       {/* Writing Section */}
       <div>
