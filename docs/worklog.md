@@ -23,35 +23,18 @@ Milestone 2 — multi-user, multi-tenant workspaces. Plan approved 2026-07-18:
 B1∥B2 and C1∥C2 may run in parallel worktrees, merging only with their proving specs
 green. The full suite must be green at every phase boundary.
 
-Post-Milestone-2 feedback (plan approved 2026-07-20): `.claude/plans` W-16…W-19.
-
-- [ ] **W-16** — Start-test confirmation for the student: `/practice/:slug/start` and
-  `/math/:slug/start` show a "Ready to start?" card (details + Start test); the timer only
-  starts on confirm. Ripple: timer/practice UI specs click through first. Proof:
-  `e2e/w16-start-modal.spec.ts`.
-- [ ] **W-17** — Flag a math question and revisit: per-question Flag toggle; the Submit-All
-  confirm lists flagged + unanswered as clickable jump chips. Proof: `e2e/w17-flag.spec.ts`.
-- [ ] **W-18** — AI explanations kept at NSW-Selective/Year-6 level (generation prompt
-  constraint; no higher-level concepts). Proof: `e2e/w18-explanation-level.spec.ts`.
-- [ ] **W-19** — Worksheet generation survives navigation: in-memory server job for both
-  generate endpoints (POST → jobId, GET jobs/:id), Admin polls + resumes via localStorage.
-  Ripple: generate specs move to the job flow. Proof: `e2e/w19-gen-job.spec.ts`.
-- [ ] **W-22** — Provider param compatibility: `chatCompletion` sends `max_completion_tokens`
-  only to OpenAI; other OpenAI-compatible providers (DeepSeek, Gemini-compat, local) get
-  `max_tokens`, chosen per-provider (heuristic on baseUrl + `${ROLE}_TOKENS_PARAM` override),
-  so switching the verifier to Gemini/DeepSeek is truly env-only. Proof: `model-provider.test.ts`.
-- [ ] **W-21** — Per-role model providers + `o4-mini` default verifier: `providerFor(role)`
-  resolves `{model, baseUrl, apiKey}` from role-specific env (falling back to shared OpenAI),
-  so verification/generation/analysis can each run on any OpenAI-compatible provider (DeepSeek,
-  Gemini-compat, OpenRouter, local); `chatCompletion` refactored to take a provider; default
-  verifier switched from `gpt-5` to `o4-mini`. Proof: `model-provider.test.ts` + e2e ripple.
-- [ ] **W-20** — Answer-key correctness hardening: deterministic guards (equal-value options,
-  explanation↔key letter) at generation + save; escalating-hybrid verification on an
-  independent `gpt-5` verifier with a "none of these" verdict (pass-1 accept; escalate to 3 on
-  disagreement, majority-with-key to keep); delete bad worksheet 5 + attempt 70; document
-  `VERIFICATION_MODEL`. Proof: `e2e/w20-answer-correctness.spec.ts`.
+*(none — review backlog and post-M2 feedback W-16…W-22 all closed.)*
 
 ## Done
+
+- [x] **W-22** — Provider token-param compatibility: `chatCompletion` sends `max_completion_tokens` to OpenAI and `max_tokens` to other OpenAI-compatible providers (heuristic on baseUrl + `${ROLE}_TOKENS_PARAM` override), so switching the verifier to Gemini/DeepSeek is env-only — commit `c848915` · proof: `model-provider.test.ts` (RED-first) + 89/89 e2e, 48/48 unit · user signed off 2026-07-20
+- [x] **W-21** — Per-role model providers + `o4-mini` default verifier: `providerFor(role)` resolves `{model, baseUrl, apiKey}` per role (fallback to shared OPENAI_*), so any role runs on DeepSeek/Gemini-compat/OpenRouter/local via env; `chatCompletion` takes a provider; default verifier `gpt-5` → `o4-mini` — commit `1abe10b` · proof: `model-provider.test.ts` + e2e ripple + live o4-mini run (~74s/5 questions, real) · user signed off 2026-07-20
+- [x] **W-20** — Answer-key correctness hardening: deterministic guards (equal-value options, explanation↔key) at generation + save; escalating-hybrid verification on an independent verifier with a "none of these" verdict (pass-1 accept; escalate to 3, majority-with-key to keep); bad worksheet 5 + attempt 70 deleted — commit `6745f86` · proof: `e2e/w20-answer-correctness.spec.ts` + `question-checks.test.ts` (RED-first) + live run rejecting the 3 reported bad questions (dup-guard / none-verdict / disagreement) and 2 geometry checks · user signed off 2026-07-20
+- [x] **W-19** — Worksheet generation survives navigation: in-memory server job for both generate endpoints (POST → jobId, GET jobs/:id, workspace-scoped); Admin polls + re-attaches via localStorage — commit `7abbfe3` · proof: `e2e/w19-gen-job.spec.ts` (API + navigate-away-and-back UI, RED-first) + generate specs moved to the job flow · user signed off 2026-07-20
+- [x] **W-18** — AI worksheet explanations constrained to NSW-Selective/Year-6 level (no higher-level concepts) via the generation prompt; future generations only — commit `c41fc6b` · proof: `e2e/w18-explanation-level.spec.ts` (captures the generation request, RED-first) · user signed off 2026-07-20
+- [x] **W-17** — Flag a math question and revisit: per-question Flag/Unflag toggle; the Submit-All confirm lists flagged + unanswered as clickable jump chips — commit `d0f3323` · proof: `e2e/w17-flag.spec.ts` (RED-first) · user signed off 2026-07-20
+- [x] **W-16** — Start-test confirmation for the student: both timed screens open on a "Ready to start?" card (details + Start test); the clock starts only on confirm — commit `1e2dc76` · proof: `e2e/w16-start-modal.spec.ts` (writing + math, RED-first) + timer/practice specs click through via `e2e/helpers/practice.ts` · user signed off 2026-07-20
+
 
 - [x] **W-14** — Phase D · Integration: capstone cross-role e2e (`e2e/w14-integration.spec.ts`); migration dry-run on a pre-m2 db copy (both migrations clean, demo workspace + super-admin, zero orphans); fresh-install walkthrough on an empty DB (setup → super-admin → add student → assign → complete → review → 2nd-workspace provisioning → student 403); README + CLAUDE.md rewritten for the multi-user/multi-tenant model — commit `73feddc` · proof: 80/80 e2e, 35/35 unit, typecheck + documented dry-run/walkthrough · user signed off 2026-07-20 (closes Milestone 2)
 
