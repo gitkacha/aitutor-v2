@@ -23,11 +23,11 @@ Milestone 2 — multi-user, multi-tenant workspaces. Plan approved 2026-07-18:
 B1∥B2 and C1∥C2 may run in parallel worktrees, merging only with their proving specs
 green. The full suite must be green at every phase boundary.
 
-- [ ] **W-14** — Phase D · Integration (serial): full suites + typecheck; live fresh-DB
-  multi-user walkthrough + demo-workspace verification; migration dry-run against a copy
-  of dev.db; README + CLAUDE.md updates. *(in progress)*
+*(Milestone 2 complete — see Done. New feedback items W-16…W-19 planned 2026-07-20.)*
 
 ## Done
+
+- [x] **W-14** — Phase D · Integration: capstone cross-role e2e (`e2e/w14-integration.spec.ts`); migration dry-run on a pre-m2 db copy (both migrations clean, demo workspace + super-admin, zero orphans); fresh-install walkthrough on an empty DB (setup → super-admin → add student → assign → complete → review → 2nd-workspace provisioning → student 403); README + CLAUDE.md rewritten for the multi-user/multi-tenant model — commit `73feddc` · proof: 80/80 e2e, 35/35 unit, typecheck + documented dry-run/walkthrough · user signed off 2026-07-20 (closes Milestone 2)
 
 - [x] **W-15** — Super-admin role + workspace provisioning: orthogonal `User.isSuperAdmin` (demo admin + fresh-install first admin, keeping their normal admin role); `/api/superadmin/*` behind `requireSuperAdmin` for create-workspace-with-first-admin, list, and read-only per-workspace oversight — `scope.ts` and normal-admin isolation untouched; `/superadmin` Platform console gated to super-admins — commit `a4e9dd1` · proof: `e2e/w15-superadmin.spec.ts` (5 tests, RED-first) + `writing-heatmap-aggregate.test.ts` + live console/oversight (`docs/screenshots/w15-*`) · user signed off 2026-07-19
 - [x] **W-13** — Phase C2 · Student experience: Opportunity Areas on the dashboard (weakest scored areas across both subjects, one-tap into practice); assigned-only worksheet lists (delivered by B1's scoping, UI negative-path proven) — commit `3b86f17` · proof: `e2e/w13-student.spec.ts` (2 tests) + `docs/screenshots/w13-opportunity-areas.png` · user signed off 2026-07-19
