@@ -27,6 +27,11 @@ every agent, on any model, without exception):
   strips `correctIndex` and `explanation` from each `topic.questions` item for student callers
   (admins keep them); the list endpoint is unaffected. `MathPracticeHome`/`ScoreHistory` read only
   the count/name, so they are unchanged. Proof: `e2e/w29-topic-answer-leak.spec.ts`.
+- [ ] **W-30** — Stop leaking answers via the worksheet-list endpoint: `GET /api/math/worksheets`
+  returns each worksheet's stored `questions` JSON, which carries `correctIndex`/`explanation`;
+  strip those from every element for student callers (array length preserved for the count),
+  admins keep the full blob. Completes the answer-leak sweep (W-28/W-29/W-30). Proof:
+  `e2e/w30-worksheet-list-leak.spec.ts`.
 
 ## Done
 

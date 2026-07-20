@@ -9,6 +9,35 @@ import { createJob, getJobForWorkspace } from '../lib/generation-jobs';
 
 const router = Router();
 
+// The worksheet list reaches a student's browser (pending/assigned lists), and each row's
+// `questions` JSON blob carries the answer key. Rewrite that blob for students with
+// correctIndex/explanation removed from every question (count preserved for the UI); admins
+// keep the full blob. Completes the answer-leak sweep (W-28/W-29/W-30).
+function stripWorksheetAnswersForStudents<T extends { questions: string }>(
+  worksheets: T[],
+  role: string | undefined,
+): T[] {
+  if (role === 'admin') return worksheets;
+  return worksheets.map((ws) => {
+    let questions: unknown;
+    try {
+      questions = JSON.parse(ws.questions || '[]');
+    } catch {
+      return { ...ws, questions: '[]' };
+    }
+    const stripped = Array.isArray(questions)
+      ? questions.map((q) => {
+          if (q && typeof q === 'object') {
+            const { correctIndex, explanation, ...rest } = q as Record<string, unknown>;
+            return rest;
+          }
+          return q;
+        })
+      : questions;
+    return { ...ws, questions: JSON.stringify(stripped) };
+  });
+}
+
 // POST /api/math/worksheets/generate — AI-generate 35-question worksheet
 router.post('/generate', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
   const { topicIds } = req.body; // Array of topic slugs, empty = all topics
@@ -122,7 +151,7 @@ router.get('/', requireAuth, asyncHandler(async (req: Request, res: Response) =>
     },
   });
 
-  res.json(worksheets);
+  res.json(stripWorksheetAnswersForStudents(worksheets, user.role));
 }));
 
 export default router;
