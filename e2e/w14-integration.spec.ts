@@ -34,14 +34,19 @@ test.describe('W-14 — multi-user assign → complete → review loop', () => {
     const wsList = await (await request.get('/api/math/worksheets')).json();
     expect(wsList.some((w: any) => w.id === worksheetId), 'student sees the assigned worksheet').toBe(true);
 
-    // …fetches its questions and completes it (all correct).
+    // …fetches its questions and completes it (all correct). The student's payload omits the
+    // answer key (W-28), so the correct answers come from the admin's view, mapped by id.
     const rows = await (await request.get(`/api/math/questions?worksheet=${worksheetId}`)).json();
     expect(rows.length).toBe(2);
+    const keyById = new Map(
+      (await (await admin.get(`/api/math/questions?worksheet=${worksheetId}`)).json())
+        .map((r: any) => [r.id, r.correctIndex]),
+    );
     const now = Date.now();
     const attempt = await request.post('/api/math/attempts', {
       data: {
         questions: JSON.stringify(rows.map((r: any) => r.id)),
-        answers: JSON.stringify(rows.map((r: any) => r.correctIndex)),
+        answers: JSON.stringify(rows.map((r: any) => keyById.get(r.id))),
         startedAt: new Date(now - 120_000).toISOString(),
         finishedAt: new Date(now).toISOString(),
         timeTaken: 120,

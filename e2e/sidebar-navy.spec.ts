@@ -28,17 +28,25 @@ test.describe('evening navy sidebar', () => {
     await expect(rail.getByRole('link', { name: 'Admin' })).toBeVisible();
   });
 
-  test('nav items carry colour-coded scores; untouched topics show a dash', async ({ page, request }) => {
-    // Score 100% on Directions (a topic no other spec touches).
+  test('nav items carry colour-coded scores; untouched topics show a dash', async ({ page, request, baseURL }) => {
+    // Score 100% on Directions (a topic no other spec touches). The student payload omits the
+    // answer key (W-28), so the correct answers come from an admin fetch, mapped by id.
     const questions = await (await request.get('/api/math/questions?topic=directions')).json();
     expect(questions.length).toBeGreaterThanOrEqual(1);
     const qIds = questions.map((q: any) => q.id);
+    const admin = await pwRequest.newContext({ baseURL, storageState: { cookies: [], origins: [] } });
+    await admin.post('/api/auth/login', { data: { email: 'e2e-admin@test.local', password: 'test1234' } });
+    const keyById = new Map(
+      (await (await admin.get('/api/math/questions?topic=directions')).json())
+        .map((q: any) => [q.id, q.correctIndex]),
+    );
+    await admin.dispose();
     const now = Date.now();
     const created = await request.post('/api/math/attempts', {
       data: {
         topicId: questions[0].topicId,
         questions: JSON.stringify(qIds),
-        answers: JSON.stringify(questions.map((q: any) => q.correctIndex)),
+        answers: JSON.stringify(qIds.map((id: number) => keyById.get(id))),
         startedAt: new Date(now - 60_000).toISOString(),
         finishedAt: new Date(now).toISOString(),
         timeTaken: 60,

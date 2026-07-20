@@ -7,6 +7,18 @@ import { requireAuth } from '../middleware/auth';
 
 const router = Router();
 
+// A student sits the test in the browser, so anything sent to them is readable in the
+// network payload. Strip the answer key and explanation from each question for students;
+// scoring is server-side and the post-submission review comes from a separate endpoint.
+// Admins keep the full fields — the read-only worksheet-content view relies on them (W-28).
+function stripAnswersForStudents<T extends { correctIndex?: unknown; explanation?: unknown }>(
+  questions: T[],
+  role: string | undefined,
+): T[] {
+  if (role === 'admin') return questions;
+  return questions.map(({ correctIndex, explanation, ...rest }) => rest as T);
+}
+
 router.get('/', requireAuth, asyncHandler(async (req: Request, res: Response) => {
   const topicSlug = req.query.topic as string | undefined;
   const worksheetParam = req.query.worksheet as string | undefined;
@@ -35,7 +47,7 @@ router.get('/', requireAuth, asyncHandler(async (req: Request, res: Response) =>
     if (!rows) {
       return res.status(404).json({ error: 'Worksheet not found' });
     }
-    return res.json(rows);
+    return res.json(stripAnswersForStudents(rows, user.role));
   }
 
   let questions;
@@ -63,7 +75,7 @@ router.get('/', requireAuth, asyncHandler(async (req: Request, res: Response) =>
   }
 
   // Shuffled with stimulus groups kept whole and adjacent (M2).
-  res.json(selectTestQuestions(questions, cap));
+  res.json(stripAnswersForStudents(selectTestQuestions(questions, cap), req.user!.role));
 }));
 
 export default router;

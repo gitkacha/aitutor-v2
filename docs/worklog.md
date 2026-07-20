@@ -18,7 +18,11 @@ every agent, on any model, without exception):
 
 ## Open
 
-_No open items._
+- [ ] **W-28** — Stop leaking answers to students in the in-test payload: `GET /api/math/questions`
+  strips `correctIndex` and `explanation` from each question when the caller is a student (both
+  worksheet and topic/all-topics paths); admins keep the full fields (the `MathWorksheetContent`
+  view needs them). Server-side scoring and the post-submission review endpoint are unchanged.
+  Proof: `e2e/w28-answer-leak.spec.ts`.
 
 ## Done
 
