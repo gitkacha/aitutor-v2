@@ -321,6 +321,13 @@ ${exemplars.map(e => `- ${e!.topic}: ${e!.percentCorrect}% correct (hard). Examp
 
 For each question, provide a detailed "Question Feedback" style explanation.
 
+READING LEVEL. Write every explanation for a Year 6 student sitting the NSW Selective test.
+Use only methods a strong Year 6 student knows — arithmetic, simple fractions and decimals,
+diagrams, patterns, and step-by-step logical reasoning. Do NOT use higher-level or
+secondary-school tools to explain a primary-level problem (no formal algebra with variables
+like x/y, no simultaneous equations, no exponents/roots beyond squares, no trigonometry),
+even when they would be shorter. Keep the language plain and the steps small.
+
 VISUAL STIMULI. A question may include an optional "stimulus" field carrying structured
 figure data that the app renders as a real image (charts via a chart library, geometry via
 SVG). Use one when the topic naturally needs a visual (protractor readings, graphs, grids,
