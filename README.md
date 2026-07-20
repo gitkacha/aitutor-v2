@@ -238,7 +238,7 @@ VERIFICATION_API_KEY=sk-deepseek-...
 # VERIFICATION_API_KEY=...your-gemini-key...
 ```
 
-The same `*_BASE_URL` / `*_API_KEY` pattern works for `GENERATION_` and `ANALYSIS_` — point any role at OpenRouter, a local vLLM/Ollama server, etc., with no code change.
+The same `*_BASE_URL` / `*_API_KEY` pattern works for `GENERATION_` and `ANALYSIS_` — point any role at OpenRouter, a local vLLM/Ollama server, etc., with no code change. The token-limit parameter is chosen automatically per provider (`max_completion_tokens` for OpenAI, `max_tokens` for others); override it with `${ROLE}_TOKENS_PARAM` if a provider needs the other form.
 
 Without a key, AI writing analysis shows an "unavailable" message with a Retry button (no fake
 scores are ever recorded), and worksheet generation falls back to built-in sample content. All

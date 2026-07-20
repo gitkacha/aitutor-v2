@@ -44,15 +44,23 @@ describe('providerFor (W-21)', () => {
     process.env.VERIFICATION_API_KEY = 'ds-key';
     process.env.VERIFICATION_BASE_URL = 'http://deepseek.local/v1';
     const v = providerFor('verification');
-    expect(v).toEqual({ model: 'deepseek-reasoner', apiKey: 'ds-key', baseUrl: 'http://deepseek.local/v1' });
+    expect(v).toMatchObject({ model: 'deepseek-reasoner', apiKey: 'ds-key', baseUrl: 'http://deepseek.local/v1' });
     // Generation still on the shared OpenAI key.
     expect(providerFor('generation').apiKey).toBe('shared-key');
   });
+
+  it('chooses the token param per provider: OpenAI → max_completion_tokens, others → max_tokens', () => {
+    expect(providerFor('verification').tokensParam).toBe('max_completion_tokens'); // default OpenAI
+    process.env.VERIFICATION_BASE_URL = 'https://api.deepseek.com/v1';
+    expect(providerFor('verification').tokensParam).toBe('max_tokens');
+    process.env.VERIFICATION_TOKENS_PARAM = 'max_completion_tokens'; // explicit override wins
+    expect(providerFor('verification').tokensParam).toBe('max_completion_tokens');
+  });
 });
 
-describe('chatCompletion routing (W-21)', () => {
-  it('posts to the provider baseUrl with its apiKey and model', async () => {
-    const captured: { url?: string; auth?: string; model?: string } = {};
+describe('chatCompletion routing (W-21/W-22)', () => {
+  it('posts to the provider baseUrl with its apiKey, model, and chosen token param', async () => {
+    const captured: { url?: string; auth?: string; body?: any } = {};
     const server = await new Promise<http.Server>((resolve) => {
       const s = http.createServer((req, res) => {
         let body = '';
@@ -60,7 +68,7 @@ describe('chatCompletion routing (W-21)', () => {
         req.on('end', () => {
           captured.url = req.url;
           captured.auth = req.headers.authorization;
-          captured.model = JSON.parse(body).model;
+          captured.body = JSON.parse(body);
           res.writeHead(200, { 'content-type': 'application/json' });
           res.end(JSON.stringify({ choices: [{ message: { content: 'ok' } }] }));
         });
@@ -70,13 +78,16 @@ describe('chatCompletion routing (W-21)', () => {
     const { port } = server.address() as import('net').AddressInfo;
     try {
       const out = await chatCompletion(
-        { model: 'deepseek-reasoner', baseUrl: `http://127.0.0.1:${port}/v1`, apiKey: 'ds-key' },
+        { model: 'deepseek-reasoner', baseUrl: `http://127.0.0.1:${port}/v1`, apiKey: 'ds-key', tokensParam: 'max_tokens' },
         'hi', 100
       );
       expect(out).toBe('ok');
       expect(captured.url).toBe('/v1/chat/completions');
       expect(captured.auth).toBe('Bearer ds-key');
-      expect(captured.model).toBe('deepseek-reasoner');
+      expect(captured.body.model).toBe('deepseek-reasoner');
+      // A non-OpenAI provider must receive max_tokens, not max_completion_tokens.
+      expect(captured.body.max_tokens).toBe(100);
+      expect(captured.body.max_completion_tokens).toBeUndefined();
     } finally {
       await new Promise((r) => server.close(r));
     }

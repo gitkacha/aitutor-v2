@@ -17,18 +17,31 @@ const ROLE_DEFAULTS: Record<ModelRole, string> = {
   analysis: 'gpt-4o-mini',
 };
 
+type TokensParam = 'max_completion_tokens' | 'max_tokens';
+
 export interface ModelProvider {
   model: string;
   baseUrl: string;
   apiKey: string;
+  tokensParam: TokensParam;
+}
+
+// OpenAI's own API (and its newer reasoning models) use `max_completion_tokens`; other
+// OpenAI-compatible providers (DeepSeek, Gemini's compat endpoint, most local servers)
+// expect the older `max_tokens` (W-22). Overridable per role via ${ROLE}_TOKENS_PARAM.
+function defaultTokensParam(baseUrl: string): TokensParam {
+  return baseUrl.includes('api.openai.com') ? 'max_completion_tokens' : 'max_tokens';
 }
 
 export function providerFor(role: ModelRole): ModelProvider {
   const R = role.toUpperCase();
+  const baseUrl = process.env[`${R}_BASE_URL`] || process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+  const override = process.env[`${R}_TOKENS_PARAM`];
   return {
     model: process.env[`${R}_MODEL`] || ROLE_DEFAULTS[role],
-    baseUrl: process.env[`${R}_BASE_URL`] || process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+    baseUrl,
     apiKey: process.env[`${R}_API_KEY`] || process.env.OPENAI_API_KEY || '',
+    tokensParam: override === 'max_tokens' || override === 'max_completion_tokens' ? override : defaultTokensParam(baseUrl),
   };
 }
 
@@ -51,7 +64,7 @@ export async function chatCompletion(provider: ModelProvider, prompt: string, ma
   const body: Record<string, unknown> = {
     model: provider.model,
     messages: [{ role: 'user', content: prompt }],
-    max_completion_tokens: maxTokens,
+    [provider.tokensParam]: maxTokens,
   };
   if (temperature !== undefined && !isReasoningModel(provider.model)) {
     body.temperature = temperature;

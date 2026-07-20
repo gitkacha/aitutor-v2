@@ -36,6 +36,10 @@ Post-Milestone-2 feedback (plan approved 2026-07-20): `.claude/plans` W-16…W-1
 - [ ] **W-19** — Worksheet generation survives navigation: in-memory server job for both
   generate endpoints (POST → jobId, GET jobs/:id), Admin polls + resumes via localStorage.
   Ripple: generate specs move to the job flow. Proof: `e2e/w19-gen-job.spec.ts`.
+- [ ] **W-22** — Provider param compatibility: `chatCompletion` sends `max_completion_tokens`
+  only to OpenAI; other OpenAI-compatible providers (DeepSeek, Gemini-compat, local) get
+  `max_tokens`, chosen per-provider (heuristic on baseUrl + `${ROLE}_TOKENS_PARAM` override),
+  so switching the verifier to Gemini/DeepSeek is truly env-only. Proof: `model-provider.test.ts`.
 - [ ] **W-21** — Per-role model providers + `o4-mini` default verifier: `providerFor(role)`
   resolves `{model, baseUrl, apiKey}` from role-specific env (falling back to shared OpenAI),
   so verification/generation/analysis can each run on any OpenAI-compatible provider (DeepSeek,
