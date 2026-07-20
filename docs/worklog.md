@@ -29,6 +29,13 @@ green. The full suite must be green at every phase boundary.
 - [ ] **W-24** — Control-char guard: `chatCompletion` strips non-whitespace control characters
   from model output so a stray control char can't break JSON parsing or persist into a
   question/explanation. Proof: `model-provider.test.ts`.
+- [ ] **W-25** — Admin can view saved worksheet content: View/Hide toggle on saved math and
+  writing worksheet rows; math expands to the questions (options, correct answer, explanation,
+  stimulus) via a new read-only `MathWorksheetContent`, writing to its prompt(s). Works for
+  attempted and unattempted. Proof: `e2e/w25-w26-admin-worksheets.spec.ts`.
+- [ ] **W-26** — Direct question-count entry: the generate count field no longer clamps on every
+  keystroke (free text, clamp on blur/generate), so typing e.g. "15" stays 15. Proof:
+  `e2e/w25-w26-admin-worksheets.spec.ts`.
 
 ## Done
 

@@ -7,6 +7,7 @@ import { api, mathApi, MathTopic, MathHeatmapEntry, GeneratedMathQuestion, Works
 import { Button } from '@/components/ui/button';
 import { Shield, Plus, Database, Trash2, Calculator, FileText, Users, UserPlus } from 'lucide-react';
 import StimulusFigure from '@/components/StimulusFigure';
+import MathWorksheetContent from '@/components/MathWorksheetContent';
 import { validateStimulus } from '@/lib/stimulus';
 import { parseJsonArray } from '@/lib/parse';
 import { mathWorksheetTitle } from '@/lib/math-worksheet-title';
@@ -59,13 +60,18 @@ export default function Admin() {
 
   // Math worksheet state
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
-  const [questionCount, setQuestionCount] = useState(35);
+  // Free-text so a multi-digit number can be typed without per-keystroke clamping (W-26);
+  // the effective count is derived and clamped where it's used.
+  const [questionCountText, setQuestionCountText] = useState('35');
+  const questionCount = Math.max(5, Math.min(50, parseInt(questionCountText) || 35));
   const [generatedQuestions, setGeneratedQuestions] = useState<GeneratedMathQuestion[]>([]);
   const [showMathReview, setShowMathReview] = useState(false);
 
-  // Saved worksheets lists
+  // Saved worksheets lists + which one is expanded to show its content (W-25)
   const [writingWorksheets, setWritingWorksheets] = useState<Worksheet[]>([]);
   const [mathWorksheets, setMathWorksheets] = useState<MathWorksheet[]>([]);
+  const [expandedMathWs, setExpandedMathWs] = useState<number | null>(null);
+  const [expandedWritingWs, setExpandedWritingWs] = useState<number | null>(null);
 
   useEffect(() => {
     if (activeTab === 'writing') {
@@ -534,10 +540,28 @@ export default function Admin() {
                             </p>
                           </div>
                         </div>
-                        <span className="text-xs font-medium text-gray-500 whitespace-nowrap">
-                          {atts.length} attempt{atts.length !== 1 ? 's' : ''}
-                        </span>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="text-xs font-medium text-gray-500 whitespace-nowrap">
+                            {atts.length} attempt{atts.length !== 1 ? 's' : ''}
+                          </span>
+                          <button
+                            onClick={() => setExpandedWritingWs((id) => (id === ws.id ? null : ws.id))}
+                            className="text-xs font-medium text-brand-blue hover:underline"
+                          >
+                            {expandedWritingWs === ws.id ? 'Hide' : 'View'}
+                          </button>
+                        </div>
                       </div>
+                      {expandedWritingWs === ws.id && (
+                        <div className="mt-3 ml-9 space-y-2">
+                          {prompts.map((p, i) => (
+                            <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Prompt {i + 1}</p>
+                              <p className="text-sm text-gray-800">{p}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       {scored.length > 0 && (
                         <div className="mt-2 ml-9 space-y-1">
                           {scored.slice(0, 3).map((a: any) => (
@@ -597,8 +621,9 @@ export default function Admin() {
                   type="number"
                   min={5}
                   max={50}
-                  value={questionCount}
-                  onChange={(e) => setQuestionCount(Math.max(5, Math.min(50, parseInt(e.target.value) || 35)))}
+                  value={questionCountText}
+                  onChange={(e) => setQuestionCountText(e.target.value)}
+                  onBlur={() => setQuestionCountText(String(questionCount))}
                   className="w-20 px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
                 />
                 <span className="text-xs text-gray-400">5–50 · time limit {questionCount} min</span>
@@ -724,10 +749,23 @@ export default function Admin() {
                             </p>
                           </div>
                         </div>
-                        <span className="text-xs font-medium text-gray-500 whitespace-nowrap">
-                          {atts.length} attempt{atts.length !== 1 ? 's' : ''}
-                        </span>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="text-xs font-medium text-gray-500 whitespace-nowrap">
+                            {atts.length} attempt{atts.length !== 1 ? 's' : ''}
+                          </span>
+                          <button
+                            onClick={() => setExpandedMathWs((id) => (id === ws.id ? null : ws.id))}
+                            className="text-xs font-medium text-brand-blue hover:underline"
+                          >
+                            {expandedMathWs === ws.id ? 'Hide' : 'View'}
+                          </button>
+                        </div>
                       </div>
+                      {expandedMathWs === ws.id && (
+                        <div className="mt-3 ml-9">
+                          <MathWorksheetContent worksheetId={ws.id} />
+                        </div>
+                      )}
                       {scored.length > 0 && (
                         <div className="mt-2 ml-9 space-y-1">
                           {scored.slice(0, 3).map((a: any) => (
