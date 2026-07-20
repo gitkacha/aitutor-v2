@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { generateMath } from './helpers/generate';
 import http from 'http';
 
 // W-18: AI-generated worksheet explanations must be pitched at NSW-Selective / Year-6
@@ -34,10 +35,8 @@ test.describe('W-18 — explanation reading level', () => {
     const captured: string[] = [];
     const stub = await startStub(captured);
     try {
-      const res = await request.post('/api/math/worksheets/generate', {
-        data: { topicIds: ['arithmetic'], questionCount: 1 },
-      });
-      expect(res.ok()).toBeTruthy();
+      // Drive the async job to completion so the generation request has been sent.
+      await generateMath(request, { topicIds: ['arithmetic'], questionCount: 1 });
 
       const genPrompt = captured.find((b) => b.includes('multiple-choice questions') && !b.includes('audit its answer key'));
       expect(genPrompt, 'a generation request must have been sent').toBeTruthy();

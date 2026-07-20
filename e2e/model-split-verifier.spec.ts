@@ -1,4 +1,5 @@
 import { test, expect, APIRequestContext } from '@playwright/test';
+import { generateMath } from './helpers/generate';
 import http from 'http';
 
 // Model split + verifier pass:
@@ -131,11 +132,7 @@ test.describe('model split + verifier pass', () => {
     const log: StubLog = { generationModels: [], verificationModels: [], analysisModels: [] };
     const stub = await startSmartStub(log);
     try {
-      const res = await request.post('/api/math/worksheets/generate', {
-        data: { topicIds: ['arithmetic'], questionCount: 8 },
-      });
-      expect(res.ok()).toBeTruthy();
-      const body = await res.json();
+      const body = await generateMath(request, { topicIds: ['arithmetic'], questionCount: 8 });
 
       expect(body.questions.length, 'must still deliver the exact requested count').toBe(8);
       const texts = body.questions.map((q: any) => q.questionText).join('\n');

@@ -1,4 +1,5 @@
 import { test, expect, APIRequestContext } from '@playwright/test';
+import { generateMath } from './helpers/generate';
 import { startTest } from './helpers/practice';
 import http from 'http';
 
@@ -67,11 +68,7 @@ test.describe('W1/a1 — exact-count worksheet generation', () => {
     const calls = { count: 0 };
     const stub = await startGenerationStub(calls);
     try {
-      const res = await request.post('/api/math/worksheets/generate', {
-        data: { topicIds: ['arithmetic'], questionCount: 12 },
-      });
-      expect(res.ok()).toBeTruthy();
-      const body = await res.json();
+      const body = await generateMath(request, { topicIds: ['arithmetic'], questionCount: 12 });
       expect(body.questions.length, 'must deliver exactly the requested count').toBe(12);
       expect(calls.count, 'must top up with additional calls').toBeGreaterThan(1);
     } finally {
@@ -83,11 +80,7 @@ test.describe('W1/a1 — exact-count worksheet generation', () => {
     const calls = { count: 0 };
     const stub = await startGenerationStub(calls);
     try {
-      const res = await request.post('/api/math/worksheets/generate', {
-        data: { topicIds: ['arithmetic'] },
-      });
-      expect(res.ok()).toBeTruthy();
-      const body = await res.json();
+      const body = await generateMath(request, { topicIds: ['arithmetic'] });
       expect(body.questions.length, 'the reported bug: 35 requested, fewer delivered').toBe(35);
     } finally {
       await new Promise((r) => stub.close(r));

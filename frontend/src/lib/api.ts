@@ -185,10 +185,14 @@ export const mathApi = {
   }),
   getHeatmap: (studentId?: number) =>
     fetchJSON<MathHeatmapEntry[]>(`/math/heatmap${studentId ? `?studentId=${studentId}` : ''}`),
-  generateWorksheet: (topicIds: string[], questionCount?: number) =>
-    fetchJSON<{ topics: Array<{ id: number; name: string; slug: string }>; questions: GeneratedMathQuestion[] }>(
-      '/math/worksheets/generate',
-      { method: 'POST', body: JSON.stringify({ topicIds, questionCount }) }
+  // Generation is a background job (W-19): start returns a jobId; poll for the result.
+  startGeneration: (topicIds: string[], questionCount?: number) =>
+    fetchJSON<{ jobId: string }>('/math/worksheets/generate', {
+      method: 'POST', body: JSON.stringify({ topicIds, questionCount }),
+    }),
+  getGenerationJob: (jobId: string) =>
+    fetchJSON<GenerationJob<{ topics: Array<{ id: number; name: string; slug: string }>; questions: GeneratedMathQuestion[] }>>(
+      `/math/worksheets/jobs/${jobId}`
     ),
   saveWorksheet: (title: string, topicIds: string[], questions: GeneratedMathQuestion[], studentIds?: number[]) =>
     fetchJSON<MathWorksheet>('/math/worksheets/save', {
@@ -209,6 +213,13 @@ export interface GeneratedWritingPrompt {
 export interface GenerateWritingWorksheetResponse {
   types: Array<{ id: number; name: string; slug: string }>;
   prompts: string[];
+}
+
+// Async generation job (W-19).
+export interface GenerationJob<T> {
+  status: 'running' | 'done' | 'error';
+  result?: T;
+  error?: string;
 }
 
 // ── Auth (Milestone 2) ──
@@ -278,11 +289,13 @@ export const api = {
   getHeatmap: (studentId?: number) =>
     fetchJSON<HeatmapEntry[]>(`/heatmap${studentId ? `?studentId=${studentId}` : ''}`),
   getStats: () => fetchJSON<{ sessionsThisWeek: number }>('/stats'),
-  generateWorksheet: (typeIds: number[]) =>
-    fetchJSON<GenerateWritingWorksheetResponse>('/worksheets/generate', {
-      method: 'POST',
-      body: JSON.stringify({ typeIds }),
+  // Background job (W-19): start returns a jobId; poll for the result.
+  startGeneration: (typeIds: number[]) =>
+    fetchJSON<{ jobId: string }>('/worksheets/generate', {
+      method: 'POST', body: JSON.stringify({ typeIds }),
     }),
+  getGenerationJob: (jobId: string) =>
+    fetchJSON<GenerationJob<GenerateWritingWorksheetResponse>>(`/worksheets/jobs/${jobId}`),
   // studentIds (C1) targets specific students; omitted assigns to every student.
   saveWorksheet: (title: string, typeIds: number[], prompts: string[], studentIds?: number[]) =>
     fetchJSON<Worksheet[]>('/worksheets/save', {

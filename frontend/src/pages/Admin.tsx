@@ -41,7 +41,12 @@ export default function Admin() {
   const [mathHeatmap, setMathHeatmap] = useState<MathHeatmapEntry[]>([]);
   const [mathTopics, setMathTopics] = useState<MathTopic[]>([]);
   const [activeTab, setActiveTab] = useState<AdminTab>('writing');
-  const [generating, setGenerating] = useState(false);
+  // Generation runs as a background job (W-19); the jobId is remembered in localStorage so
+  // navigating away and back re-attaches to it. Presence of a jobId == "generating".
+  const [mathJobId, setMathJobId] = useState<string | null>(() => localStorage.getItem('coach.mathGenJob'));
+  const [writingJobId, setWritingJobId] = useState<string | null>(() => localStorage.getItem('coach.writingGenJob'));
+  const mathGenerating = mathJobId !== null;
+  const writingGenerating = writingJobId !== null;
   const [demoLoading, setDemoLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [worksheetRefresh, setWorksheetRefresh] = useState(0);
@@ -97,7 +102,6 @@ export default function Admin() {
 
   // Writing worksheet generation
   const handleGenerateWriting = async () => {
-    setGenerating(true);
     setMessage(null);
     try {
       let typeIds = selectedWritingTypes;
@@ -110,18 +114,44 @@ export default function Admin() {
           ? [withScores[0].typeId]
           : writingHeatmap.slice(0, 2).map((d) => d.typeId);
       }
-      const result = await api.generateWorksheet(typeIds);
-      setGeneratedPrompts(result.prompts);
-      setGeneratedTypeInfo(result.types);
-      setAssignStudentIds(null); // default: assign to every student
-      setShowWritingReview(true);
-      setMessage(`Generated ${result.prompts.length} writing prompts.`);
+      const { jobId } = await api.startGeneration(typeIds);
+      localStorage.setItem('coach.writingGenJob', jobId);
+      setWritingJobId(jobId); // the polling effect takes it from here
     } catch (e: any) {
       setMessage(`Error: ${e.message}`);
-    } finally {
-      setGenerating(false);
     }
   };
+
+  // Poll the writing generation job; re-attaches on mount if one was in flight (W-19).
+  useEffect(() => {
+    if (!writingJobId) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const finish = () => { localStorage.removeItem('coach.writingGenJob'); setWritingJobId(null); };
+    const tick = async () => {
+      try {
+        const job = await api.getGenerationJob(writingJobId);
+        if (cancelled) return;
+        if (job.status === 'done' && job.result) {
+          setGeneratedPrompts(job.result.prompts);
+          setGeneratedTypeInfo(job.result.types);
+          setAssignStudentIds(null);
+          setShowWritingReview(true);
+          setMessage(`Generated ${job.result.prompts.length} writing prompt(s).`);
+          finish();
+        } else if (job.status === 'error') {
+          setMessage(`Error: ${job.error || 'Generation failed'}`);
+          finish();
+        } else {
+          timer = setTimeout(tick, 2000);
+        }
+      } catch {
+        if (!cancelled) { setMessage('That generation is no longer available.'); finish(); }
+      }
+    };
+    tick();
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [writingJobId]);
 
   const handleSaveWritingWorksheet = async () => {
     setMessage(null);
@@ -145,22 +175,47 @@ export default function Admin() {
     }
   };
 
-  // Math worksheet generation
+  // Math worksheet generation (background job, W-19)
   const handleGenerateMath = async () => {
-    setGenerating(true);
     setMessage(null);
     try {
-      const result = await mathApi.generateWorksheet(selectedTopics, questionCount);
-      setGeneratedQuestions(result.questions);
-      setAssignStudentIds(null); // default: assign to every student
-      setShowMathReview(true);
-      setMessage(`Generated ${result.questions.length} questions across ${result.topics.length} topic(s).`);
+      const { jobId } = await mathApi.startGeneration(selectedTopics, questionCount);
+      localStorage.setItem('coach.mathGenJob', jobId);
+      setMathJobId(jobId);
     } catch (e: any) {
       setMessage(`Error: ${e.message}`);
-    } finally {
-      setGenerating(false);
     }
   };
+
+  // Poll the math generation job; re-attaches on mount if one was in flight (W-19).
+  useEffect(() => {
+    if (!mathJobId) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const finish = () => { localStorage.removeItem('coach.mathGenJob'); setMathJobId(null); };
+    const tick = async () => {
+      try {
+        const job = await mathApi.getGenerationJob(mathJobId);
+        if (cancelled) return;
+        if (job.status === 'done' && job.result) {
+          setGeneratedQuestions(job.result.questions);
+          setAssignStudentIds(null);
+          setShowMathReview(true);
+          setMessage(`Generated ${job.result.questions.length} questions across ${job.result.topics.length} topic(s).`);
+          finish();
+        } else if (job.status === 'error') {
+          setMessage(`Error: ${job.error || 'Generation failed'}`);
+          finish();
+        } else {
+          timer = setTimeout(tick, 2000);
+        }
+      } catch {
+        if (!cancelled) { setMessage('That generation is no longer available.'); finish(); }
+      }
+    };
+    tick();
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [mathJobId]);
 
   const handleSaveWorksheet = async () => {
     setMessage(null);
@@ -413,9 +468,9 @@ export default function Admin() {
                 </div>
               </div>
 
-              <Button onClick={handleGenerateWriting} disabled={generating}>
+              <Button onClick={handleGenerateWriting} disabled={writingGenerating}>
                 <Plus className="mr-2" size={18} />
-                {generating ? 'Generating...' : 'Generate Worksheet'}
+                {writingGenerating ? 'Generating…' : 'Generate Worksheet'}
               </Button>
             </div>
           ) : (
@@ -589,9 +644,9 @@ export default function Admin() {
                 </div>
               </div>
 
-              <Button onClick={handleGenerateMath} disabled={generating}>
+              <Button onClick={handleGenerateMath} disabled={mathGenerating}>
                 <Plus className="mr-2" size={18} />
-                {generating ? `Generating ${questionCount} Questions...` : `Generate ${questionCount}-Question Worksheet`}
+                {mathGenerating ? `Generating ${questionCount} Questions…` : `Generate ${questionCount}-Question Worksheet`}
               </Button>
             </div>
           ) : (

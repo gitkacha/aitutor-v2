@@ -4,6 +4,7 @@ import { generateWorksheetPrompts } from '../services/ai.service';
 import { asyncHandler } from '../lib/async-handler';
 import { requireAdmin, requireAuth } from '../middleware/auth';
 import { resolveAssigneeStudentIds } from '../lib/scope';
+import { createJob, getJobForWorkspace } from '../lib/generation-jobs';
 
 const router = Router();
 
@@ -16,21 +17,23 @@ router.post('/generate', requireAdmin, asyncHandler(async (req: Request, res: Re
     return;
   }
 
-  try {
+  // Background job (W-19) so the admin can navigate away and re-attach.
+  const jobId = createJob('writing', req.user!.workspaceId, async () => {
     const prompts = await generateWorksheetPrompts(typeIds);
     const types = await prisma.writingType.findMany({
       where: { id: { in: typeIds } },
       orderBy: { name: 'asc' },
     });
+    return { types: types.map((t) => ({ id: t.id, name: t.name, slug: t.slug })), prompts };
+  });
+  res.status(202).json({ jobId });
+}));
 
-    res.json({
-      types: types.map((t) => ({ id: t.id, name: t.name, slug: t.slug })),
-      prompts,
-    });
-  } catch (error) {
-    console.error('Worksheet generation failed:', error);
-    res.status(500).json({ error: 'Failed to generate worksheet', status: 500 });
-  }
+// GET /api/worksheets/jobs/:jobId — poll a writing-generation job (W-19), workspace-scoped.
+router.get('/jobs/:jobId', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+  const job = getJobForWorkspace(req.params.jobId, req.user!.workspaceId);
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+  res.json({ status: job.status, result: job.result, error: job.error });
 }));
 
 // POST /api/worksheets/save — save an admin-reviewed worksheet

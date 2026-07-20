@@ -5,6 +5,7 @@ import { createWorksheetQuestionRows, validateWorksheetQuestions } from '../serv
 import { asyncHandler } from '../lib/async-handler';
 import { requireAdmin, requireAuth } from '../middleware/auth';
 import { resolveAssigneeStudentIds } from '../lib/scope';
+import { createJob, getJobForWorkspace } from '../lib/generation-jobs';
 
 const router = Router();
 
@@ -39,16 +40,20 @@ router.post('/generate', requireAdmin, asyncHandler(async (req: Request, res: Re
     return res.status(400).json({ error: 'No topics found' });
   }
 
-  try {
-    const generatedQuestions = await generateMathWorksheetQuestions(topics, questionCount);
-    res.json({
-      topics: topics.map(t => ({ id: t.id, name: t.name, slug: t.slug })),
-      questions: generatedQuestions,
-    });
-  } catch (error: any) {
-    console.error('Worksheet generation failed:', error);
-    res.status(502).json({ error: error?.message || 'Worksheet generation failed' });
-  }
+  // Run generation as a background job (W-19) so the admin can navigate away and re-attach.
+  const topicSummaries = topics.map((t) => ({ id: t.id, name: t.name, slug: t.slug }));
+  const jobId = createJob('math', req.user!.workspaceId, async () => ({
+    topics: topicSummaries,
+    questions: await generateMathWorksheetQuestions(topics, questionCount),
+  }));
+  res.status(202).json({ jobId });
+}));
+
+// GET /api/math/worksheets/jobs/:jobId — poll a generation job (W-19), workspace-scoped.
+router.get('/jobs/:jobId', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+  const job = getJobForWorkspace(req.params.jobId, req.user!.workspaceId);
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+  res.json({ status: job.status, result: job.result, error: job.error });
 }));
 
 // POST /api/math/worksheets/save — save an admin-reviewed worksheet

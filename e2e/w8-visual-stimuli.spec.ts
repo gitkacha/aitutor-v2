@@ -1,4 +1,5 @@
 import { test, expect, APIRequestContext } from '@playwright/test';
+import { generateMath } from './helpers/generate';
 import { startTest } from './helpers/practice';
 import http from 'http';
 
@@ -134,11 +135,7 @@ test.describe('W-8 — visual stimuli for math questions', () => {
     };
     const stub = await startStub(state);
     try {
-      const res = await request.post('/api/math/worksheets/generate', {
-        data: { topicIds: ['arithmetic'], questionCount: 5 },
-      });
-      expect(res.ok()).toBeTruthy();
-      const body = await res.json();
+      const body = await generateMath(request, { topicIds: ['arithmetic'], questionCount: 5 });
       expect(body.questions.length).toBe(5);
       for (const q of body.questions) {
         const referencesVisual = /(shown|below|above|diagram|figure|picture|graph|chart|protractor|image)/i.test(q.questionText);
@@ -158,11 +155,7 @@ test.describe('W-8 — visual stimuli for math questions', () => {
     };
     const stub = await startStub(state);
     try {
-      const res = await request.post('/api/math/worksheets/generate', {
-        data: { topicIds: ['arithmetic'], questionCount: 5 },
-      });
-      expect(res.ok()).toBeTruthy();
-      const body = await res.json();
+      const body = await generateMath(request, { topicIds: ['arithmetic'], questionCount: 5 });
       const withStimulus = body.questions.find((q: any) => q.stimulus);
       expect(withStimulus, 'generated stimulus must survive into the response').toBeTruthy();
       expect(withStimulus.stimulus.figures[0].kind).toBe('protractor');
