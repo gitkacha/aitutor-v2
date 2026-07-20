@@ -1,6 +1,16 @@
-import { test, expect, APIRequestContext } from '@playwright/test';
+import { test, expect, APIRequestContext, request as pwRequest } from '@playwright/test';
 import { startTest } from './helpers/practice';
 import http from 'http';
+
+// The topic-detail payload omits the answer key for students (W-29), so tests that need the
+// correct answer read it back from an admin request, mapped by question id.
+async function correctIndexFor(baseURL: string | undefined, slug: string, questionId: number): Promise<number> {
+  const admin = await pwRequest.newContext({ baseURL });
+  await admin.post('/api/auth/login', { data: { email: 'e2e-admin@test.local', password: 'test1234' } });
+  const topic = await (await admin.get(`/api/math/topics/${slug}`)).json();
+  await admin.dispose();
+  return topic.questions.find((q: any) => q.id === questionId).correctIndex;
+}
 
 // M6–M10 (docs/review2.md §Medium):
 // M6 — a failed math submission must show a visible error panel with retry (H1 parity).
@@ -145,9 +155,10 @@ test.describe('M8 — type average covers only analysed attempts', () => {
 });
 
 test.describe('M9 — All Topics history lists only All Topics tests', () => {
-  test('single-topic and worksheet attempts are not counted', async ({ page, request }) => {
+  test('single-topic and worksheet attempts are not counted', async ({ page, request, baseURL }) => {
     const topic = await (await request.get('/api/math/topics/fractions')).json();
     const q = topic.questions[0];
+    const correctIndex = await correctIndexFor(baseURL, 'fractions', q.id);
 
     // One attempt of each kind.
     for (const extra of [
@@ -157,7 +168,7 @@ test.describe('M9 — All Topics history lists only All Topics tests', () => {
     ]) {
       const { status } = await createMathAttempt(request, {
         questions: JSON.stringify([q.id]),
-        answers: JSON.stringify([q.correctIndex]),
+        answers: JSON.stringify([correctIndex]),
         ...extra,
       });
       expect(status).toBe(201);
@@ -174,9 +185,10 @@ test.describe('M9 — All Topics history lists only All Topics tests', () => {
 });
 
 test.describe('M10 — math attempt payloads are validated', () => {
-  test('malformed payloads are rejected with 400; a valid one still scores', async ({ request }) => {
+  test('malformed payloads are rejected with 400; a valid one still scores', async ({ request, baseURL }) => {
     const topic = await (await request.get('/api/math/topics/perimeter')).json();
     const q = topic.questions[0];
+    const correctIndex = await correctIndexFor(baseURL, 'perimeter', q.id);
 
     const badPayloads: Array<[string, Record<string, unknown>]> = [
       ['mismatched lengths', { questions: JSON.stringify([q.id]), answers: JSON.stringify([]) }],
@@ -195,7 +207,7 @@ test.describe('M10 — math attempt payloads are validated', () => {
     const ok = await createMathAttempt(request, {
       topicId: topic.id,
       questions: JSON.stringify([q.id]),
-      answers: JSON.stringify([q.correctIndex]),
+      answers: JSON.stringify([correctIndex]),
     });
     expect(ok.status).toBe(201);
     expect(ok.body.score).toBe(1);

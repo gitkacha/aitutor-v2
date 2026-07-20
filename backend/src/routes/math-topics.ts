@@ -5,6 +5,17 @@ import { requireAuth } from '../middleware/auth';
 
 const router = Router();
 
+// The topic-detail payload reaches a student's browser (the pre-test page), so its questions
+// must not carry the answer key. Strip correctIndex/explanation from each question for students;
+// admins keep the full fields. Mirrors the in-test payload guard (W-28/W-29).
+function stripAnswersForStudents<T extends { correctIndex?: unknown; explanation?: unknown }>(
+  questions: T[],
+  role: string | undefined,
+): T[] {
+  if (role === 'admin') return questions;
+  return questions.map(({ correctIndex, explanation, ...rest }) => rest as T);
+}
+
 router.get('/', requireAuth, asyncHandler(async (_req: Request, res: Response) => {
   const topics = await prisma.mathTopic.findMany({
     orderBy: { name: 'asc' },
@@ -27,7 +38,7 @@ router.get('/:slug', requireAuth, asyncHandler(async (req: Request, res: Respons
   if (!topic) {
     return res.status(404).json({ error: 'Topic not found' });
   }
-  res.json(topic);
+  res.json({ ...topic, questions: stripAnswersForStudents(topic.questions, req.user?.role) });
 }));
 
 export default router;

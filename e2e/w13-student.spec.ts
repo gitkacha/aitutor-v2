@@ -12,16 +12,23 @@ async function adminCtx(baseURL: string | undefined): Promise<APIRequestContext>
 }
 
 test.describe('W-13 — student experience', () => {
-  test('the dashboard surfaces the student\'s weakest scored areas as opportunity areas', async ({ page, request }) => {
+  test('the dashboard surfaces the student\'s weakest scored areas as opportunity areas', async ({ page, request, baseURL }) => {
     // A deterministic low score on an uncommon topic → guaranteed among the weakest.
     const topic = await (await request.get('/api/math/topics/time-zones')).json();
     const q = topic.questions[0];
+    // The student payload omits the answer key (W-29), so read the correct answer from an
+    // admin request to deterministically choose a wrong one.
+    const admin = await pwRequest.newContext({ baseURL });
+    await admin.post('/api/auth/login', { data: { email: 'e2e-admin@test.local', password: 'test1234' } });
+    const adminTopic = await (await admin.get('/api/math/topics/time-zones')).json();
+    const correctIndex = adminTopic.questions.find((x: any) => x.id === q.id).correctIndex;
+    await admin.dispose();
     const now = Date.now();
     const res = await request.post('/api/math/attempts', {
       data: {
         topicId: topic.id,
         questions: JSON.stringify([q.id]),
-        answers: JSON.stringify([(q.correctIndex + 1) % 5]), // wrong on purpose → 0%
+        answers: JSON.stringify([(correctIndex + 1) % 5]), // wrong on purpose → 0%
         startedAt: new Date(now - 60_000).toISOString(),
         finishedAt: new Date(now).toISOString(),
         timeTaken: 60,

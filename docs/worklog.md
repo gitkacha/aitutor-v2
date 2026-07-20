@@ -23,6 +23,10 @@ every agent, on any model, without exception):
   worksheet and topic/all-topics paths); admins keep the full fields (the `MathWorksheetContent`
   view needs them). Server-side scoring and the post-submission review endpoint are unchanged.
   Proof: `e2e/w28-answer-leak.spec.ts`.
+- [ ] **W-29** — Stop leaking answers via the topic-detail endpoint: `GET /api/math/topics/:slug`
+  strips `correctIndex` and `explanation` from each `topic.questions` item for student callers
+  (admins keep them); the list endpoint is unaffected. `MathPracticeHome`/`ScoreHistory` read only
+  the count/name, so they are unchanged. Proof: `e2e/w29-topic-answer-leak.spec.ts`.
 
 ## Done
 
