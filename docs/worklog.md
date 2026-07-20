@@ -18,30 +18,15 @@ every agent, on any model, without exception):
 
 ## Open
 
-Milestone 2 — multi-user, multi-tenant workspaces. Plan approved 2026-07-18:
-`docs/superpowers/plans/Milestone2-plan.md`. Phases must land in order (A → B → C → D);
-B1∥B2 and C1∥C2 may run in parallel worktrees, merging only with their proving specs
-green. The full suite must be green at every phase boundary.
-
-- [ ] **W-23** — Token/cost logging: `chatCompletion` returns and logs the API `usage`
-  (prompt/completion/total tokens) per call; math worksheet generation aggregates and logs a
-  per-worksheet `[worksheet-usage]` total by model. Proof: `model-provider.test.ts` + live run.
-- [ ] **W-24** — Control-char guard: `chatCompletion` strips non-whitespace control characters
-  from model output so a stray control char can't break JSON parsing or persist into a
-  question/explanation. Proof: `model-provider.test.ts`.
-- [ ] **W-25** — Admin can view saved worksheet content: View/Hide toggle on saved math and
-  writing worksheet rows; math expands to the questions (options, correct answer, explanation,
-  stimulus) via a new read-only `MathWorksheetContent`, writing to its prompt(s). Works for
-  attempted and unattempted. Proof: `e2e/w25-w26-admin-worksheets.spec.ts`.
-- [ ] **W-26** — Direct question-count entry: the generate count field no longer clamps on every
-  keystroke (free text, clamp on blur/generate), so typing e.g. "15" stays 15. Proof:
-  `e2e/w25-w26-admin-worksheets.spec.ts`.
-- [ ] **W-27** — View toggle on the admin Pending Worksheets card: each pending (0-attempt) math
-  and writing row gets a View/Hide toggle (admin mode only; students keep Start). Math expands to
-  the read-only `MathWorksheetContent`, writing to its prompt(s). Proof:
-  `e2e/w27-pending-view.spec.ts`.
+_No open items._
 
 ## Done
+
+- [x] **W-27** — View toggle on the admin Pending Worksheets card: each pending (0-attempt) math and writing row gets a View/Hide toggle (admin mode only; students keep Start); math expands to the read-only `MathWorksheetContent`, writing to its prompt(s); one row open at a time — commit `313ed58` · proof: `e2e/w27-pending-view.spec.ts` (RED-first, 2 specs) + 94/94 e2e, 12/12 frontend unit, typecheck clean + live screenshot · user signed off 2026-07-21
+- [x] **W-26** — Direct question-count entry: the generate count field no longer clamps on every keystroke (free-text state, clamp to 5–50 on blur/generate), so typing e.g. "15" stays 15 — commit `ba3418a` · proof: `e2e/w25-w26-admin-worksheets.spec.ts` (RED-first) + 92/92 e2e, 12/12 frontend + 37/37 backend unit, typecheck clean + live screenshot · user signed off 2026-07-21
+- [x] **W-25** — Admin can view saved worksheet content: View/Hide toggle on saved math and writing worksheet rows; math expands to the questions (options, correct answer highlighted, explanation, stimulus) via a new read-only `MathWorksheetContent`, writing to its prompt(s); works for attempted and unattempted — commit `ba3418a` · proof: `e2e/w25-w26-admin-worksheets.spec.ts` (RED-first) + 92/92 e2e + live screenshot · user signed off 2026-07-21
+- [x] **W-24** — Control-char guard: `chatCompletion` strips non-whitespace control characters from model output so a stray control char can't break JSON parsing or persist into a question/explanation — commit `8c94754` · proof: `model-provider.test.ts` · user signed off 2026-07-21
+- [x] **W-23** — Token/cost logging: `chatCompletion` returns and logs the API `usage` (prompt/completion/total tokens) per call; math worksheet generation aggregates and logs a per-worksheet `[worksheet-usage]` total by model — commit `8c94754` · proof: `model-provider.test.ts` + live run (real 5-question worksheet = 6 calls / 8,127 tokens) · user signed off 2026-07-21
 
 - [x] **W-22** — Provider token-param compatibility: `chatCompletion` sends `max_completion_tokens` to OpenAI and `max_tokens` to other OpenAI-compatible providers (heuristic on baseUrl + `${ROLE}_TOKENS_PARAM` override), so switching the verifier to Gemini/DeepSeek is env-only — commit `c848915` · proof: `model-provider.test.ts` (RED-first) + 89/89 e2e, 48/48 unit · user signed off 2026-07-20
 - [x] **W-21** — Per-role model providers + `o4-mini` default verifier: `providerFor(role)` resolves `{model, baseUrl, apiKey}` per role (fallback to shared OPENAI_*), so any role runs on DeepSeek/Gemini-compat/OpenRouter/local via env; `chatCompletion` takes a provider; default verifier `gpt-5` → `o4-mini` — commit `1abe10b` · proof: `model-provider.test.ts` + e2e ripple + live o4-mini run (~74s/5 questions, real) · user signed off 2026-07-20
