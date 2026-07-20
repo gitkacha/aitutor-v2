@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import Timer from '@/components/Timer';
 import MathQuestionCard from '@/components/MathQuestionCard';
 import MathStimulusDisplay from '@/components/MathStimulusDisplay';
+import { Flag } from 'lucide-react';
 
 export default function MathTimedPractice() {
   const { topicSlug } = useParams<{ topicSlug: string }>();
@@ -15,6 +16,8 @@ export default function MathTimedPractice() {
   const [questions, setQuestions] = useState<MathQuestionFull[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
+  // Questions the student flagged to revisit (W-17), by question id.
+  const [flagged, setFlagged] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -110,6 +113,17 @@ export default function MathTimedPractice() {
   const isLast = currentIndex >= questions.length - 1;
   const answeredCount = Object.keys(answers).length;
 
+  // Flag / revisit (W-17).
+  const toggleFlag = (id: number) =>
+    setFlagged((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  const jumpTo = (index: number) => { setCurrentIndex(index); setConfirmed(false); };
+  const flaggedIdx = questions.map((q, i) => ({ q, i })).filter(({ q }) => flagged.has(q.id)).map(({ i }) => i);
+  const unansweredIdx = questions.map((q, i) => ({ q, i })).filter(({ q }) => answers[q.id] == null).map(({ i }) => i);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -169,18 +183,42 @@ export default function MathTimedPractice() {
   }
 
   if (confirmed) {
+    // Chips let the student jump back to flagged or unanswered questions while time
+    // remains (W-17).
+    const chips = (label: string, indices: number[], amber?: boolean) =>
+      indices.length > 0 && (
+        <div className="text-sm" data-testid={`jump-${label.toLowerCase()}`}>
+          <span className="text-gray-500">{label} ({indices.length}):</span>
+          <span className="ml-2 inline-flex flex-wrap gap-1.5 align-middle">
+            {indices.map((i) => (
+              <button
+                key={i}
+                onClick={() => jumpTo(i)}
+                className={`px-2 py-0.5 rounded-md border text-xs font-medium ${amber ? 'border-brand-amber text-brand-amber' : 'border-gray-300 text-gray-600'} hover:bg-gray-50`}
+              >
+                Q{i + 1}
+              </button>
+            ))}
+          </span>
+        </div>
+      );
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center space-y-4">
-          <p className="text-lg text-gray-700">
-            {answeredCount < questions.length
-              ? `You've answered ${answeredCount} of ${questions.length} questions. ${questions.length - answeredCount} will be marked as unanswered.`
-              : 'Are you sure you want to submit?'}
-          </p>
-          <div className="flex gap-3 justify-center">
-            <Button variant="outline" onClick={() => setConfirmed(false)}>Keep Going</Button>
-            <Button onClick={submitAttempt}>Submit Now</Button>
+      <div className="max-w-lg mx-auto py-16 text-center space-y-5">
+        <p className="text-lg text-gray-700">
+          {answeredCount < questions.length
+            ? `You've answered ${answeredCount} of ${questions.length} questions. ${questions.length - answeredCount} will be marked as unanswered.`
+            : 'Are you sure you want to submit?'}
+        </p>
+        {(flaggedIdx.length > 0 || unansweredIdx.length > 0) && (
+          <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-left inline-block">
+            <p className="text-xs text-gray-500">Time left? Jump back to review:</p>
+            {chips('Flagged', flaggedIdx, true)}
+            {chips('Unanswered', unansweredIdx)}
           </div>
+        )}
+        <div className="flex gap-3 justify-center">
+          <Button variant="outline" onClick={() => setConfirmed(false)}>Keep Going</Button>
+          <Button onClick={submitAttempt}>Submit Now</Button>
         </div>
       </div>
     );
@@ -240,6 +278,16 @@ export default function MathTimedPractice() {
           {currentIndex > 0 && (
             <Button variant="outline" onClick={() => setCurrentIndex(i => i - 1)}>
               Previous
+            </Button>
+          )}
+          {currentQ && (
+            <Button
+              variant="outline"
+              onClick={() => toggleFlag(currentQ.id)}
+              className={flagged.has(currentQ.id) ? 'border-brand-amber text-brand-amber' : ''}
+            >
+              <Flag size={15} className="mr-1" fill={flagged.has(currentQ.id) ? 'currentColor' : 'none'} />
+              {flagged.has(currentQ.id) ? 'Flagged' : 'Flag'}
             </Button>
           )}
         </div>
