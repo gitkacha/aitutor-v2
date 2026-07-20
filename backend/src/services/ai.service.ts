@@ -54,9 +54,34 @@ interface ChatCompletionResponse {
       content: string;
     };
   }>;
+  usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
 }
 
-export async function chatCompletion(provider: ModelProvider, prompt: string, maxTokens: number, temperature?: number): Promise<string> {
+export interface Usage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
+export interface CompletionResult {
+  content: string;
+  usage: Usage | null;
+}
+
+// Model output should never contain raw control characters; a stray one (seen from a
+// reasoning model) breaks strict JSON parsing and can persist into a question/explanation.
+// Strip them, keeping ordinary whitespace (tab/newline/carriage-return) (W-24).
+function stripControlChars(s: string): string {
+  let out = '';
+  for (const ch of s) {
+    const c = ch.charCodeAt(0);
+    // Keep tab (9), newline (10), carriage return (13); drop other C0/C1 control chars.
+    if (c >= 32 || c === 9 || c === 10 || c === 13) out += ch;
+  }
+  return out;
+}
+
+export async function chatCompletion(provider: ModelProvider, prompt: string, maxTokens: number, temperature?: number): Promise<CompletionResult> {
   if (!provider.apiKey) {
     throw new Error('OPENAI_API_KEY is not configured. Add it to backend/.env.');
   }
@@ -85,11 +110,34 @@ export async function chatCompletion(provider: ModelProvider, prompt: string, ma
   }
 
   const data = (await response.json()) as ChatCompletionResponse;
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) {
+  const raw = data.choices?.[0]?.message?.content;
+  if (!raw) {
     throw new Error('OpenAI API returned an empty response');
   }
-  return content;
+  const usage: Usage | null = data.usage
+    ? {
+        promptTokens: data.usage.prompt_tokens || 0,
+        completionTokens: data.usage.completion_tokens || 0,
+        totalTokens: data.usage.total_tokens || 0,
+      }
+    : null;
+  // Per-call token/cost logging (W-23).
+  console.log('[ai-usage]', JSON.stringify({ model: provider.model, ...(usage || { totalTokens: null }) }));
+  return { content: stripControlChars(raw), usage };
+}
+
+// Sum of many usages, for a per-worksheet total (W-23).
+export interface UsageTotals {
+  calls: number;
+  totalTokens: number;
+  byModel: Record<string, number>;
+}
+function accumulate(totals: UsageTotals, model: string, usage: Usage | null): void {
+  totals.calls += 1;
+  if (usage) {
+    totals.totalTokens += usage.totalTokens;
+    totals.byModel[model] = (totals.byModel[model] || 0) + usage.totalTokens;
+  }
 }
 
 interface AnalysisResult {
@@ -181,7 +229,7 @@ Respond with ONLY a JSON object (no markdown, no code fences) in this exact form
 
 All comments must reference specific parts of the student's text.`;
 
-  const content = await chatCompletion(providerFor('analysis'), prompt, 1000, 0.7);
+  const { content } = await chatCompletion(providerFor('analysis'), prompt, 1000, 0.7);
   return parseAnalysisResponse(content);
 }
 
@@ -205,7 +253,7 @@ Respond with ONLY a JSON array of strings, no markdown, no code fences:
 ["prompt text"]`;
 
       try {
-        const content = await chatCompletion(providerFor('generation'), prompt, 2000, 0.8);
+        const { content } = await chatCompletion(providerFor('generation'), prompt, 2000, 0.8);
         const arrayMatch = content.match(/\[[\s\S]*\]/);
         const parsed = arrayMatch ? JSON.parse(arrayMatch[0]) : [];
         if (Array.isArray(parsed) && typeof parsed[0] === 'string' && parsed[0].trim()) {
@@ -265,7 +313,7 @@ const GENERATION_BATCH_SIZE = 10;
 // One independent solve on the verification model. Returns the chosen index, -1 for an
 // explicit "none of the options is correct", or -1 on any parse/transport failure (so an
 // unverifiable question is dropped, never accepted).
-async function solveIndependently(q: GeneratedMathQuestion): Promise<number> {
+async function solveIndependently(q: GeneratedMathQuestion): Promise<{ index: number; usage: Usage | null }> {
   const stimulusBlock = q.stimulus
     ? `\nStimulus shown to the student (structured figure data — solve using ONLY this data):\n${JSON.stringify(q.stimulus)}\n`
     : '';
@@ -283,14 +331,14 @@ code fences):
 {"correctIndex": <0-4, or -1 if none of the options is correct>}`;
 
   try {
-    const content = await chatCompletion(providerFor('verification'), prompt, 4000);
+    const { content, usage } = await chatCompletion(providerFor('verification'), prompt, 4000);
     const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return -1;
+    if (!jsonMatch) return { index: -1, usage };
     const verdict = JSON.parse(jsonMatch[0]);
-    return Number.isInteger(verdict.correctIndex) ? verdict.correctIndex : -1;
+    return { index: Number.isInteger(verdict.correctIndex) ? verdict.correctIndex : -1, usage };
   } catch (error) {
     console.error('Answer-key verification failed:', error);
-    return -1;
+    return { index: -1, usage: null };
   }
 }
 
@@ -299,11 +347,15 @@ code fences):
 // escalate to two more independent solves and keep only if the key wins a clear majority
 // with no "none" verdict. Catches keys the generator got wrong (its correlated verifier
 // used to just confirm them).
-async function verifyQuestionKey(q: GeneratedMathQuestion): Promise<boolean> {
+async function verifyQuestionKey(q: GeneratedMathQuestion, totals: UsageTotals): Promise<boolean> {
+  const vModel = providerFor('verification').model;
   const first = await solveIndependently(q);
-  if (first === q.correctIndex) return true;
+  accumulate(totals, vModel, first.usage);
+  if (first.index === q.correctIndex) return true;
   const [second, third] = await Promise.all([solveIndependently(q), solveIndependently(q)]);
-  return keptByEscalation([first, second, third], q.correctIndex);
+  accumulate(totals, vModel, second.usage);
+  accumulate(totals, vModel, third.usage);
+  return keptByEscalation([first.index, second.index, third.index], q.correctIndex);
 }
 
 function isValidGeneratedQuestion(q: any, allowedSlugs: Set<string>): boolean {
@@ -333,7 +385,7 @@ function isValidGeneratedQuestion(q: any, allowedSlugs: Set<string>): boolean {
   return true;
 }
 
-async function generateQuestionBatch(topics: MathTopicForGen[], count: number): Promise<any[]> {
+async function generateQuestionBatch(topics: MathTopicForGen[], count: number): Promise<{ questions: any[]; usage: Usage | null }> {
   const exemplars = topics.map(t => {
     const hardest = t.questions[0];
     if (!hardest) return null;
@@ -396,7 +448,7 @@ Respond with ONLY a JSON array (no markdown, no code fences) in this exact forma
 Generate exactly ${count} questions. Make sure distractors are plausible — they should be answers a student might get from common mistakes.`;
 
   // Reasoning models think inside the completion budget, so leave generous headroom.
-  const content = await chatCompletion(providerFor('generation'), prompt, Math.min(count * 600 + 4000, 16000), 0.8);
+  const { content, usage } = await chatCompletion(providerFor('generation'), prompt, Math.min(count * 600 + 4000, 16000), 0.8);
   const arrayMatch = content.match(/\[[\s\S]*\]/);
   if (!arrayMatch) {
     throw new Error('Generation response did not contain a JSON array');
@@ -405,7 +457,7 @@ Generate exactly ${count} questions. Make sure distractors are plausible — the
   if (!Array.isArray(parsed)) {
     throw new Error('Generation response was not an array');
   }
-  return parsed;
+  return { questions: parsed, usage };
 }
 
 export async function generateMathWorksheetQuestions(
@@ -415,6 +467,8 @@ export async function generateMathWorksheetQuestions(
   const allowedSlugs = new Set(topics.map(t => t.slug));
   const nameBySlug = new Map(topics.map(t => [t.slug, t.name]));
   const collected: GeneratedMathQuestion[] = [];
+  const totals: UsageTotals = { calls: 0, totalTokens: 0, byModel: {} };
+  const genModel = providerFor('generation').model;
 
   // Verification drops some candidates, so allow extra top-up calls.
   const maxCalls = Math.ceil(questionCount / GENERATION_BATCH_SIZE) + 5;
@@ -423,8 +477,9 @@ export async function generateMathWorksheetQuestions(
   for (let call = 0; call < maxCalls && collected.length < questionCount; call++) {
     const need = Math.min(GENERATION_BATCH_SIZE, questionCount - collected.length);
     try {
-      const batch = await generateQuestionBatch(topics, need);
-      const candidates: GeneratedMathQuestion[] = batch
+      const batchResult = await generateQuestionBatch(topics, need);
+      accumulate(totals, genModel, batchResult.usage);
+      const candidates: GeneratedMathQuestion[] = batchResult.questions
         .filter(q => isValidGeneratedQuestion(q, allowedSlugs) && hasDistinctOptions(q.options.map(String)))
         .map(q => ({
           questionText: q.questionText,
@@ -437,7 +492,7 @@ export async function generateMathWorksheetQuestions(
         }));
 
       // Audit every candidate's answer key in parallel; keep only confirmed ones.
-      const verdicts = await Promise.all(candidates.map(verifyQuestionKey));
+      const verdicts = await Promise.all(candidates.map((c) => verifyQuestionKey(c, totals)));
       const verified = candidates
         .filter((_, i) => verdicts[i])
         .slice(0, questionCount - collected.length);
@@ -456,6 +511,10 @@ export async function generateMathWorksheetQuestions(
   if (collected.length < questionCount) {
     throw new Error(`Only generated ${collected.length} of ${questionCount} questions. Please try again.`);
   }
+  // Per-worksheet token/cost total (W-23).
+  console.log('[worksheet-usage]', JSON.stringify({
+    questions: collected.length, calls: totals.calls, totalTokens: totals.totalTokens, byModel: totals.byModel,
+  }));
   return collected;
 }
 

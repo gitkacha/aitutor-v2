@@ -58,8 +58,8 @@ describe('providerFor (W-21)', () => {
   });
 });
 
-describe('chatCompletion routing (W-21/W-22)', () => {
-  it('posts to the provider baseUrl with its apiKey, model, and chosen token param', async () => {
+describe('chatCompletion routing + usage + sanitising (W-21/W-22/W-23/W-24)', () => {
+  it('routes to the provider, returns usage, and strips control chars from content', async () => {
     const captured: { url?: string; auth?: string; body?: any } = {};
     const server = await new Promise<http.Server>((resolve) => {
       const s = http.createServer((req, res) => {
@@ -70,7 +70,11 @@ describe('chatCompletion routing (W-21/W-22)', () => {
           captured.auth = req.headers.authorization;
           captured.body = JSON.parse(body);
           res.writeHead(200, { 'content-type': 'application/json' });
-          res.end(JSON.stringify({ choices: [{ message: { content: 'ok' } }] }));
+          // Content carries a vertical-tab control char (W-24); response reports usage (W-23).
+          res.end(JSON.stringify({
+            choices: [{ message: { content: 'ok' } }],
+            usage: { prompt_tokens: 11, completion_tokens: 22, total_tokens: 33 },
+          }));
         });
       });
       s.listen(0, '127.0.0.1', () => resolve(s));
@@ -81,13 +85,37 @@ describe('chatCompletion routing (W-21/W-22)', () => {
         { model: 'deepseek-reasoner', baseUrl: `http://127.0.0.1:${port}/v1`, apiKey: 'ds-key', tokensParam: 'max_tokens' },
         'hi', 100
       );
-      expect(out).toBe('ok');
+      // W-24: the control character is stripped.
+      expect(out.content).toBe('ok');
+      // W-23: usage is surfaced.
+      expect(out.usage).toEqual({ promptTokens: 11, completionTokens: 22, totalTokens: 33 });
+      // W-21/W-22 routing still holds.
       expect(captured.url).toBe('/v1/chat/completions');
       expect(captured.auth).toBe('Bearer ds-key');
       expect(captured.body.model).toBe('deepseek-reasoner');
-      // A non-OpenAI provider must receive max_tokens, not max_completion_tokens.
       expect(captured.body.max_tokens).toBe(100);
       expect(captured.body.max_completion_tokens).toBeUndefined();
+    } finally {
+      await new Promise((r) => server.close(r));
+    }
+  });
+
+  it('returns null usage when the provider omits it', async () => {
+    const server = await new Promise<http.Server>((resolve) => {
+      const s = http.createServer((_req, res) => {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ choices: [{ message: { content: 'hi' } }] }));
+      });
+      s.listen(0, '127.0.0.1', () => resolve(s));
+    });
+    const { port } = server.address() as import('net').AddressInfo;
+    try {
+      const out = await chatCompletion(
+        { model: 'm', baseUrl: `http://127.0.0.1:${port}/v1`, apiKey: 'k', tokensParam: 'max_tokens' },
+        'hi', 100
+      );
+      expect(out.content).toBe('hi');
+      expect(out.usage).toBeNull();
     } finally {
       await new Promise((r) => server.close(r));
     }

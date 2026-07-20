@@ -23,7 +23,12 @@ Milestone 2 — multi-user, multi-tenant workspaces. Plan approved 2026-07-18:
 B1∥B2 and C1∥C2 may run in parallel worktrees, merging only with their proving specs
 green. The full suite must be green at every phase boundary.
 
-*(none — review backlog and post-M2 feedback W-16…W-22 all closed.)*
+- [ ] **W-23** — Token/cost logging: `chatCompletion` returns and logs the API `usage`
+  (prompt/completion/total tokens) per call; math worksheet generation aggregates and logs a
+  per-worksheet `[worksheet-usage]` total by model. Proof: `model-provider.test.ts` + live run.
+- [ ] **W-24** — Control-char guard: `chatCompletion` strips non-whitespace control characters
+  from model output so a stray control char can't break JSON parsing or persist into a
+  question/explanation. Proof: `model-provider.test.ts`.
 
 ## Done
 
