@@ -1,6 +1,7 @@
 import { Prisma, PrismaClient } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { validateStimulus, StimulusSpec } from '../lib/stimulus';
+import { hasDistinctOptions, explanationMatchesKey } from '../lib/question-checks';
 
 export interface WorksheetQuestionJson {
   questionText: string;
@@ -26,7 +27,11 @@ export function validateWorksheetQuestions(questions: unknown): questions is Wor
     q.correctIndex >= 0 &&
     q.correctIndex < q.options.length &&
     typeof q.topicSlug === 'string' &&
-    (q.stimulus === undefined || validateStimulus(q.stimulus))
+    (q.stimulus === undefined || validateStimulus(q.stimulus)) &&
+    // Answer-correctness guards (W-20): no equal-value options, and the explanation must
+    // not name a different option than the key.
+    hasDistinctOptions(q.options.map(String)) &&
+    (typeof q.explanation !== 'string' || explanationMatchesKey(q.explanation, q.correctIndex))
   );
 }
 

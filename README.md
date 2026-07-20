@@ -76,7 +76,7 @@ Open **http://localhost:5173** in your browser.
 - Tabbed interface for **Writing** and **Mathematics** controls
 - **Generate Writing Worksheet** — AI creates targeted prompts for the weakest text types
 - **Generate Mathematics Worksheet** — select specific topics (or all), choose the question count (5–50, default 35); generation is batched so the worksheet always contains exactly that many questions, at reference-test difficulty. Students get 1 minute per question.
-- **Answer-key verification** — every generated question is independently re-solved by the reasoning model; questions whose answer key can't be confirmed, or with duplicate/equivalent options, are discarded and regenerated
+- **Answer-key verification** — every generated question is re-solved by a stronger, *independent* model (`gpt-5`) that can answer "none of these"; it accepts on a first-pass agreement, otherwise escalates to a 3-solve majority vote. Deterministic guards (no equal-value options; the explanation must not name a different option than the key) run at both generation and save. Questions that fail are discarded and regenerated.
 - Review generated math questions before saving
 - **Load Demo Data** — populates realistic sample attempts, analyses, and worksheets for both subjects
 - **Clear Demo Data** — removes only demo records, leaving real student work untouched
@@ -119,7 +119,7 @@ Platform console for provisioning and read-only oversight.
 | **Backend** | Express, TypeScript, Prisma ORM |
 | **Database** | SQLite (local file) |
 | **Charts** | Recharts |
-| **AI** | OpenAI API — `gpt-5-mini` (worksheet generation + answer-key verification), `gpt-4o-mini` (writing analysis) |
+| **AI** | OpenAI API — `gpt-5-mini` (worksheet generation), independent `gpt-5` (answer-key verification, escalating), `gpt-4o-mini` (writing analysis) |
 | **Testing** | Vitest (unit) + Playwright (end-to-end) |
 
 ## Project Structure
@@ -216,6 +216,10 @@ SESSION_SECRET=change-me
 
 # Optional model overrides (defaults shown)
 GENERATION_MODEL=gpt-5-mini
+# Answer-key verification uses a stronger, INDEPENDENT model than generation so it
+# catches the generator's mistakes instead of confirming them. This is the main
+# accuracy/cost lever — drop it to o4-mini or gpt-5-mini to cut cost.
+VERIFICATION_MODEL=gpt-5
 ANALYSIS_MODEL=gpt-4o-mini
 ```
 

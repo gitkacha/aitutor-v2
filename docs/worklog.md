@@ -36,6 +36,11 @@ Post-Milestone-2 feedback (plan approved 2026-07-20): `.claude/plans` W-16…W-1
 - [ ] **W-19** — Worksheet generation survives navigation: in-memory server job for both
   generate endpoints (POST → jobId, GET jobs/:id), Admin polls + resumes via localStorage.
   Ripple: generate specs move to the job flow. Proof: `e2e/w19-gen-job.spec.ts`.
+- [ ] **W-20** — Answer-key correctness hardening: deterministic guards (equal-value options,
+  explanation↔key letter) at generation + save; escalating-hybrid verification on an
+  independent `gpt-5` verifier with a "none of these" verdict (pass-1 accept; escalate to 3 on
+  disagreement, majority-with-key to keep); delete bad worksheet 5 + attempt 70; document
+  `VERIFICATION_MODEL`. Proof: `e2e/w20-answer-correctness.spec.ts`.
 
 ## Done
 

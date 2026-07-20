@@ -1,5 +1,6 @@
 import prisma from '../lib/prisma';
 import { validateStimulus, StimulusSpec } from '../lib/stimulus';
+import { hasDistinctOptions, explanationMatchesKey, keptByEscalation } from '../lib/question-checks';
 
 // OpenAI API per CLAUDE.md. OPENAI_BASE_URL is overridable so tests can point the
 // service at a local stub; production use needs no configuration beyond the API key.
@@ -8,6 +9,10 @@ import { validateStimulus, StimulusSpec } from '../lib/stimulus';
 // arithmetic reliability, so they run on a reasoning model; writing analysis is
 // language feedback where gpt-4o-mini is sufficient and fast.
 const generationModel = () => process.env.GENERATION_MODEL || 'gpt-5-mini';
+// Answer-key verification uses a stronger, independent model than generation (W-20): an
+// auditor that shares the generator's blind spots just confirms its mistakes. Override with
+// VERIFICATION_MODEL to trade accuracy for cost (e.g. o4-mini or gpt-5-mini).
+const verificationModel = () => process.env.VERIFICATION_MODEL || 'gpt-5';
 const analysisModel = () => process.env.ANALYSIS_MODEL || 'gpt-4o-mini';
 
 // Reasoning models reject `temperature` and think inside the completion budget.
@@ -229,29 +234,10 @@ const VISUAL_REFERENCE = /(shown|below|above|diagram|figure|picture|graph|chart|
 // tops up until the exact requested count is collected.
 const GENERATION_BATCH_SIZE = 10;
 
-// Compare options as values so `5/10` and `25/50` count as duplicates, not just
-// identical strings. Non-numeric options fall back to case-insensitive text.
-function optionValue(option: string): string {
-  const s = String(option).trim();
-  const frac = s.match(/^(-?\d+(?:\.\d+)?)\s*\/\s*(-?\d+(?:\.\d+)?)$/);
-  if (frac) {
-    const denominator = parseFloat(frac[2]);
-    if (denominator !== 0) return (parseFloat(frac[1]) / denominator).toFixed(9);
-  }
-  const num = Number(s.replace(/,/g, ''));
-  if (s !== '' && !Number.isNaN(num)) return num.toFixed(9);
-  return s.toLowerCase();
-}
-
-function hasDistinctOptions(options: string[]): boolean {
-  return new Set(options.map(optionValue)).size === options.length;
-}
-
-// Independent audit of a generated question's answer key: a second model call solves
-// the question from scratch; a question only survives if the solver lands on the
-// same option the generator claimed. Catches self-inconsistent keys (e.g. an
-// explanation that computes 1/2 while the key points at 4/5).
-async function verifyQuestionKey(q: GeneratedMathQuestion): Promise<boolean> {
+// One independent solve on the verification model. Returns the chosen index, -1 for an
+// explicit "none of the options is correct", or -1 on any parse/transport failure (so an
+// unverifiable question is dropped, never accepted).
+async function solveIndependently(q: GeneratedMathQuestion): Promise<number> {
   const stimulusBlock = q.stimulus
     ? `\nStimulus shown to the student (structured figure data — solve using ONLY this data):\n${JSON.stringify(q.stimulus)}\n`
     : '';
@@ -263,19 +249,33 @@ ${q.questionText}
 Options (indexed 0-4):
 ${q.options.map((o, i) => `${i}: ${o}`).join('\n')}
 
-Solve the question yourself, step by step, then respond with ONLY a JSON object (no markdown, no code fences):
-{"correctIndex": <0-4>}`;
+Solve the question yourself, step by step. If exactly one option is correct, give its index.
+If NONE of the options is correct, use -1. Respond with ONLY a JSON object (no markdown, no
+code fences):
+{"correctIndex": <0-4, or -1 if none of the options is correct>}`;
 
   try {
-    const content = await chatCompletion(generationModel(), prompt, 4000);
+    const content = await chatCompletion(verificationModel(), prompt, 4000);
     const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return false;
+    if (!jsonMatch) return -1;
     const verdict = JSON.parse(jsonMatch[0]);
-    return Number.isInteger(verdict.correctIndex) && verdict.correctIndex === q.correctIndex;
+    return Number.isInteger(verdict.correctIndex) ? verdict.correctIndex : -1;
   } catch (error) {
     console.error('Answer-key verification failed:', error);
-    return false;
+    return -1;
   }
+}
+
+// Escalating-hybrid audit (W-20): a stronger, independent model solves the question. If its
+// first solve agrees with the claimed key, accept (one call — the common case). Otherwise
+// escalate to two more independent solves and keep only if the key wins a clear majority
+// with no "none" verdict. Catches keys the generator got wrong (its correlated verifier
+// used to just confirm them).
+async function verifyQuestionKey(q: GeneratedMathQuestion): Promise<boolean> {
+  const first = await solveIndependently(q);
+  if (first === q.correctIndex) return true;
+  const [second, third] = await Promise.all([solveIndependently(q), solveIndependently(q)]);
+  return keptByEscalation([first, second, third], q.correctIndex);
 }
 
 function isValidGeneratedQuestion(q: any, allowedSlugs: Set<string>): boolean {
@@ -298,6 +298,10 @@ function isValidGeneratedQuestion(q: any, allowedSlugs: Set<string>): boolean {
   if (q.stimulus !== undefined && !validateStimulus(q.stimulus)) return false;
   // Guardrail: a question that references a visual must actually carry one.
   if (q.stimulus === undefined && VISUAL_REFERENCE.test(q.questionText)) return false;
+  // Deterministic answer-key guards (W-20): no equal-value options, and the explanation
+  // must not name a different option than the key.
+  if (!hasDistinctOptions(q.options.map(String))) return false;
+  if (!explanationMatchesKey(q.explanation, q.correctIndex)) return false;
   return true;
 }
 

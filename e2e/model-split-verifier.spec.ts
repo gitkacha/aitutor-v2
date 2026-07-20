@@ -4,7 +4,7 @@ import http from 'http';
 
 // Model split + verifier pass:
 //   - math worksheet generation AND its answer-key verification use the reasoning
-//     model (gpt-5-mini); writing analysis stays on gpt-4o-mini;
+//     models split: generation gpt-5-mini, verification gpt-5, analysis gpt-4o-mini;
 //   - every generated question's answer key is re-solved independently — questions
 //     whose key the solver disputes are dropped and regenerated;
 //   - questions with duplicate/equivalent options (e.g. 5/10 vs 25/50) are rejected.
@@ -105,14 +105,11 @@ async function createAttempt(request: APIRequestContext): Promise<number> {
 test.use({ storageState: 'e2e/.auth/admin.json' });
 
 test.describe('model split + verifier pass', () => {
-  test('generation and verification use gpt-5-mini; writing analysis uses gpt-4o-mini', async ({ request }) => {
+  test('generation uses gpt-5-mini; verification uses the independent gpt-5; analysis uses gpt-4o-mini', async ({ request }) => {
     const log: StubLog = { generationModels: [], verificationModels: [], analysisModels: [] };
     const stub = await startSmartStub(log);
     try {
-      const gen = await request.post('/api/math/worksheets/generate', {
-        data: { topicIds: ['arithmetic'], questionCount: 8 },
-      });
-      expect(gen.ok()).toBeTruthy();
+      await generateMath(request, { topicIds: ['arithmetic'], questionCount: 8 });
 
       const attemptId = await createAttempt(request);
       const analysis = await request.post(`/api/analysis/${attemptId}`);
@@ -121,7 +118,7 @@ test.describe('model split + verifier pass', () => {
       expect(log.generationModels.length).toBeGreaterThan(0);
       expect(new Set(log.generationModels), 'generation must use gpt-5-mini').toEqual(new Set(['gpt-5-mini']));
       expect(log.verificationModels.length, 'every candidate question must be verified').toBeGreaterThan(0);
-      expect(new Set(log.verificationModels), 'verification must use gpt-5-mini').toEqual(new Set(['gpt-5-mini']));
+      expect(new Set(log.verificationModels), 'verification must use the independent gpt-5').toEqual(new Set(['gpt-5']));
       expect(new Set(log.analysisModels), 'analysis must stay on gpt-4o-mini').toEqual(new Set(['gpt-4o-mini']));
     } finally {
       await new Promise((r) => stub.close(r));
