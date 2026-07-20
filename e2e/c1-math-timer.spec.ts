@@ -1,10 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { startTest } from './helpers/practice';
 
 // C1: starting a math timed practice must present questions with a running timer,
 // not instantly auto-submit a blank attempt because timeLeft initialised to 0.
 test.describe('C1 — math timed practice starts properly', () => {
   test('single-topic test shows a question and a non-zero timer, and does not auto-submit', async ({ page }) => {
     await page.goto('/math/arithmetic/start');
+    await startTest(page);
 
     // A real question with its 5 option buttons must be visible.
     await expect(page.getByText('A', { exact: true }).first()).toBeVisible();
@@ -25,6 +27,7 @@ test.describe('C1 — math timed practice starts properly', () => {
 
   test('all-topics test also starts without auto-submitting', async ({ page }) => {
     await page.goto('/math/all-topics/start');
+    await startTest(page);
     await expect(page.getByText(/^\d+ \/ \d+$/)).toBeVisible();
     await page.waitForTimeout(3000);
     expect(page.url()).toContain('/math/all-topics/start');

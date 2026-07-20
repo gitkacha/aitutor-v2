@@ -1,4 +1,5 @@
 import { test, expect, APIRequestContext } from '@playwright/test';
+import { startTest } from './helpers/practice';
 import http from 'http';
 
 // W-8: math questions that need a picture (protractor, charts, grids) must carry a
@@ -86,6 +87,7 @@ async function saveAndStart(page: any, request: APIRequestContext, title: string
     .filter({ hasText: title })
     .getByRole('button', { name: 'Start', exact: true })
     .click();
+  await startTest(page);
   await expect(page.getByText(/^\d+ \/ \d+$/)).toBeVisible();
 }
 
@@ -95,6 +97,7 @@ test.use({ storageState: 'e2e/.auth/admin.json' });
 test.describe('W-8 — visual stimuli for math questions', () => {
   test('seeded protractor questions render a real protractor figure', async ({ page }) => {
     await page.goto('/math/protractor-skills/start');
+    await startTest(page);
     // The reported bug: "Two triangles are shown on the protractor below" with nothing below.
     await expect(page.getByTestId('stimulus-protractor')).toBeVisible();
   });

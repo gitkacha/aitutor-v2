@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { startTest } from './helpers/practice';
 import http from 'http';
 
 // H4 (docs/review2.md §High): a worksheet writing attempt stored the type's first bank
@@ -69,6 +70,7 @@ test.describe('H4 — worksheet attempts reference the worksheet prompt, not a b
     await expect(page.getByRole('main').getByText('E2E H4 worksheet')).toBeVisible();
     // Scope to main — the sidebar's "Up next" card has its own Start button.
     await page.getByRole('main').getByRole('button', { name: 'Start', exact: true }).click();
+    await startTest(page);
 
     // The timed screen shows the worksheet's prompt.
     await expect(page.getByText(WORKSHEET_PROMPT)).toBeVisible();

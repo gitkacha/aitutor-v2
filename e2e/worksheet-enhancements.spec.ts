@@ -1,4 +1,5 @@
 import { test, expect, APIRequestContext } from '@playwright/test';
+import { startTest } from './helpers/practice';
 import http from 'http';
 
 // Covers the reported worksheet issues:
@@ -121,6 +122,7 @@ test.describe('a2 — worksheet timing is 1 minute per question', () => {
       .getByRole('button', { name: 'Start', exact: true })
       .last()
       .click();
+    await startTest(page);
     await expect(page.getByText(/^\d+ \/ 3$/)).toBeVisible();
 
     // 3 questions × 60s = 3:00 (the old 69s/question formula would show 3:27).
@@ -152,6 +154,7 @@ test.describe('b — pending worksheets quick view', () => {
       .getByRole('button', { name: 'Start', exact: true })
       .last()
       .click();
+    await startTest(page);
     await expect(page.getByText(/^\d+ \/ 3$/)).toBeVisible();
     await expect(page.getByText('What is 12 + 13?')).toBeVisible();
   });

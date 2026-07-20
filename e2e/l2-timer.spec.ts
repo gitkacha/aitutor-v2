@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { startTest } from './helpers/practice';
 
 // L2 (docs/review.md §Look & feel): the countdown must derive remaining time from
 // timestamps, not tick-decrements — tick counting drifts and pauses in background tabs.
@@ -11,6 +12,7 @@ test.describe('L2 — timestamp-accurate countdown', () => {
     await page.clock.install();
     await page.goto('/practice/review');
     await page.getByRole('button', { name: 'Start Timed Practice' }).click();
+    await startTest(page);
     await expect(page.getByText('30:00')).toBeVisible();
 
     await page.clock.fastForward('05:00');

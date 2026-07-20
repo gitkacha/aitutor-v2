@@ -46,16 +46,17 @@ export default function MathTimedPractice() {
   const totalTime = isWorksheet
     ? questions.length * 60
     : Math.min(questions.length * 69, 2400);
-  // Fixed end timestamp (L2), anchored to when the questions actually loaded — the
-  // countdown derives from Date.now() so it never drifts and survives Timer unmounts.
+  // Fixed end timestamp (L2), anchored to the moment the student presses Start test
+  // (W-16) — the countdown derives from Date.now() so it never drifts and survives Timer
+  // unmounts.
+  const [started, setStarted] = useState(false);
   const [endTime, setEndTime] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
-  useEffect(() => {
-    if (questions.length > 0 && endTime === null) {
-      setEndTime(Date.now() + totalTime * 1000);
-      setTimeLeft(totalTime);
-    }
-  }, [questions, totalTime, endTime]);
+  const handleStart = () => {
+    setEndTime(Date.now() + totalTime * 1000);
+    setTimeLeft(totalTime);
+    setStarted(true);
+  };
 
   const submitAttempt = useCallback(async () => {
     if (submittedRef.current) return;
@@ -119,6 +120,27 @@ export default function MathTimedPractice() {
 
   if (questions.length === 0) {
     return <div className="text-center py-20 text-gray-500">No questions available for this topic.</div>;
+  }
+
+  // Start-test confirmation (W-16): the clock only begins on Start test.
+  if (!started) {
+    const minutes = Math.max(1, Math.round(totalTime / 60));
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center space-y-5">
+          <h1 className="text-2xl font-bold text-gray-900">Ready to start?</h1>
+          <div className="bg-gray-50 rounded-xl p-4 inline-flex flex-col gap-1 text-gray-700">
+            <span><span className="font-semibold">{questions.length}</span> question{questions.length !== 1 ? 's' : ''}</span>
+            <span><span className="font-semibold">{minutes}</span> minute limit · 5 options each</span>
+          </div>
+          <p className="text-gray-600">
+            The countdown starts when you press the button. You can flag questions and come back
+            to them; the test auto-submits when time runs out.
+          </p>
+          <Button size="lg" onClick={handleStart}>Start test</Button>
+        </div>
+      </div>
+    );
   }
 
   if (saveError) {

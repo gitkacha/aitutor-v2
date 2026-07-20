@@ -1,4 +1,5 @@
 import { test, expect, APIRequestContext, request as pwRequest } from '@playwright/test';
+import { startTest } from './helpers/practice';
 
 // "Evening Navy" sidebar redesign (docs/mocks/example2.html):
 //   - weekly momentum ring ("N of 5 sessions done") at the top of the rail;
@@ -81,11 +82,13 @@ test.describe('evening navy sidebar', () => {
     await expect(rail.getByText(expectedTitle)).toBeVisible();
     await rail.getByRole('button', { name: 'Start', exact: true }).click();
     // Lands straight on a timed test screen (question progress indicator).
+    await startTest(page);
     await expect(page.getByText(/^\d+ \/ \d+$/)).toBeVisible();
   });
 
   test('focus mode: the rail collapses to an icon strip during timed practice', async ({ page }) => {
     await page.goto('/math/arithmetic/start');
+    await startTest(page);
     await expect(page.getByTestId('sidebar-focus')).toBeVisible();
     await expect(page.locator('aside').getByRole('link', { name: 'Dashboard' })).toHaveCount(0);
     await expect(page.locator('aside').getByText(/of 5 sessions/)).toHaveCount(0);

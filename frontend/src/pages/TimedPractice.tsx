@@ -18,11 +18,19 @@ export default function TimedPractice() {
   const [submitting, setSubmitting] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  // The clock does not run until the student confirms (W-16).
+  const [started, setStarted] = useState(false);
   const startTimeRef = useRef(Date.now());
   // Fixed end timestamp (L2): survives Timer unmounts (confirm/error screens), so the
-  // countdown always reflects real elapsed exam time.
+  // countdown always reflects real elapsed exam time. Anchored at the moment of Start.
   const endTimeRef = useRef(startTimeRef.current + TOTAL_TIME * 1000);
   const submittedRef = useRef(false);
+
+  const handleStart = () => {
+    startTimeRef.current = Date.now();
+    endTimeRef.current = startTimeRef.current + TOTAL_TIME * 1000;
+    setStarted(true);
+  };
 
   const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
 
@@ -81,6 +89,31 @@ export default function TimedPractice() {
   if (!prompt || !type) {
     navigate(`/practice/${typeSlug}`, { replace: true });
     return null;
+  }
+
+  // Start-test confirmation (W-16): the clock only begins on Start test.
+  if (!started) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center space-y-5">
+          <div>
+            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">{type.name}</p>
+            <h1 className="text-2xl font-bold text-gray-900 mt-1">Ready to start?</h1>
+          </div>
+          <div className="bg-gray-50 rounded-xl p-4 text-left">
+            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">
+              {worksheetId ? 'Worksheet Prompt' : 'Prompt'}
+            </p>
+            <p className="text-gray-800">{worksheetPromptText || prompt.text}</p>
+          </div>
+          <p className="text-gray-600">
+            This is a timed test with a <span className="font-semibold">30 minute</span> limit.
+            The countdown starts when you press the button, and your writing auto-submits when time runs out.
+          </p>
+          <Button size="lg" onClick={handleStart}>Start test</Button>
+        </div>
+      </div>
+    );
   }
 
   if (saveError) {

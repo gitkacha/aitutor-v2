@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { startTest } from './helpers/practice';
 
 // H1 (docs/review.md §High): the 30 minutes expiring with an empty textarea must still save
 // the attempt — an empty submission is a legitimate timed-out attempt. Backend validation
@@ -29,6 +30,7 @@ test.describe('H1 — empty writing attempt saves; save failures are visible', (
     await page.clock.install();
     await page.goto('/practice/diary-entry');
     await page.getByRole('button', { name: 'Start Timed Practice' }).click();
+    await startTest(page);
     await expect(page.getByPlaceholder('Start writing here...')).toBeVisible();
 
     // Run the full 30 minutes without typing anything.
@@ -47,6 +49,7 @@ test.describe('H1 — empty writing attempt saves; save failures are visible', (
 
     await page.goto('/practice/diary-entry');
     await page.getByRole('button', { name: 'Start Timed Practice' }).click();
+    await startTest(page);
     await page.getByPlaceholder('Start writing here...').fill('My diary entry.');
     await page.getByRole('button', { name: 'Submit Early' }).click();
     await page.getByRole('button', { name: 'Submit Now' }).click();

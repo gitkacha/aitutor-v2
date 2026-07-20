@@ -23,7 +23,19 @@ Milestone 2 — multi-user, multi-tenant workspaces. Plan approved 2026-07-18:
 B1∥B2 and C1∥C2 may run in parallel worktrees, merging only with their proving specs
 green. The full suite must be green at every phase boundary.
 
-*(Milestone 2 complete — see Done. New feedback items W-16…W-19 planned 2026-07-20.)*
+Post-Milestone-2 feedback (plan approved 2026-07-20): `.claude/plans` W-16…W-19.
+
+- [ ] **W-16** — Start-test confirmation for the student: `/practice/:slug/start` and
+  `/math/:slug/start` show a "Ready to start?" card (details + Start test); the timer only
+  starts on confirm. Ripple: timer/practice UI specs click through first. Proof:
+  `e2e/w16-start-modal.spec.ts`.
+- [ ] **W-17** — Flag a math question and revisit: per-question Flag toggle; the Submit-All
+  confirm lists flagged + unanswered as clickable jump chips. Proof: `e2e/w17-flag.spec.ts`.
+- [ ] **W-18** — AI explanations kept at NSW-Selective/Year-6 level (generation prompt
+  constraint; no higher-level concepts). Proof: `e2e/w18-explanation-level.spec.ts`.
+- [ ] **W-19** — Worksheet generation survives navigation: in-memory server job for both
+  generate endpoints (POST → jobId, GET jobs/:id), Admin polls + resumes via localStorage.
+  Ripple: generate specs move to the job flow. Proof: `e2e/w19-gen-job.spec.ts`.
 
 ## Done
 

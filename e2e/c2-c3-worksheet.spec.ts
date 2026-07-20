@@ -1,4 +1,5 @@
 import { test, expect, APIRequestContext, Page } from '@playwright/test';
+import { startTest } from './helpers/practice';
 
 // C2 + C3: a saved math worksheet must show its real answer options to the student (C3),
 // and the attempt must be scored against the worksheet's own questions, with the review
@@ -47,6 +48,7 @@ async function startWorksheet(page: Page, title: string) {
     .getByRole('button', { name: 'Start', exact: true })
     .last()
     .click();
+  await startTest(page);
   await expect(page.getByText(/^\d+ \/ 3$/)).toBeVisible();
 }
 

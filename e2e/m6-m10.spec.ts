@@ -1,4 +1,5 @@
 import { test, expect, APIRequestContext } from '@playwright/test';
+import { startTest } from './helpers/practice';
 import http from 'http';
 
 // M6–M10 (docs/review2.md §Medium):
@@ -56,6 +57,7 @@ test.describe('M6 — failed math submission shows a visible error panel with re
     );
 
     await page.goto('/math/fractions/start');
+    await startTest(page);
     await page.getByRole('button', { name: 'Submit All' }).click();
     await page.getByRole('button', { name: 'Submit Now' }).click();
 
