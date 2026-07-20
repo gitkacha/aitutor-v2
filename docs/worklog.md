@@ -36,6 +36,10 @@ green. The full suite must be green at every phase boundary.
 - [ ] **W-26** — Direct question-count entry: the generate count field no longer clamps on every
   keystroke (free text, clamp on blur/generate), so typing e.g. "15" stays 15. Proof:
   `e2e/w25-w26-admin-worksheets.spec.ts`.
+- [ ] **W-27** — View toggle on the admin Pending Worksheets card: each pending (0-attempt) math
+  and writing row gets a View/Hide toggle (admin mode only; students keep Start). Math expands to
+  the read-only `MathWorksheetContent`, writing to its prompt(s). Proof:
+  `e2e/w27-pending-view.spec.ts`.
 
 ## Done
 
