@@ -3,7 +3,7 @@ import { generateMath } from './helpers/generate';
 import http from 'http';
 
 // W-20: answer-key correctness hardening. Deterministic guards reject unanswerable /
-// self-contradictory questions at save; verification moves to an independent gpt-5 auditor
+// self-contradictory questions at save; verification moves to an independent o4-mini auditor
 // that escalates to 3 solves on disagreement. Runs as the seeded e2e admin.
 
 test.use({ storageState: 'e2e/.auth/admin.json' });
@@ -49,7 +49,7 @@ function startStub(log: Log): Promise<http.Server> {
   return new Promise((resolve) => server.listen(STUB_PORT, '127.0.0.1', () => resolve(server)));
 }
 
-test.describe('W-20 — verification uses an independent gpt-5 auditor that escalates', () => {
+test.describe('W-20 — verification uses an independent o4-mini auditor that escalates', () => {
   test('bad-key questions are dropped; agreeing questions cost 1 verify, contested ones escalate to 3', async ({ request }) => {
     const log: Log = { verifyByMarker: {}, verifyModels: [] };
     const stub = await startStub(log);
@@ -60,9 +60,9 @@ test.describe('W-20 — verification uses an independent gpt-5 auditor that esca
       expect(result.questions.length).toBe(5);
       expect(result.questions.every((q: any) => /^GOOD\d/.test(q.questionText))).toBe(true);
 
-      // The verifier is the independent gpt-5 model, not the generator's gpt-5-mini.
+      // The verifier is the independent o4-mini model, not the generator's gpt-5-mini.
       expect(log.verifyModels.length).toBeGreaterThan(0);
-      expect(log.verifyModels.every((m) => m === 'gpt-5')).toBe(true);
+      expect(log.verifyModels.every((m) => m === 'o4-mini')).toBe(true);
 
       // Escalation efficiency: an agreeing question is verified once; a contested one 3x.
       expect(log.verifyByMarker['GOOD1']).toBe(1);

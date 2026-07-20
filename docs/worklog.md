@@ -36,6 +36,11 @@ Post-Milestone-2 feedback (plan approved 2026-07-20): `.claude/plans` W-16…W-1
 - [ ] **W-19** — Worksheet generation survives navigation: in-memory server job for both
   generate endpoints (POST → jobId, GET jobs/:id), Admin polls + resumes via localStorage.
   Ripple: generate specs move to the job flow. Proof: `e2e/w19-gen-job.spec.ts`.
+- [ ] **W-21** — Per-role model providers + `o4-mini` default verifier: `providerFor(role)`
+  resolves `{model, baseUrl, apiKey}` from role-specific env (falling back to shared OpenAI),
+  so verification/generation/analysis can each run on any OpenAI-compatible provider (DeepSeek,
+  Gemini-compat, OpenRouter, local); `chatCompletion` refactored to take a provider; default
+  verifier switched from `gpt-5` to `o4-mini`. Proof: `model-provider.test.ts` + e2e ripple.
 - [ ] **W-20** — Answer-key correctness hardening: deterministic guards (equal-value options,
   explanation↔key letter) at generation + save; escalating-hybrid verification on an
   independent `gpt-5` verifier with a "none of these" verdict (pass-1 accept; escalate to 3 on

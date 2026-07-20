@@ -119,7 +119,7 @@ Platform console for provisioning and read-only oversight.
 | **Backend** | Express, TypeScript, Prisma ORM |
 | **Database** | SQLite (local file) |
 | **Charts** | Recharts |
-| **AI** | OpenAI API — `gpt-5-mini` (worksheet generation), independent `gpt-5` (answer-key verification, escalating), `gpt-4o-mini` (writing analysis) |
+| **AI** | OpenAI-compatible — `gpt-5-mini` (generation), independent `o4-mini` (escalating answer-key verification), `gpt-4o-mini` (writing analysis); each role is provider-configurable (DeepSeek, Gemini, OpenRouter, local, …) |
 | **Testing** | Vitest (unit) + Playwright (end-to-end) |
 
 ## Project Structure
@@ -214,14 +214,31 @@ OPENAI_API_KEY=your-key-here
 # A local dev default is used if unset.
 SESSION_SECRET=change-me
 
-# Optional model overrides (defaults shown)
+# Optional model overrides (defaults shown). Each AI role — worksheet generation,
+# answer-key verification, and writing analysis — is configured independently.
 GENERATION_MODEL=gpt-5-mini
-# Answer-key verification uses a stronger, INDEPENDENT model than generation so it
-# catches the generator's mistakes instead of confirming them. This is the main
-# accuracy/cost lever — drop it to o4-mini or gpt-5-mini to cut cost.
-VERIFICATION_MODEL=gpt-5
+# Answer-key verification uses a stronger, INDEPENDENT reasoning model than generation
+# so it catches the generator's mistakes instead of confirming them. This is the main
+# accuracy/cost lever.
+VERIFICATION_MODEL=o4-mini
 ANALYSIS_MODEL=gpt-4o-mini
 ```
+
+**Any role can run on another provider.** Because most providers expose an OpenAI-compatible API, each role also accepts its own base URL and key (falling back to `OPENAI_BASE_URL` / `OPENAI_API_KEY`). For example, to run *only* the answer-key verifier on DeepSeek or Gemini while leaving generation and analysis on OpenAI:
+
+```env
+# DeepSeek reasoner as the verifier
+VERIFICATION_MODEL=deepseek-reasoner
+VERIFICATION_BASE_URL=https://api.deepseek.com
+VERIFICATION_API_KEY=sk-deepseek-...
+
+# …or Gemini via its OpenAI-compatible endpoint
+# VERIFICATION_MODEL=gemini-2.5-flash
+# VERIFICATION_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+# VERIFICATION_API_KEY=...your-gemini-key...
+```
+
+The same `*_BASE_URL` / `*_API_KEY` pattern works for `GENERATION_` and `ANALYSIS_` — point any role at OpenRouter, a local vLLM/Ollama server, etc., with no code change.
 
 Without a key, AI writing analysis shows an "unavailable" message with a Retry button (no fake
 scores are ever recorded), and worksheet generation falls back to built-in sample content. All

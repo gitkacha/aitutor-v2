@@ -2,18 +2,35 @@ import prisma from '../lib/prisma';
 import { validateStimulus, StimulusSpec } from '../lib/stimulus';
 import { hasDistinctOptions, explanationMatchesKey, keptByEscalation } from '../lib/question-checks';
 
-// OpenAI API per CLAUDE.md. OPENAI_BASE_URL is overridable so tests can point the
-// service at a local stub; production use needs no configuration beyond the API key.
-//
-// Models are split per task: worksheet generation and answer-key verification need
-// arithmetic reliability, so they run on a reasoning model; writing analysis is
-// language feedback where gpt-4o-mini is sufficient and fast.
-const generationModel = () => process.env.GENERATION_MODEL || 'gpt-5-mini';
-// Answer-key verification uses a stronger, independent model than generation (W-20): an
-// auditor that shares the generator's blind spots just confirms its mistakes. Override with
-// VERIFICATION_MODEL to trade accuracy for cost (e.g. o4-mini or gpt-5-mini).
-const verificationModel = () => process.env.VERIFICATION_MODEL || 'gpt-5';
-const analysisModel = () => process.env.ANALYSIS_MODEL || 'gpt-4o-mini';
+// Per-role model providers (W-21). Each role — generation, answer-key verification, writing
+// analysis — resolves its own {model, baseUrl, apiKey} from role-specific env, falling back
+// to the shared OpenAI settings. Because most providers speak the OpenAI-compatible API, a
+// role can be pointed at DeepSeek / Gemini(-compat) / OpenRouter / a local server with only
+// env vars — no code change. Defaults: generation gpt-5-mini (fast candidate writer), an
+// independent o4-mini reasoning auditor for verification (W-21 — cheaper than gpt-5, plenty
+// for Year-6 math), gpt-4o-mini for writing analysis.
+type ModelRole = 'generation' | 'verification' | 'analysis';
+
+const ROLE_DEFAULTS: Record<ModelRole, string> = {
+  generation: 'gpt-5-mini',
+  verification: 'o4-mini',
+  analysis: 'gpt-4o-mini',
+};
+
+export interface ModelProvider {
+  model: string;
+  baseUrl: string;
+  apiKey: string;
+}
+
+export function providerFor(role: ModelRole): ModelProvider {
+  const R = role.toUpperCase();
+  return {
+    model: process.env[`${R}_MODEL`] || ROLE_DEFAULTS[role],
+    baseUrl: process.env[`${R}_BASE_URL`] || process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+    apiKey: process.env[`${R}_API_KEY`] || process.env.OPENAI_API_KEY || '',
+  };
+}
 
 // Reasoning models reject `temperature` and think inside the completion budget.
 const isReasoningModel = (model: string) => /^(gpt-5|o[134])/.test(model);
@@ -26,27 +43,25 @@ interface ChatCompletionResponse {
   }>;
 }
 
-async function chatCompletion(model: string, prompt: string, maxTokens: number, temperature?: number): Promise<string> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
+export async function chatCompletion(provider: ModelProvider, prompt: string, maxTokens: number, temperature?: number): Promise<string> {
+  if (!provider.apiKey) {
     throw new Error('OPENAI_API_KEY is not configured. Add it to backend/.env.');
   }
 
   const body: Record<string, unknown> = {
-    model,
+    model: provider.model,
     messages: [{ role: 'user', content: prompt }],
     max_completion_tokens: maxTokens,
   };
-  if (temperature !== undefined && !isReasoningModel(model)) {
+  if (temperature !== undefined && !isReasoningModel(provider.model)) {
     body.temperature = temperature;
   }
 
-  const baseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
-  const response = await fetch(`${baseUrl}/chat/completions`, {
+  const response = await fetch(`${provider.baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+      'Authorization': `Bearer ${provider.apiKey}`,
     },
     body: JSON.stringify(body),
   });
@@ -153,7 +168,7 @@ Respond with ONLY a JSON object (no markdown, no code fences) in this exact form
 
 All comments must reference specific parts of the student's text.`;
 
-  const content = await chatCompletion(analysisModel(), prompt, 1000, 0.7);
+  const content = await chatCompletion(providerFor('analysis'), prompt, 1000, 0.7);
   return parseAnalysisResponse(content);
 }
 
@@ -177,7 +192,7 @@ Respond with ONLY a JSON array of strings, no markdown, no code fences:
 ["prompt text"]`;
 
       try {
-        const content = await chatCompletion(generationModel(), prompt, 2000, 0.8);
+        const content = await chatCompletion(providerFor('generation'), prompt, 2000, 0.8);
         const arrayMatch = content.match(/\[[\s\S]*\]/);
         const parsed = arrayMatch ? JSON.parse(arrayMatch[0]) : [];
         if (Array.isArray(parsed) && typeof parsed[0] === 'string' && parsed[0].trim()) {
@@ -255,7 +270,7 @@ code fences):
 {"correctIndex": <0-4, or -1 if none of the options is correct>}`;
 
   try {
-    const content = await chatCompletion(verificationModel(), prompt, 4000);
+    const content = await chatCompletion(providerFor('verification'), prompt, 4000);
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return -1;
     const verdict = JSON.parse(jsonMatch[0]);
@@ -368,7 +383,7 @@ Respond with ONLY a JSON array (no markdown, no code fences) in this exact forma
 Generate exactly ${count} questions. Make sure distractors are plausible — they should be answers a student might get from common mistakes.`;
 
   // Reasoning models think inside the completion budget, so leave generous headroom.
-  const content = await chatCompletion(generationModel(), prompt, Math.min(count * 600 + 4000, 16000), 0.8);
+  const content = await chatCompletion(providerFor('generation'), prompt, Math.min(count * 600 + 4000, 16000), 0.8);
   const arrayMatch = content.match(/\[[\s\S]*\]/);
   if (!arrayMatch) {
     throw new Error('Generation response did not contain a JSON array');
