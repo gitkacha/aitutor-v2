@@ -18,23 +18,13 @@ every agent, on any model, without exception):
 
 ## Open
 
-- [ ] **W-28** — Stop leaking answers to students in the in-test payload: `GET /api/math/questions`
-  strips `correctIndex` and `explanation` from each question when the caller is a student (both
-  worksheet and topic/all-topics paths); admins keep the full fields (the `MathWorksheetContent`
-  view needs them). Server-side scoring and the post-submission review endpoint are unchanged.
-  Proof: `e2e/w28-answer-leak.spec.ts`.
-- [ ] **W-29** — Stop leaking answers via the topic-detail endpoint: `GET /api/math/topics/:slug`
-  strips `correctIndex` and `explanation` from each `topic.questions` item for student callers
-  (admins keep them); the list endpoint is unaffected. `MathPracticeHome`/`ScoreHistory` read only
-  the count/name, so they are unchanged. Proof: `e2e/w29-topic-answer-leak.spec.ts`.
-- [ ] **W-30** — Stop leaking answers via the worksheet-list endpoint: `GET /api/math/worksheets`
-  returns each worksheet's stored `questions` JSON, which carries `correctIndex`/`explanation`;
-  strip those from every element for student callers (array length preserved for the count),
-  admins keep the full blob. Completes the answer-leak sweep (W-28/W-29/W-30). Proof:
-  `e2e/w30-worksheet-list-leak.spec.ts`.
+_No open items._
 
 ## Done
 
+- [x] **W-30** — Stop leaking answers via the worksheet-list endpoint: each `MathWorksheet` stores its `questions` as a JSON blob carrying `correctIndex`/`explanation`, and `GET /api/math/worksheets` returned the whole row; for student callers the blob is rewritten with those fields removed from every element (array length preserved for the count), admins keep the full blob. Every student caller uses only `questions.length`, so no UI change. Completes the answer-leak sweep — commit `b9155a1` · proof: `e2e/w30-worksheet-list-leak.spec.ts` (RED-first) + 99/99 e2e, 12/12 frontend + 37/37 backend unit, typecheck clean · user signed off 2026-07-24
+- [x] **W-29** — Stop leaking answers via the topic-detail endpoint: `GET /api/math/topics/:slug` strips `correctIndex`/`explanation` from each `topic.questions` item for student callers (admins keep them); the list endpoint returns no questions and is unaffected. `MathPracticeHome`/`ScoreHistory` read only count/name. Three dependent specs (w13-student, m6-m10 M9+M10) reworked to source the key from an admin request by id — commit `e52020e` · proof: `e2e/w29-topic-answer-leak.spec.ts` (RED-first) + 98/98 e2e, 12/12 frontend + 37/37 backend unit, typecheck clean · user signed off 2026-07-24
+- [x] **W-28** — Stop leaking answers to students in the in-test payload: `GET /api/math/questions` strips `correctIndex`/`explanation` for student callers (worksheet + topic/all-topics paths); admins keep them (the `MathWorksheetContent` view needs them). Server-side scoring and the post-submission review endpoint (`/api/math/attempts/:id`) unchanged. Three dependent specs (w14-integration, sidebar-navy, math-history) reworked to source the key from an admin request by id — commit `d10cc16` · proof: `e2e/w28-answer-leak.spec.ts` (RED-first, incl. full-score + review regression checks) + 96/96 e2e, 12/12 frontend + 37/37 backend unit, typecheck clean · user signed off 2026-07-24
 - [x] **W-27** — View toggle on the admin Pending Worksheets card: each pending (0-attempt) math and writing row gets a View/Hide toggle (admin mode only; students keep Start); math expands to the read-only `MathWorksheetContent`, writing to its prompt(s); one row open at a time — commit `313ed58` · proof: `e2e/w27-pending-view.spec.ts` (RED-first, 2 specs) + 94/94 e2e, 12/12 frontend unit, typecheck clean + live screenshot · user signed off 2026-07-21
 - [x] **W-26** — Direct question-count entry: the generate count field no longer clamps on every keystroke (free-text state, clamp to 5–50 on blur/generate), so typing e.g. "15" stays 15 — commit `ba3418a` · proof: `e2e/w25-w26-admin-worksheets.spec.ts` (RED-first) + 92/92 e2e, 12/12 frontend + 37/37 backend unit, typecheck clean + live screenshot · user signed off 2026-07-21
 - [x] **W-25** — Admin can view saved worksheet content: View/Hide toggle on saved math and writing worksheet rows; math expands to the questions (options, correct answer highlighted, explanation, stimulus) via a new read-only `MathWorksheetContent`, writing to its prompt(s); works for attempted and unattempted — commit `ba3418a` · proof: `e2e/w25-w26-admin-worksheets.spec.ts` (RED-first) + 92/92 e2e + live screenshot · user signed off 2026-07-21
