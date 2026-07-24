@@ -625,3 +625,17 @@ export async function seedSkills(prisma: PrismaClient) {
 
   console.log(`Skill taxonomy seed complete (${mathCount} math + ${WRITING_SKILLS.length} writing).`);
 }
+
+// Boot guarantee (W-41): the taxonomy must exist whenever the server runs, so a long-lived
+// or freshly-cloned DB can't start with an empty Skill table. Seeds only when the table is
+// empty (seedSkills is upsert-by-slug, so re-running is safe either way). `seedImpl` is
+// injectable for unit testing the guard without a live DB. Returns whether it seeded.
+export async function ensureSkillsSeeded(
+  prisma: PrismaClient,
+  seedImpl: (p: PrismaClient) => Promise<void> = seedSkills,
+): Promise<boolean> {
+  const count = await prisma.skill.count();
+  if (count > 0) return false;
+  await seedImpl(prisma);
+  return true;
+}

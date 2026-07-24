@@ -22,6 +22,8 @@ import mathHeatmapRouter from './routes/math-heatmap';
 import mathWorksheetsRouter from './routes/math-worksheets';
 import skillsRouter from './routes/skills';
 import analyticsRouter from './routes/analytics';
+import prisma from './lib/prisma';
+import { ensureSkillsSeeded } from '../prisma/seed-skills';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -67,8 +69,20 @@ app.get('/api/health', (_req, res) => {
 
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`Backend server running on http://localhost:${PORT}`);
-});
+async function start() {
+  // Guarantee the skill taxonomy exists before serving (W-41); tolerate failure so the
+  // server still boots for auth/other flows if the check can't run.
+  try {
+    const seeded = await ensureSkillsSeeded(prisma);
+    if (seeded) console.log('[startup] Skill taxonomy was empty — seeded on boot.');
+  } catch (err) {
+    console.error('[startup] skill taxonomy seed check failed:', err);
+  }
+  app.listen(PORT, () => {
+    console.log(`Backend server running on http://localhost:${PORT}`);
+  });
+}
+
+start();
 
 export default app;
