@@ -227,6 +227,9 @@ export function rankWritingOpportunityAreas<
 export interface WritingAnalysisRecord {
   finishedAt: string; // ISO
   criteriaScores: Record<string, number> | null;
+  timeTakenSec?: number | null;
+  timeLimitSec?: number | null;
+  wordCount?: number | null;
 }
 
 export function computeWritingSignals(
@@ -262,4 +265,59 @@ export function computeWritingSignals(
     results.push({ slug, mean, trendPts, n });
   }
   return results;
+}
+
+// Shared mean+halves-trend helper for a single numeric metric derived from a
+// WritingAnalysisRecord, using the same older/newer split as computeWritingSignals (sort by
+// finishedAt ascending, ties broken by original order; older half = first ceil(k/2) of the rows
+// that HAVE a present value for this metric; each half needs >= 2 present values else null).
+function meanAndHalvesTrend(
+  records: WritingAnalysisRecord[],
+  getValue: (r: WritingAnalysisRecord) => number | null,
+): { mean: number | null; trendPts: number | null } {
+  const present = records
+    .map((r, i) => ({ r, i, v: getValue(r) }))
+    .filter((x) => x.v != null) as { r: WritingAnalysisRecord; i: number; v: number }[];
+
+  if (present.length === 0) return { mean: null, trendPts: null };
+
+  const mean = present.reduce((a, x) => a + x.v, 0) / present.length;
+
+  const sorted = [...present].sort((a, b) =>
+    a.r.finishedAt < b.r.finishedAt ? -1 : a.r.finishedAt > b.r.finishedAt ? 1 : a.i - b.i);
+  const olderCount = Math.ceil(sorted.length / 2);
+  const older = sorted.slice(0, olderCount);
+  const newer = sorted.slice(olderCount);
+
+  let trendPts: number | null = null;
+  if (older.length >= 2 && newer.length >= 2) {
+    const olderMean = older.reduce((a, x) => a + x.v, 0) / older.length;
+    const newerMean = newer.reduce((a, x) => a + x.v, 0) / newer.length;
+    trendPts = newerMean - olderMean;
+  }
+
+  return { mean, trendPts };
+}
+
+export function computeWritingUsage(records: WritingAnalysisRecord[]): {
+  timeUsedRatioMean: number | null;
+  timeUsedRatioTrendPts: number | null;
+  wordCountMean: number | null;
+  wordCountTrendPts: number | null;
+  n: number;
+} {
+  const ratio = meanAndHalvesTrend(records, (r) => {
+    const t = r.timeTakenSec;
+    const lim = r.timeLimitSec;
+    return t != null && lim != null && lim > 0 ? t / lim : null;
+  });
+  const wordCount = meanAndHalvesTrend(records, (r) => r.wordCount ?? null);
+
+  return {
+    timeUsedRatioMean: ratio.mean,
+    timeUsedRatioTrendPts: ratio.trendPts,
+    wordCountMean: wordCount.mean,
+    wordCountTrendPts: wordCount.trendPts,
+    n: records.length,
+  };
 }

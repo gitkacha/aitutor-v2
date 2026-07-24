@@ -203,3 +203,28 @@ describe('writing signals: mean + halves trend per criterion', () => {
   it('null criteriaScores rows are skipped', () =>
     expect(computeWritingSignals([{ finishedAt: '2026-07-01T00:00:00.000Z', criteriaScores: null }])).toEqual([]));
 });
+
+import { computeWritingUsage } from './analytics-core';
+describe('computeWritingUsage', () => {
+  const rec = (day: number, over: any) => ({ finishedAt: `2026-07-0${day}T00:00:00.000Z`, criteriaScores: {}, ...over });
+  it('means + halves trend on ratio and word count', () => {
+    const recs = [
+      rec(1, { timeTakenSec: 300, timeLimitSec: 600, wordCount: 100 }), // ratio 0.5
+      rec(2, { timeTakenSec: 360, timeLimitSec: 600, wordCount: 120 }), // ratio 0.6
+      rec(3, { timeTakenSec: 480, timeLimitSec: 600, wordCount: 160 }), // ratio 0.8
+      rec(4, { timeTakenSec: 540, timeLimitSec: 600, wordCount: 200 }), // ratio 0.9
+    ];
+    const u = computeWritingUsage(recs);
+    expect(u.timeUsedRatioMean!).toBeCloseTo(0.7, 6);         // (0.5+0.6+0.8+0.9)/4
+    expect(u.timeUsedRatioTrendPts!).toBeCloseTo(0.3, 6);      // newer[0.8,0.9]=0.85 − older[0.5,0.6]=0.55
+    expect(u.wordCountMean!).toBeCloseTo(145, 6);
+    expect(u.wordCountTrendPts!).toBeCloseTo(70, 6);           // 180 − 110
+    expect(u.n).toBe(4);
+  });
+  it('rows missing a field are skipped for that field; empty → nulls', () => {
+    expect(computeWritingUsage([]).timeUsedRatioMean).toBeNull();
+    const one = computeWritingUsage([rec(1, { timeTakenSec: null, timeLimitSec: 600, wordCount: 50 })]);
+    expect(one.timeUsedRatioMean).toBeNull();       // no ratio (null time)
+    expect(one.wordCountMean).toBeCloseTo(50, 6);
+  });
+});

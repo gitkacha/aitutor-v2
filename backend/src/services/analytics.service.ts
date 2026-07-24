@@ -11,7 +11,13 @@ import {
   rankOpportunityAreas,
   rankWritingOpportunityAreas,
   computeWritingSignals,
+  computeWritingUsage,
 } from './analytics-core';
+
+// Writing timed practice uses a fixed 30-minute limit (frontend TimedPractice.tsx's
+// TOTAL_TIME = 1800). There's no per-prompt/type time-limit config to read, so every writing
+// Attempt gets this same limit for the time-used-ratio computation (spec §4.9).
+const WRITING_TIME_LIMIT_SEC = 1800;
 
 // M3a Task 6: the DB adapter. This file maps Prisma rows onto the pure core's input types
 // (AnswerRecord / WritingAnalysisRecord) and calls the core to do the actual statistics — no
@@ -44,6 +50,7 @@ export interface StudentSkillReport {
   window: ReportWindow;
   skills: SkillSignal[] | WritingSkillSignal[];
   pacing?: ReturnType<typeof computePacingCurve>;
+  writingUsage?: ReturnType<typeof computeWritingUsage>;
 }
 
 function safeParse<T>(raw: string | null | undefined): T | null {
@@ -203,12 +210,19 @@ async function getWritingReport(studentId: number, lastNTests: number): Promise<
     include: { attempt: true },
   });
 
-  const records: WritingAnalysisRecord[] = analysisRows.map((a) => ({
-    finishedAt: a.attempt.finishedAt.toISOString(),
-    criteriaScores: safeParse<Record<string, number>>(a.criteriaScores),
-  }));
+  const records: WritingAnalysisRecord[] = analysisRows.map((a) => {
+    const trimmed = a.attempt.text.trim();
+    return {
+      finishedAt: a.attempt.finishedAt.toISOString(),
+      criteriaScores: safeParse<Record<string, number>>(a.criteriaScores),
+      timeTakenSec: a.attempt.timeTaken,
+      timeLimitSec: WRITING_TIME_LIMIT_SEC,
+      wordCount: trimmed ? trimmed.split(/\s+/).length : 0,
+    };
+  });
 
   const writingSkills = computeWritingSignals(records);
+  const writingUsage = computeWritingUsage(records);
   const skillRows = writingSkills.length
     ? await prisma.skill.findMany({ where: { subject: 'writing', slug: { in: writingSkills.map((w) => w.slug) } } })
     : [];
@@ -223,7 +237,11 @@ async function getWritingReport(studentId: number, lastNTests: number): Promise<
   const from = analysisRows.length ? analysisRows[analysisRows.length - 1].attempt.finishedAt.toISOString() : null;
   const to = analysisRows.length ? analysisRows[0].attempt.finishedAt.toISOString() : null;
 
-  return { window: { tests: analysisRows.length, from, to, medianTimeMs: null, untaggedQuestions: 0 }, skills };
+  return {
+    window: { tests: analysisRows.length, from, to, medianTimeMs: null, untaggedQuestions: 0 },
+    skills,
+    writingUsage,
+  };
 }
 
 export async function getStudentSkillReport(
