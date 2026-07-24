@@ -137,11 +137,11 @@ model CoachingAssignment {
 ## 3. Skill taxonomy (M3a)
 
 - Seed file: `backend/prisma/seed-skills.ts`, invoked from the existing seed entrypoint.
-- **Math:** for each of the 10 existing `MathTopic`s, 4–8 skills derived from the NSW Selective
+- **Math:** for each of the 20 existing `MathTopic`s, 3–7 skills derived from the NSW Selective
   Mathematical Reasoning specification. Include technique-level skills (e.g. under Arithmetic:
-  `faster-long-division`, `mental-multiplication-strategies`). Worked example for Decimals:
-  `ordering-decimals`, `decimal-multiply-divide-powers-of-ten`, `decimal-division`,
-  `decimals-money-contexts`, `rounding-estimation`.
+  `faster-long-division`, `mental-multiplication-strategies`). There is no Decimals topic —
+  decimal skills live under their host topics, e.g. Arithmetic gets `decimal-operations` and
+  `decimal-division`; Number Place Values gets `ordering-decimals` and `rounding-decimals`.
 - **Writing:** exactly these 7 skills (subject `writing`, `topicId` null):
   `vocabulary`, `sentence-variety`, `ideas`, `text-structure`, `punctuation-grammar`,
   `audience`, `cohesion`.
