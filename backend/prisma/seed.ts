@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { seedSkills } from './seed-skills';
 
 const prisma = new PrismaClient();
 
@@ -736,6 +737,7 @@ async function seedAuthUsers() {
 async function runAllSeeds() {
   await main();
   await seedMath();
+  await seedSkills(prisma); // after seedMath: math skills look topics up by slug
   await seedAuthUsers();
 }
 

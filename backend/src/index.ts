@@ -20,6 +20,7 @@ import mathQuestionsRouter from './routes/math-questions';
 import mathAttemptsRouter from './routes/math-attempts';
 import mathHeatmapRouter from './routes/math-heatmap';
 import mathWorksheetsRouter from './routes/math-worksheets';
+import skillsRouter from './routes/skills';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -55,6 +56,8 @@ app.use('/api/math/questions', mathQuestionsRouter);
 app.use('/api/math/attempts', mathAttemptsRouter);
 app.use('/api/math/heatmap', mathHeatmapRouter);
 app.use('/api/math/worksheets', mathWorksheetsRouter);
+
+app.use('/api/skills', skillsRouter);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });

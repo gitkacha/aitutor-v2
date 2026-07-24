@@ -323,6 +323,16 @@ Student-facing endpoints in M3c must never include math answer keys.
 `## Speed technique` (omit section if none applies) → `## Worked examples` (2–3) →
 `## Traps to avoid` (fed with the skill's misconception fingerprints where available).
 
+**Engagement requirement (user, 2026-07-24):** the module *content voice* is written for the
+11-year-old student, not the tutor — it must be engaging and encouraging, never feel like a
+chore: direct address ("you"), short sentences, concrete relatable examples, speed techniques
+framed as tricks worth showing off, traps framed as "gotchas the test setters hope you fall
+for". No babyish tone, no walls of text; a module reads in under 5 minutes. The
+admin-approval gate reviews for engagement as well as correctness. Time and accuracy
+improvement remain the overarching measured goals — engagement serves traceable improvement,
+it never replaces it (the taxonomy's `examLevelNotes` stay tutor-voiced; only student-facing
+module content takes the student voice).
+
 ### 8.2 Lifecycle
 Admin triggers generation from the Skills browser or via chat (`get_coaching_modules` reveals
 gaps; generation itself is an admin UI action or an action tool — implement as part of
