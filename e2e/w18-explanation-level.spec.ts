@@ -19,8 +19,11 @@ function startStub(captured: string[]): Promise<http.Server> {
     req.on('end', () => {
       captured.push(body);
       const isVerify = body.includes('audit its answer key');
-      const q = (n: number) => ({ questionText: `Q${n}: 25 x 4 = ?`, options: ['80', '100', '120', '125', '150'], correctIndex: 1, explanation: '25 x 4 = 100.', topicSlug: 'arithmetic', topicName: 'Arithmetic' });
-      const content = isVerify
+      const isTagCheck = body.includes('skill tag');
+      const q = (n: number) => ({ questionText: `Q${n}: 25 x 4 = ?`, options: ['80', '100', '120', '125', '150'], correctIndex: 1, explanation: '25 x 4 = 100.', topicSlug: 'arithmetic', topicName: 'Arithmetic', skillSlug: 'mental-multiplication-strategies' });
+      const content = isTagCheck
+        ? JSON.stringify({ skillSlug: 'mental-multiplication-strategies' })
+        : isVerify
         ? JSON.stringify({ correctIndex: 1 }) // matches the generated key so questions survive
         : JSON.stringify([1, 2, 3, 4, 5].map(q));
       res.writeHead(200, { 'content-type': 'application/json' });

@@ -93,7 +93,7 @@ router.post('/save', requireAdmin, asyncHandler(async (req: Request, res: Respon
     return res.status(400).json({ error: 'Missing required fields: title, questions' });
   }
   if (!validateWorksheetQuestions(questions)) {
-    return res.status(400).json({ error: 'questions must be a non-empty array of {questionText, options[], correctIndex, explanation, topicSlug}' });
+    return res.status(400).json({ error: 'questions must be a non-empty array of {questionText, options[], correctIndex, explanation, topicSlug, skillSlug}' });
   }
 
   // Assignment picker (C1): assign to the chosen students, or every student when omitted.
@@ -125,6 +125,9 @@ router.post('/save', requireAdmin, asyncHandler(async (req: Request, res: Respon
     res.status(201).json(worksheet);
   } catch (error: any) {
     if (String(error?.message).startsWith('Unknown topic slug')) {
+      return res.status(400).json({ error: error.message });
+    }
+    if (String(error?.message).startsWith('Unknown skill slug')) {
       return res.status(400).json({ error: error.message });
     }
     console.error('Worksheet save failed:', error);

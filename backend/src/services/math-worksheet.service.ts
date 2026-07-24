@@ -10,6 +10,7 @@ export interface WorksheetQuestionJson {
   explanation: string;
   topicSlug: string;
   topicName?: string;
+  skillSlug: string;
   stimulus?: StimulusSpec;
 }
 
@@ -27,6 +28,9 @@ export function validateWorksheetQuestions(questions: unknown): questions is Wor
     q.correctIndex >= 0 &&
     q.correctIndex < q.options.length &&
     typeof q.topicSlug === 'string' &&
+    // Skill tag (M3a Task 8): every saved question must name the skill it tests.
+    typeof q.skillSlug === 'string' &&
+    q.skillSlug.length > 0 &&
     (q.stimulus === undefined || validateStimulus(q.stimulus)) &&
     // Answer-correctness guards (W-20): no equal-value options, and the explanation must
     // not name a different option than the key.
@@ -50,6 +54,17 @@ export async function createWorksheetQuestionRows(
     throw new Error(`Unknown topic slug(s): ${missing.join(', ')}`);
   }
 
+  // Resolve each skill tag to its Skill row (M3a Task 8) — an unknown slug is a 400,
+  // same pattern as the unknown-topic error above.
+  const skillIdBySlug = new Map<string, number>();
+  for (const slug of [...new Set(questions.map((q) => q.skillSlug))]) {
+    const skill = await db.skill.findUnique({ where: { slug } });
+    if (!skill) {
+      throw new Error(`Unknown skill slug: ${slug}`);
+    }
+    skillIdBySlug.set(slug, skill.id);
+  }
+
   for (const q of questions) {
     // A structured stimulus (W-8) is persisted as its own MathStimulusGroup row so the
     // practice and review screens render it through the same path as seeded stimuli.
@@ -64,6 +79,7 @@ export async function createWorksheetQuestionRows(
       data: {
         topicId: topicBySlug.get(q.topicSlug)!,
         worksheetId,
+        skillId: skillIdBySlug.get(q.skillSlug)!,
         questionText: q.questionText,
         options: JSON.stringify(q.options),
         correctIndex: q.correctIndex,
@@ -84,7 +100,7 @@ export async function getWorksheetQuestionRows(worksheetId: number) {
     prisma.mathQuestion.findMany({
       where: { worksheetId },
       orderBy: { id: 'asc' },
-      include: { stimulusGroup: true, topic: true },
+      include: { stimulusGroup: true, topic: true, skill: true },
     });
 
   let rows = await fetchRows();

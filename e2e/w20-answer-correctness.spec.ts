@@ -23,6 +23,12 @@ function startStub(log: Log): Promise<http.Server> {
     req.on('end', () => {
       const parsed = JSON.parse(body);
       const content: string = parsed.messages?.[0]?.content || '';
+      if (content.includes('skill tag')) {
+        // Skill-tag audit (M3a Task 8): confirm the generator's tag.
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ skillSlug: 'mental-addition-subtraction' }) } }] }));
+        return;
+      }
       if (content.includes('audit its answer key')) {
         // Verification request.
         log.verifyModels.push(parsed.model);
@@ -36,11 +42,11 @@ function startStub(log: Log): Promise<http.Server> {
         return;
       }
       // Generation request → 5 valid questions + one contested + one none-of-these.
-      const good = (n: number) => ({ questionText: `GOOD${n}: what is 2 + 2?`, options: ['3', '4', '5', '6', '7'], correctIndex: 1, explanation: 'Two plus two is 4. The answer is Option B.', topicSlug: 'arithmetic', topicName: 'Arithmetic' });
+      const good = (n: number) => ({ questionText: `GOOD${n}: what is 2 + 2?`, options: ['3', '4', '5', '6', '7'], correctIndex: 1, explanation: 'Two plus two is 4. The answer is Option B.', topicSlug: 'arithmetic', topicName: 'Arithmetic', skillSlug: 'mental-addition-subtraction' });
       const questions = [
         ...[1, 2, 3, 4, 5].map(good),
-        { questionText: 'CONTESTED: a tricky number pattern', options: ['10', '12', '14', '16', '18'], correctIndex: 1, explanation: 'The pattern gives 12. The answer is Option B.', topicSlug: 'arithmetic', topicName: 'Arithmetic' },
-        { questionText: 'NONEOPT: the real answer is not listed', options: ['1', '2', '3', '5', '6'], correctIndex: 1, explanation: 'The answer is Option B.', topicSlug: 'arithmetic', topicName: 'Arithmetic' },
+        { questionText: 'CONTESTED: a tricky number pattern', options: ['10', '12', '14', '16', '18'], correctIndex: 1, explanation: 'The pattern gives 12. The answer is Option B.', topicSlug: 'arithmetic', topicName: 'Arithmetic', skillSlug: 'mental-addition-subtraction' },
+        { questionText: 'NONEOPT: the real answer is not listed', options: ['1', '2', '3', '5', '6'], correctIndex: 1, explanation: 'The answer is Option B.', topicSlug: 'arithmetic', topicName: 'Arithmetic', skillSlug: 'mental-addition-subtraction' },
       ];
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(questions) } }] }));
@@ -75,7 +81,7 @@ test.describe('W-20 — verification uses an independent o4-mini auditor that es
 });
 
 test.describe('W-20 — save-time deterministic guards', () => {
-  const base = { topicSlug: 'arithmetic' };
+  const base = { topicSlug: 'arithmetic', skillSlug: 'mental-addition-subtraction' };
 
   test('rejects a worksheet with equal-value options', async ({ request }) => {
     const res = await request.post('/api/math/worksheets/save', {

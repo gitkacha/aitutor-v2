@@ -61,8 +61,10 @@ test.describe('W-19 — generation survives navigation (UI)', () => {
         req.on('data', (c) => (body += c));
         req.on('end', () => {
           const isVerify = body.includes('audit its answer key');
-          const q = (n: number) => ({ questionText: `SlowQ${n}: 25 x 4 = ?`, options: ['80', '100', '120', '125', '150'], correctIndex: 1, explanation: '25 x 4 = 100.', topicSlug: 'arithmetic', topicName: 'Arithmetic' });
-          const content = isVerify ? JSON.stringify({ correctIndex: 1 }) : JSON.stringify([1, 2, 3, 4, 5].map(q));
+          const isTagCheck = body.includes('skill tag');
+          const q = (n: number) => ({ questionText: `SlowQ${n}: 25 x 4 = ?`, options: ['80', '100', '120', '125', '150'], correctIndex: 1, explanation: '25 x 4 = 100.', topicSlug: 'arithmetic', topicName: 'Arithmetic', skillSlug: 'mental-multiplication-strategies' });
+          const content = isTagCheck ? JSON.stringify({ skillSlug: 'mental-multiplication-strategies' })
+            : isVerify ? JSON.stringify({ correctIndex: 1 }) : JSON.stringify([1, 2, 3, 4, 5].map(q));
           setTimeout(() => {
             res.writeHead(200, { 'content-type': 'application/json' });
             res.end(JSON.stringify({ choices: [{ message: { content } }] }));

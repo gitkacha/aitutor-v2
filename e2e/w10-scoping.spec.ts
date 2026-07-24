@@ -83,7 +83,7 @@ test.describe('W-10 — tenant scoping and authorization', () => {
       data: { title: 'x', typeIds: [1], prompts: ['x'] },
     })).status()).toBe(403);
     expect((await request.post('/api/math/worksheets/save', {
-      data: { title: 'x', topicIds: [], questions: [{ questionText: 'q', options: ['a', 'b'], correctIndex: 0, explanation: 'e', topicSlug: 'fractions' }] },
+      data: { title: 'x', topicIds: [], questions: [{ questionText: 'q', options: ['a', 'b'], correctIndex: 0, explanation: 'e', topicSlug: 'fractions', skillSlug: 'equivalent-fractions' }] },
     })).status()).toBe(403);
     expect((await request.post('/api/demo/load')).status()).toBe(403);
 

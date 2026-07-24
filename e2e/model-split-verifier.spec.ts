@@ -30,6 +30,7 @@ function makeGenerationBatch(callNo: number) {
       explanation: `${k} + ${k} = ${2 * k}. Therefore, the answer is Option B.`,
       topicSlug: 'arithmetic',
       topicName: 'Arithmetic',
+      skillSlug: 'mental-addition-subtraction',
     };
   });
   const badKey = {
@@ -39,6 +40,7 @@ function makeGenerationBatch(callNo: number) {
     explanation: 'Broken key.',
     topicSlug: 'arithmetic',
     topicName: 'Arithmetic',
+    skillSlug: 'mental-addition-subtraction',
   };
   const dup = {
     questionText: `[DUP] What is the probability?`,
@@ -47,6 +49,7 @@ function makeGenerationBatch(callNo: number) {
     explanation: 'Duplicate options.',
     topicSlug: 'arithmetic',
     topicName: 'Arithmetic',
+    skillSlug: 'mental-addition-subtraction',
   };
   return [...good, badKey, dup];
 }
@@ -68,6 +71,10 @@ function startSmartStub(log: StubLog): Promise<http.Server> {
       if (content.includes('independently solving')) {
         log.verificationModels.push(parsed.model);
         reply = { correctIndex: 1 }; // honest solve: truth is always index 1 in this stub
+      } else if (content.includes('skill tag')) {
+        // Skill-tag audit (M3a Task 8) also runs on the verification model.
+        log.verificationModels.push(parsed.model);
+        reply = { skillSlug: 'mental-addition-subtraction' };
       } else if (content.includes('expert writing tutor')) {
         log.analysisModels.push(parsed.model);
         reply = STUB_ANALYSIS;

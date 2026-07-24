@@ -52,7 +52,7 @@ test.describe('math score history', () => {
         title: `E2E Topic Leak ${Date.now()}`,
         topicIds: ['fractions'],
         questions: [
-          { questionText: 'What is 1/2 + 1/4?', options: ['1/4', '2/4', '3/4', '4/4', '5/4'], correctIndex: 2, explanation: '3/4.', topicSlug: 'fractions', topicName: 'Fractions' },
+          { questionText: 'What is 1/2 + 1/4?', options: ['1/4', '2/4', '3/4', '4/4', '5/4'], correctIndex: 2, explanation: '3/4.', topicSlug: 'fractions', topicName: 'Fractions', skillSlug: 'fraction-arithmetic' },
         ],
       },
     });

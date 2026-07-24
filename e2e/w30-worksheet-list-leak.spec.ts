@@ -19,8 +19,8 @@ test('worksheet list: stripped for the assigned student, full for the admin', as
     data: {
       title: `W30 ${stamp}`, topicIds: ['arithmetic'], studentIds: [me.user.id],
       questions: [
-        { questionText: `W30Q1 ${stamp}: 6 × 7?`, options: ['36', '42', '48', '54', '40'], correctIndex: 1, explanation: 'Six sevens are 42.', topicSlug: 'arithmetic' },
-        { questionText: `W30Q2 ${stamp}: 81 ÷ 9?`, options: ['7', '8', '9', '10', '6'], correctIndex: 2, explanation: 'Nine nines are 81.', topicSlug: 'arithmetic' },
+        { questionText: `W30Q1 ${stamp}: 6 × 7?`, options: ['36', '42', '48', '54', '40'], correctIndex: 1, explanation: 'Six sevens are 42.', topicSlug: 'arithmetic', skillSlug: 'mental-multiplication-strategies' },
+        { questionText: `W30Q2 ${stamp}: 81 ÷ 9?`, options: ['7', '8', '9', '10', '6'], correctIndex: 2, explanation: 'Nine nines are 81.', topicSlug: 'arithmetic', skillSlug: 'faster-long-division' },
       ],
     },
   });

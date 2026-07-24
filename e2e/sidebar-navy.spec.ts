@@ -74,7 +74,7 @@ test.describe('evening navy sidebar', () => {
         title: `E2E Sidebar UpNext ${Date.now()}`,
         topicIds: ['arithmetic'],
         questions: [
-          { questionText: 'What is 9 + 8?', options: ['15', '16', '17', '18', '19'], correctIndex: 2, explanation: '9 + 8 = 17.', topicSlug: 'arithmetic', topicName: 'Arithmetic' },
+          { questionText: 'What is 9 + 8?', options: ['15', '16', '17', '18', '19'], correctIndex: 2, explanation: '9 + 8 = 17.', topicSlug: 'arithmetic', topicName: 'Arithmetic', skillSlug: 'mental-addition-subtraction' },
         ],
       },
     });

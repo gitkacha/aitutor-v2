@@ -18,6 +18,7 @@ const GOOD_Q = (n: number) => ({
   explanation: `${n} + ${n} = ${2 * n}. Therefore, the answer is Option B.`,
   topicSlug: 'arithmetic',
   topicName: 'Arithmetic',
+  skillSlug: 'mental-addition-subtraction',
 });
 
 const VISUAL_REF_Q = {
@@ -27,6 +28,7 @@ const VISUAL_REF_Q = {
   explanation: 'The graph peaks at 2. Therefore, the answer is Option B.',
   topicSlug: 'arithmetic',
   topicName: 'Arithmetic',
+  skillSlug: 'mental-addition-subtraction',
 };
 
 const PROTRACTOR_STIMULUS = {
@@ -42,6 +44,7 @@ const STIMULUS_Q = {
   explanation: '110° − 30° = 80°. Therefore, the answer is Option C.',
   topicSlug: 'arithmetic',
   topicName: 'Arithmetic',
+  skillSlug: 'mental-addition-subtraction',
   stimulus: PROTRACTOR_STIMULUS,
 };
 
@@ -64,6 +67,9 @@ function startStub(state: StubState): Promise<http.Server> {
         // Honest solver: every stub question's true answer is index 2 for the
         // stimulus question, index 1 otherwise.
         reply = { correctIndex: content.includes('protractor') ? 2 : 1 };
+      } else if (content.includes('skill tag')) {
+        // Skill-tag audit (M3a Task 8) — must not count as a generation call.
+        reply = { skillSlug: 'mental-addition-subtraction' };
       } else {
         state.generationCalls++;
         reply = state.generationCalls === 1 ? state.firstBatch : state.laterBatch;
@@ -186,6 +192,7 @@ test.describe('W-8 — visual stimuli for math questions', () => {
       explanation: 'The line peaks at 3 pm. Therefore, the answer is Option D.',
       topicSlug: 'arithmetic',
       topicName: 'Arithmetic',
+      skillSlug: 'estimation-rounding',
       stimulus: {
         version: 1,
         text: 'The line graph shows distance travelled during the day.',

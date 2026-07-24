@@ -1,4 +1,5 @@
 import prisma from '../lib/prisma';
+import { MATH_SKILLS } from '../../prisma/seed-skills';
 
 const DEMO_ANALYSES = [
   { vocabScore: 72, vocabComments: 'Good use of descriptive adjectives and varied vocabulary. Words like "remarkable" and "extraordinary" show strong word choice. Could incorporate more subject-specific terminology.', structureScore: 65, structureComments: 'Sentences are mostly well-structured but some run-on sentences affect flow. Varying sentence openings would improve rhythm.', contentScore: 70, contentComments: 'Clear introduction and conclusion. The body paragraphs follow the expected structure well. Some points could be developed further with more specific examples.', overallScore: 69, summary: 'A solid attempt showing good understanding of the text type. Vocabulary is a strength, while sentence structure offers room for improvement. Keep practising to build consistency.' },
@@ -221,6 +222,7 @@ export async function loadDemoData(user: { id: number; workspaceId: number }) {
     const wsQuestions = await prisma.mathQuestion.findMany({
       where: { topicId: { in: [firstTopic.id, secondTopic.id] } },
       take: 10,
+      include: { skill: true },
     });
 
     const wsQIds = wsQuestions.map(q => q.id);
@@ -254,6 +256,11 @@ export async function loadDemoData(user: { id: number; workspaceId: number }) {
           explanation: q.explanation,
           topicSlug: q.topicId === firstTopic.id ? firstTopic.slug : secondTopic.slug,
           topicName: q.topicId === firstTopic.id ? firstTopic.name : secondTopic.name,
+          // Worksheet questions require a skill tag (M3a Task 8). Bank questions are
+          // tagged by the Task 9 backfill; until then default to the topic's first skill.
+          skillSlug: q.skill?.slug
+            ?? MATH_SKILLS[q.topicId === firstTopic.id ? firstTopic.slug : secondTopic.slug]?.[0]?.slug
+            ?? '',
         }))),
         isDemo: true,
       },

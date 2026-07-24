@@ -22,8 +22,8 @@ test.describe('W-27 — view pending worksheet content', () => {
       data: {
         title, topicIds: ['arithmetic'],
         questions: [
-          { questionText: `W27Q1 ${stamp}: what is 6 × 7?`, options: ['36', '42', '48', '54', '40'], correctIndex: 1, explanation: 'Six sevens are 42. The answer is Option B.', topicSlug: 'arithmetic' },
-          { questionText: `W27Q2 ${stamp}: what is 81 ÷ 9?`, options: ['7', '8', '9', '10', '6'], correctIndex: 2, explanation: 'Nine nines are 81, so 81 ÷ 9 = 9. The answer is Option C.', topicSlug: 'arithmetic' },
+          { questionText: `W27Q1 ${stamp}: what is 6 × 7?`, options: ['36', '42', '48', '54', '40'], correctIndex: 1, explanation: 'Six sevens are 42. The answer is Option B.', topicSlug: 'arithmetic', skillSlug: 'mental-multiplication-strategies' },
+          { questionText: `W27Q2 ${stamp}: what is 81 ÷ 9?`, options: ['7', '8', '9', '10', '6'], correctIndex: 2, explanation: 'Nine nines are 81, so 81 ÷ 9 = 9. The answer is Option C.', topicSlug: 'arithmetic', skillSlug: 'faster-long-division' },
         ],
       },
     });

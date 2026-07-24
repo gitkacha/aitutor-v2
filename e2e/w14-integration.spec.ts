@@ -21,8 +21,8 @@ test.describe('W-14 — multi-user assign → complete → review loop', () => {
     // Admin saves a math worksheet targeted at just this student.
     const admin = await adminCtx(baseURL);
     const questions = [
-      { questionText: 'W14 Q1: 1/2 + 1/4 = ?', options: ['1/4', '3/4', '2/6', '1'], correctIndex: 1, explanation: 'Common denominator 4: 2/4 + 1/4 = 3/4.', topicSlug: 'fractions' },
-      { questionText: 'W14 Q2: 3/5 of 20 = ?', options: ['9', '12', '15', '4'], correctIndex: 1, explanation: '20 ÷ 5 × 3 = 12.', topicSlug: 'fractions' },
+      { questionText: 'W14 Q1: 1/2 + 1/4 = ?', options: ['1/4', '3/4', '2/6', '1'], correctIndex: 1, explanation: 'Common denominator 4: 2/4 + 1/4 = 3/4.', topicSlug: 'fractions', skillSlug: 'fraction-arithmetic' },
+      { questionText: 'W14 Q2: 3/5 of 20 = ?', options: ['9', '12', '15', '4'], correctIndex: 1, explanation: '20 ÷ 5 × 3 = 12.', topicSlug: 'fractions', skillSlug: 'fractions-of-quantities' },
     ];
     const save = await admin.post('/api/math/worksheets/save', {
       data: { title: `W14 assigned ${Date.now()}`, topicIds: ['fractions'], questions, studentIds: [studentId] },

@@ -157,6 +157,7 @@ export interface GeneratedMathQuestion {
   explanation: string;
   topicSlug: string;
   topicName: string;
+  skillSlug: string;
   stimulus?: StimulusSpec;
 }
 

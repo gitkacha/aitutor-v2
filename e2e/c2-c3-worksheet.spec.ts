@@ -13,6 +13,7 @@ const WORKSHEET_QUESTIONS = [
     explanation: '12 + 13 = 25. Therefore, the answer is Option B.',
     topicSlug: 'arithmetic',
     topicName: 'Arithmetic',
+    skillSlug: 'mental-addition-subtraction',
   },
   {
     questionText: 'What is 6 × 7?',
@@ -21,6 +22,7 @@ const WORKSHEET_QUESTIONS = [
     explanation: '6 × 7 = 42. Therefore, the answer is Option C.',
     topicSlug: 'arithmetic',
     topicName: 'Arithmetic',
+    skillSlug: 'mental-multiplication-strategies',
   },
   {
     questionText: 'What is 100 − 58?',
@@ -29,6 +31,7 @@ const WORKSHEET_QUESTIONS = [
     explanation: '100 − 58 = 42. Therefore, the answer is Option C.',
     topicSlug: 'arithmetic',
     topicName: 'Arithmetic',
+    skillSlug: 'mental-addition-subtraction',
   },
 ];
 

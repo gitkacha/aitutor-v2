@@ -1,6 +1,7 @@
 import prisma from '../lib/prisma';
 import { validateStimulus, StimulusSpec } from '../lib/stimulus';
 import { hasDistinctOptions, explanationMatchesKey, keptByEscalation } from '../lib/question-checks';
+import { MATH_SKILLS } from '../../prisma/seed-skills';
 
 // Per-role model providers (W-21). Each role — generation, answer-key verification, writing
 // analysis — resolves its own {model, baseUrl, apiKey} from role-specific env, falling back
@@ -298,7 +299,14 @@ interface GeneratedMathQuestion {
   explanation: string;
   topicSlug: string;
   topicName: string;
+  skillSlug: string;
   stimulus?: StimulusSpec;
+}
+
+// Closed skill taxonomy (M3a Task 2): per-topic skill lists the generator must tag
+// against. Static import — the seed and the prompt share one source of truth.
+function skillsForTopic(topicSlug: string) {
+  return MATH_SKILLS[topicSlug] ?? [];
 }
 
 // Question text that points at a visual ("shown below", "the graph") is unanswerable
@@ -358,6 +366,48 @@ async function verifyQuestionKey(q: GeneratedMathQuestion, totals: UsageTotals):
   return keptByEscalation([first.index, second.index, third.index], q.correctIndex);
 }
 
+// Skill-tag audit (M3a Task 8): one verifier-role call per question, after its answer key
+// is confirmed. The verifier picks the best-fitting slug from the topic's closed list; on
+// disagreement its choice wins (logged). Best-effort — any failure keeps the generator's
+// tag, which already passed the closed-list check.
+async function verifySkillTag(q: GeneratedMathQuestion, totals: UsageTotals): Promise<string> {
+  const skills = skillsForTopic(q.topicSlug);
+  if (skills.length === 0) return q.skillSlug;
+  const prompt = `You are auditing the skill tag of a multiple-choice question from the topic "${q.topicName}".
+
+Question:
+${q.questionText}
+
+Explanation of the intended solution:
+${q.explanation}
+
+The topic's closed skill list (slug: name):
+${skills.map((s) => `- ${s.slug}: ${s.name}`).join('\n')}
+
+Which single skill slug from the list fits this question best? Respond with ONLY a JSON object (no markdown, no code fences):
+{"skillSlug": "<one slug from the list>"}`;
+
+  try {
+    const provider = providerFor('verification');
+    const { content, usage } = await chatCompletion(provider, prompt, 2000);
+    accumulate(totals, provider.model, usage);
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return q.skillSlug;
+    const verdict = JSON.parse(jsonMatch[0]);
+    const chosen = verdict?.skillSlug;
+    if (typeof chosen !== 'string' || !skills.some((s) => s.slug === chosen)) return q.skillSlug;
+    if (chosen !== q.skillSlug) {
+      console.log('[skill-tag]', JSON.stringify({
+        question: q.questionText.slice(0, 80), generator: q.skillSlug, verifier: chosen,
+      }));
+    }
+    return chosen;
+  } catch (error) {
+    console.error('Skill-tag verification failed:', error);
+    return q.skillSlug;
+  }
+}
+
 function isValidGeneratedQuestion(q: any, allowedSlugs: Set<string>): boolean {
   const structurallyValid =
     q &&
@@ -371,7 +421,11 @@ function isValidGeneratedQuestion(q: any, allowedSlugs: Set<string>): boolean {
     q.correctIndex < 5 &&
     typeof q.explanation === 'string' &&
     typeof q.topicSlug === 'string' &&
-    allowedSlugs.has(q.topicSlug);
+    allowedSlugs.has(q.topicSlug) &&
+    // Skill tag (M3a Task 8): every question must be tagged from its own topic's
+    // closed skill list.
+    typeof q.skillSlug === 'string' &&
+    skillsForTopic(q.topicSlug).some((s) => s.slug === q.skillSlug);
   if (!structurallyValid) return false;
 
   // A stimulus, if present, must be a well-formed figure spec.
@@ -398,6 +452,9 @@ The worksheet should cover the following topic(s):
 ${topics.map(t => `- ${t.name} (slug: ${t.slug}): ${t.description}`).join('\n')}
 
 Generate exactly ${count} five-option multiple-choice questions distributed across these topics. Each question must have exactly one correct answer and four plausible distractors.
+
+SKILL TAGGING. Each topic has a closed list of skills. Every question must carry a "skillSlug" naming the single skill it most directly tests, chosen from ITS OWN topic's list below — never a slug from another topic, never a made-up slug:
+${topics.map(t => `- ${t.name} (${t.slug}):\n${skillsForTopic(t.slug).map(s => `  - ${s.slug}: ${s.name}`).join('\n')}`).join('\n')}
 
 DIFFICULTY REQUIREMENT: Each question must be at or above the difficulty of the hardest known reference question for its topic. Here are the hardest reference questions per topic (with their cohort % Correct — lower % = harder):
 
@@ -441,6 +498,7 @@ Respond with ONLY a JSON array (no markdown, no code fences) in this exact forma
     "explanation": "Step-by-step reasoning. Therefore, the answer is Option X.",
     "topicSlug": "<slug of this question's topic, one of: ${topics.map(t => t.slug).join(', ')}>",
     "topicName": "<name of this question's topic>",
+    "skillSlug": "<slug of the single skill this question most tests, from its topic's skill list above>",
     "stimulus": <optional, as described above>
   }
 ]
@@ -488,6 +546,7 @@ export async function generateMathWorksheetQuestions(
           explanation: q.explanation,
           topicSlug: q.topicSlug,
           topicName: nameBySlug.get(q.topicSlug)!,
+          skillSlug: q.skillSlug,
           ...(q.stimulus !== undefined ? { stimulus: q.stimulus } : {}),
         }));
 
@@ -496,6 +555,11 @@ export async function generateMathWorksheetQuestions(
       const verified = candidates
         .filter((_, i) => verdicts[i])
         .slice(0, questionCount - collected.length);
+      // Skill-tag audit (M3a Task 8): one verifier call per surviving question; the
+      // verifier's choice wins on disagreement.
+      await Promise.all(verified.map(async (q) => {
+        q.skillSlug = await verifySkillTag(q, totals);
+      }));
       collected.push(...verified);
     } catch (error) {
       failedCalls++;
@@ -531,6 +595,8 @@ function getFallbackMathQuestions(topics: MathTopicForGen[], questionCount = 35)
       explanation: '25 × 4 = 100. Therefore, the answer is Option B.',
       topicSlug: t.slug,
       topicName: t.name,
+      // Placeholders still need a valid tag so the save path accepts them.
+      skillSlug: skillsForTopic(t.slug)[0]?.slug ?? '',
     });
   }
 

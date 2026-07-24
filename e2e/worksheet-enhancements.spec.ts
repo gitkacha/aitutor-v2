@@ -22,6 +22,7 @@ function makeStubQuestions(n: number) {
     explanation: `${i + 2} × 10 = ${(i + 2) * 10}. Therefore, the answer is Option B.`,
     topicSlug: 'arithmetic',
     topicName: 'Arithmetic',
+    skillSlug: 'mental-multiplication-strategies',
   }));
 }
 
@@ -35,6 +36,9 @@ function startGenerationStub(calls: { count: number }): Promise<http.Server> {
       if (content.includes('independently solving')) {
         // Answer-key verification call: all stub questions really are index 1.
         reply = { correctIndex: 1 };
+      } else if (content.includes('skill tag')) {
+        // Skill-tag audit (M3a Task 8) — not a generation call.
+        reply = { skillSlug: 'mental-multiplication-strategies' };
       } else {
         calls.count++; // count generation calls only
         reply = makeStubQuestions(STUB_BATCH_SIZE);
@@ -47,9 +51,9 @@ function startGenerationStub(calls: { count: number }): Promise<http.Server> {
 }
 
 const TIMING_QUESTIONS = [
-  { questionText: 'What is 12 + 13?', options: ['20', '25', '30', '35', '40'], correctIndex: 1, explanation: '12 + 13 = 25.', topicSlug: 'arithmetic', topicName: 'Arithmetic' },
-  { questionText: 'What is 6 × 7?', options: ['36', '40', '42', '48', '54'], correctIndex: 2, explanation: '6 × 7 = 42.', topicSlug: 'arithmetic', topicName: 'Arithmetic' },
-  { questionText: 'What is 100 − 58?', options: ['32', '38', '42', '48', '52'], correctIndex: 2, explanation: '100 − 58 = 42.', topicSlug: 'arithmetic', topicName: 'Arithmetic' },
+  { questionText: 'What is 12 + 13?', options: ['20', '25', '30', '35', '40'], correctIndex: 1, explanation: '12 + 13 = 25.', topicSlug: 'arithmetic', topicName: 'Arithmetic', skillSlug: 'mental-addition-subtraction' },
+  { questionText: 'What is 6 × 7?', options: ['36', '40', '42', '48', '54'], correctIndex: 2, explanation: '6 × 7 = 42.', topicSlug: 'arithmetic', topicName: 'Arithmetic', skillSlug: 'mental-multiplication-strategies' },
+  { questionText: 'What is 100 − 58?', options: ['32', '38', '42', '48', '52'], correctIndex: 2, explanation: '100 − 58 = 42.', topicSlug: 'arithmetic', topicName: 'Arithmetic', skillSlug: 'mental-addition-subtraction' },
 ];
 
 async function saveMathWorksheet(request: APIRequestContext, title: string) {
