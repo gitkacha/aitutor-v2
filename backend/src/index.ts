@@ -22,6 +22,8 @@ import mathHeatmapRouter from './routes/math-heatmap';
 import mathWorksheetsRouter from './routes/math-worksheets';
 import skillsRouter from './routes/skills';
 import analyticsRouter from './routes/analytics';
+import chatRouter from './routes/chat';
+import interventionsRouter from './routes/interventions';
 import prisma from './lib/prisma';
 import { ensureSkillsSeeded } from '../prisma/seed-skills';
 
@@ -62,6 +64,8 @@ app.use('/api/math/worksheets', mathWorksheetsRouter);
 
 app.use('/api/skills', skillsRouter);
 app.use('/api/analytics', analyticsRouter);
+app.use('/api/chat', chatRouter);
+app.use('/api/interventions', interventionsRouter);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });

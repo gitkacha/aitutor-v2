@@ -14,6 +14,10 @@ import { createIntervention, listInterventions } from './intervention.service';
 export interface ToolContext {
   workspaceId: number;
   adminId: number;
+  // The ChatSession this tool run belongs to, when a chat drives it (Task 9). Threaded into
+  // create_intervention so a mid-chat intervention is linked back to its conversation. Optional
+  // because non-chat callers (and read-only dispatch) don't need it.
+  sessionId?: number;
 }
 
 export const READ_TOOL_SCHEMAS: ChatToolSchema[] = [
@@ -294,6 +298,7 @@ export async function executeActionTool(name: string, args: any, ctx: ToolContex
         workspaceId: ctx.workspaceId,
         studentId: args.studentId,
         createdById: ctx.adminId,
+        chatSessionId: ctx.sessionId,
         skillSlugs: args.skillSlugs,
         recommendation: args.recommendation,
         rationale: args.rationale,
