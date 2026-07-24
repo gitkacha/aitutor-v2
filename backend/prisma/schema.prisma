@@ -19,6 +19,8 @@ model Workspace {
   users          User[]
   worksheets     Worksheet[]
   mathWorksheets MathWorksheet[]
+  chatSessions   ChatSession[]
+  interventions  Intervention[]
 }
 
 model User {
@@ -43,6 +45,9 @@ model User {
   createdMathWorksheets    MathWorksheet[]           @relation("MathWorksheetCreator")
   worksheetAssignments     WorksheetAssignment[]
   mathWorksheetAssignments MathWorksheetAssignment[]
+  chatSessions    ChatSession[]
+  interventions   Intervention[]                     @relation("InterventionStudent")
+  createdInterventions Intervention[]                @relation("InterventionCreator")
 }
 
 model WorksheetAssignment {
@@ -229,4 +234,47 @@ model MathWorksheet {
   attempts     MathAttempt[]
   questionRows MathQuestion[]
   assignments  MathWorksheetAssignment[]
+}
+
+// ── M3b: Chat and Interventions ─────────────────────────────────────────────
+
+model ChatSession {
+  id          Int       @id @default(autoincrement())
+  workspaceId Int
+  adminId     Int
+  title       String    // first user message, truncated to 80 chars
+  createdAt   DateTime  @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  admin       User      @relation(fields: [adminId], references: [id])
+  messages    ChatMessage[]
+  interventions Intervention[]
+}
+
+model ChatMessage {
+  id        Int      @id @default(autoincrement())
+  sessionId Int
+  role      String   // 'user' | 'assistant' | 'tool'
+  content   String   // for role 'tool': JSON {toolName, args, result}
+  createdAt DateTime @default(now())
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model Intervention {
+  id                Int      @id @default(autoincrement())
+  workspaceId       Int
+  studentId         Int
+  createdById       Int
+  chatSessionId     Int?
+  skillSlugs        String   // JSON array of skill slugs this intervention targets
+  diagnosisSnapshot String   // JSON, exact shape in §6.2 — FROZEN, never updated
+  recommendation    String   // AI's recommendation text, verbatim
+  rationale         String   // AI's reasoning text, verbatim
+  worksheetIds      String   // JSON {"math": [ids], "writing": [ids]}
+  coachingModuleIds String   // JSON array of CoachingModule ids
+  status            String   @default("active") // 'active' | 'closed'
+  createdAt         DateTime @default(now())
+  workspace         Workspace @relation(fields: [workspaceId], references: [id])
+  student           User      @relation("InterventionStudent", fields: [studentId], references: [id])
+  createdBy         User      @relation("InterventionCreator", fields: [createdById], references: [id])
+  chatSession       ChatSession? @relation(fields: [chatSessionId], references: [id])
 }
