@@ -18,7 +18,19 @@ every agent, on any model, without exception):
 
 ## Open
 
-_No open items._
+Milestone 3a — Measurement Foundation (plan `docs/superpowers/plans/Milestone3a-plan.md`,
+spec `docs/superpowers/specs/2026-07-24-milestone3-agentic-coach-design.md`, approved 2026-07-24):
+
+- [ ] **W-31** — M3a Task 1: Prisma schema — `Skill` model, `MathQuestion.skillId`, `MathAttempt` capture columns (`questionTimings`/`questionFlags`/`answerChanges`), `Analysis.criteriaScores`; migration + typecheck.
+- [ ] **W-32** — M3a Task 2: 89-skill NSW taxonomy seed (`seed-skills.ts`) + `GET /api/skills`; descriptions/examLevelNotes authored at exam level; **user review gate on the taxonomy before commit**.
+- [ ] **W-33** — M3a Task 3: analytics core types + statistical helpers (median, population SD, attempt halves, position thirds) with the plan's hand-computed unit vectors.
+- [ ] **W-34** — M3a Task 4: per-skill signals — accuracy + evidence floor (8), mean time + slow label, fast/slow-wrong split (0.6×/1.5× M), misconception fingerprint, pacing curve; plan vectors transcribed verbatim.
+- [ ] **W-35** — M3a Task 5: trend (attempt halves, ≥4/half), stability SD, flag + answer-change signals, cohort gate (≥5 students), opportunity ranking, writing criteria signals; plan vectors transcribed verbatim.
+- [ ] **W-36** — M3a Task 6: analytics DB adapter (`analytics.service.ts`) + admin endpoints `GET /api/analytics/students/:id/report` and `GET /api/analytics/opportunity-areas`; students denied.
+- [ ] **W-37** — M3a Task 7: timed-test capture instrumentation — per-question dwell, flags, answer-change counts submitted and stored with the attempt.
+- [ ] **W-38** — M3a Task 8: skill-tagged question generation (closed list in prompt, verifier tag check, `skillId` persisted on save; unknown slug → 400).
+- [ ] **W-39** — M3a Task 9: writing `criteriaScores` from the analysis call (7 criteria, defensive parse) + `backfill-skill-tags.ts` script (dry-run mode, verifier-checked) for the 35 bank questions.
+- [ ] **W-40** — M3a Task 10: admin Skills browser page (grouped read-only taxonomy view, admin-only nav).
 
 ## Done
 
