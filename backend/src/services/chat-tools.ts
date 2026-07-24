@@ -9,6 +9,7 @@ import { ChatToolSchema, generateMathWorksheetQuestions, resolveMathTopicsForGen
 import { getStudentSkillReport, getOpportunityAreas } from './analytics.service';
 import { validateWorksheetQuestions, saveAndAssignWorksheet } from './math-worksheet.service';
 import { resolveAssigneeStudentIdsForWorkspace } from '../lib/scope';
+import { createIntervention, listInterventions } from './intervention.service';
 
 export interface ToolContext {
   workspaceId: number;
@@ -221,8 +222,7 @@ export async function dispatchReadTool(name: string, args: any, ctx: ToolContext
 
     case 'get_intervention_history': {
       await assertStudentInWorkspace(args.studentId, ctx);
-      // Task 8 wires intervention.service to return real history; placeholder until then.
-      return [];
+      return listInterventions(args.studentId);
     }
 
     default:
@@ -289,8 +289,16 @@ export async function executeActionTool(name: string, args: any, ctx: ToolContex
     }
 
     case 'create_intervention': {
-      // Wired to intervention.service in Task 8; parked until then.
-      throw new Error('create_intervention not yet wired (Task 8)');
+      await assertStudentInWorkspace(args.studentId, ctx);
+      return createIntervention({
+        workspaceId: ctx.workspaceId,
+        studentId: args.studentId,
+        createdById: ctx.adminId,
+        skillSlugs: args.skillSlugs,
+        recommendation: args.recommendation,
+        rationale: args.rationale,
+        worksheetIds: args.worksheetIds,
+      });
     }
 
     default:

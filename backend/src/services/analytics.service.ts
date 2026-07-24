@@ -92,16 +92,21 @@ function parseMathAttempt(a: {
   };
 }
 
-// Builds AnswerRecords for a student's last `lastNTests` MathAttempts (any source), per the
-// Task 6 adapter rules. Questions without a skillId are counted into untaggedQuestions rather
-// than turned into a record — the core never sees skill-less questions.
-async function buildMathWindow(studentId: number, lastNTests: number) {
-  const attempts = await prisma.mathAttempt.findMany({
-    where: { userId: studentId },
-    orderBy: { finishedAt: 'desc' },
-    take: lastNTests,
-  });
+interface RawMathAttemptRow {
+  id: number;
+  finishedAt: Date;
+  questions: string;
+  answers: string;
+  questionTimings: string | null;
+  questionFlags: string | null;
+  answerChanges: string | null;
+}
 
+// Builds AnswerRecords from an arbitrary set of already-fetched MathAttempt rows, per the
+// Task 6 adapter rules. Questions without a skillId are counted into untaggedQuestions rather
+// than turned into a record — the core never sees skill-less questions. Shared by
+// buildMathWindow (last-N window) and getSkillSignalsSince (date-range window, M3b Task 8).
+async function buildMathRecords(attempts: RawMathAttemptRow[]) {
   const parsed = attempts.map(parseMathAttempt);
   const allQuestionIds = [...new Set(parsed.flatMap((p) => p.questionIds))];
   const questions = allQuestionIds.length
@@ -141,6 +146,18 @@ async function buildMathWindow(studentId: number, lastNTests: number) {
     }
   }
 
+  return { records, untaggedQuestions };
+}
+
+// Builds AnswerRecords for a student's last `lastNTests` MathAttempts (any source).
+async function buildMathWindow(studentId: number, lastNTests: number) {
+  const attempts = await prisma.mathAttempt.findMany({
+    where: { userId: studentId },
+    orderBy: { finishedAt: 'desc' },
+    take: lastNTests,
+  });
+
+  const { records, untaggedQuestions } = await buildMathRecords(attempts);
   return { attempts, records, untaggedQuestions };
 }
 
@@ -164,6 +181,21 @@ async function computeStudentMedianMs(studentId: number): Promise<number | null>
 
 async function computeMathSignalsForStudent(studentId: number, lastNTests: number): Promise<SkillSignal[]> {
   const { records } = await buildMathWindow(studentId, lastNTests);
+  const medianMs = await computeStudentMedianMs(studentId);
+  return computeSkillSignals(records, medianMs);
+}
+
+// M3b Task 8 (intervention outcome recomputation, spec §6.3): signals over ALL of a student's
+// math attempts with finishedAt strictly after `sinceISO`, rather than a last-N window. Reuses
+// the same AnswerRecord adapter (buildMathRecords) and the same own-median-time M (computed over
+// all of the student's timed questions, per §4's "own median time" definition — unwindowed) as
+// getStudentSkillReport, so this stays a thin adapter with no statistics of its own.
+export async function getSkillSignalsSince(studentId: number, sinceISO: string): Promise<SkillSignal[]> {
+  const attempts = await prisma.mathAttempt.findMany({
+    where: { userId: studentId, finishedAt: { gt: new Date(sinceISO) } },
+    orderBy: { finishedAt: 'desc' },
+  });
+  const { records } = await buildMathRecords(attempts);
   const medianMs = await computeStudentMedianMs(studentId);
   return computeSkillSignals(records, medianMs);
 }
