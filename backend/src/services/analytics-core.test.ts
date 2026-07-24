@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { median, popStdDev, splitAttemptHalves, positionThird, AnswerRecord } from './analytics-core';
+import { median, popStdDev, splitAttemptHalves, positionThird, AnswerRecord, SkillSignal } from './analytics-core';
 import { computeSkillSignals, computePacingCurve } from './analytics-core';
 
 const sig = (recs: AnswerRecord[], m: number | null, slug = 's1') =>
@@ -113,4 +113,77 @@ describe('pacing curve, n=7 (thirds 3/1/3)', () => {
     expect(p.middle.accuracy).toBeCloseTo(1, 6);
     expect(p.final.accuracy).toBeCloseTo(0, 6); expect(p.final.unansweredRate).toBeCloseTo(2 / 3, 6);
   });
+});
+
+import { computeCohortAccuracy, rankOpportunityAreas, computeWritingSignals } from './analytics-core';
+
+describe('trend over attempt halves (needs ≥4 questions per half)', () => {
+  const mk = (attemptId: number, day: number, corrects: boolean[]) =>
+    corrects.map((c, i) => rec({ attemptId, finishedAt: `2026-07-0${day}T00:00:00.000Z`, correct: c, positionIndex: i, attemptSize: 3 }));
+  const recs = [...mk(1, 1, [true, false, false]), ...mk(2, 2, [true, false, false]),
+                ...mk(3, 3, [true, true, false]), ...mk(4, 4, [true, true, true])];
+  it('older 2/6 → newer 5/6 = +50 points', () =>
+    expect(sig(recs, null).trendPts!).toBeCloseTo(50, 3));
+  it('a half with <4 questions → null', () => {
+    const three = [...mk(1, 1, [true, false, false, true] as any), ...mk(2, 2, [true, false, false])];
+    // older half (attempt 1) has 4, newer (attempt 2) has 3 → null
+    expect(sig(three, null).trendPts).toBeNull();
+  });
+});
+
+describe('stability: population SD of per-attempt accuracy (attempts with ≥2 skill questions)', () => {
+  const recs = [
+    rec({ attemptId: 1, correct: true }), rec({ attemptId: 1 }),                     // 0.5
+    rec({ attemptId: 2, correct: true }), rec({ attemptId: 2, correct: true }),      // 1.0
+    rec({ attemptId: 3 }), rec({ attemptId: 3 }),                                    // 0.0
+    rec({ attemptId: 4, correct: true }),                                            // 1 question: excluded
+  ];
+  it('SD of [0.5, 1, 0] ≈ 0.408248', () => expect(sig(recs, null).stabilitySd!).toBeCloseTo(0.408248, 5));
+});
+
+describe('flag and answer-change signals', () => {
+  const recs = [
+    rec({ flagged: true }), rec({ flagged: true }), rec({ flagged: true, correct: true }),
+    rec({ answerChanges: 2, correct: true }), rec({ answerChanges: 1, correct: true }),
+    rec({ answerChanges: 1, correct: true }), rec({ answerChanges: 3 }),
+  ];
+  it('flaggedWrong 2, flaggedRight 1, helpRate 3/4', () => {
+    const s = sig(recs, null);
+    expect(s.flaggedWrong).toBe(2); expect(s.flaggedRight).toBe(1);
+    expect(s.answerChangeHelpRate!).toBeCloseTo(0.75, 6);
+  });
+  it('no changed answers → helpRate null', () => expect(sig([rec({})], null).answerChangeHelpRate).toBeNull());
+});
+
+describe('cohort gate: ≥5 students each with ≥8 attempted on the skill', () => {
+  const student = (id: number, acc: number, attempted = 8): [number, SkillSignal[]] =>
+    [id, [{ ...sig([rec({})], null), slug: 's1', attempted, correct: 0, accuracy: acc }]];
+  it('5 students [0.5..0.9] → mean 0.7', () => {
+    const m = computeCohortAccuracy(new Map([student(1, 0.5), student(2, 0.6), student(3, 0.7), student(4, 0.8), student(5, 0.9)]));
+    expect(m.get('s1')!).toBeCloseTo(0.7, 6);
+  });
+  it('one below the floor → only 4 qualify → absent', () => {
+    const m = computeCohortAccuracy(new Map([student(1, 0.5), student(2, 0.6), student(3, 0.7), student(4, 0.8), student(5, 0.9, 7)]));
+    expect(m.has('s1')).toBe(false);
+  });
+});
+
+describe('opportunity ranking: sufficient only, accuracy asc, tie → worse trend first (null = 0)', () => {
+  const s = (slug: string, accuracy: number, trendPts: number | null, sufficientEvidence = true): SkillSignal =>
+    ({ ...sig([rec({})], null), slug, accuracy, trendPts, sufficientEvidence });
+  it('orders s3, s1, s2, s4 and drops insufficient s5', () => {
+    const ranked = rankOpportunityAreas([s('s1', 0.4, -5), s('s2', 0.4, null), s('s3', 0.3, 0), s('s4', 0.9, 10), s('s5', 0.1, 0, false)]);
+    expect(ranked.map((x) => x.slug)).toEqual(['s3', 's1', 's2', 's4']);
+  });
+});
+
+describe('writing signals: mean + halves trend per criterion', () => {
+  const recs = [60, 70, 80, 90].map((v, i) =>
+    ({ finishedAt: `2026-07-0${i + 1}T00:00:00.000Z`, criteriaScores: { vocabulary: v } }));
+  it('vocabulary mean 75, trend +20 (older [60,70]=65 → newer [80,90]=85)', () => {
+    const w = computeWritingSignals(recs).find((x) => x.slug === 'vocabulary')!;
+    expect(w.mean).toBeCloseTo(75, 6); expect(w.trendPts!).toBeCloseTo(20, 6); expect(w.n).toBe(4);
+  });
+  it('null criteriaScores rows are skipped', () =>
+    expect(computeWritingSignals([{ finishedAt: '2026-07-01T00:00:00.000Z', criteriaScores: null }])).toEqual([]));
 });

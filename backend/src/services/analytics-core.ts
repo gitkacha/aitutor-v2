@@ -100,11 +100,53 @@ export function computeSkillSignals(records: AnswerRecord[], medianMs: number | 
       }
     }
 
+    // trend: split the skill's own records into older/newer halves by attempt, compare accuracy
+    let trendPts: number | null = null;
+    {
+      const { older, newer } = splitAttemptHalves(recs);
+      const olderRecs = recs.filter((r) => older.has(r.attemptId));
+      const newerRecs = recs.filter((r) => newer.has(r.attemptId));
+      if (olderRecs.length >= 4 && newerRecs.length >= 4) {
+        const olderAcc = olderRecs.filter((r) => r.correct).length / olderRecs.length;
+        const newerAcc = newerRecs.filter((r) => r.correct).length / newerRecs.length;
+        trendPts = (newerAcc - olderAcc) * 100;
+      }
+    }
+
+    // stability: population SD of per-attempt accuracy, over attempts with >= 2 skill questions
+    let stabilitySd: number | null = null;
+    {
+      const byAttempt = new Map<number, AnswerRecord[]>();
+      for (const r of recs) {
+        if (!byAttempt.has(r.attemptId)) byAttempt.set(r.attemptId, []);
+        byAttempt.get(r.attemptId)!.push(r);
+      }
+      const accuracies: number[] = [];
+      for (const group of byAttempt.values()) {
+        if (group.length < 2) continue;
+        accuracies.push(group.filter((r) => r.correct).length / group.length);
+      }
+      stabilitySd = popStdDev(accuracies);
+    }
+
+    // flags
+    const flaggedWrong = recs.filter((r) => r.flagged && !r.correct).length;
+    const flaggedRight = recs.filter((r) => r.flagged && r.correct).length;
+
+    // answer-change help rate
+    let answerChangeHelpRate: number | null = null;
+    {
+      const changed = recs.filter((r) => r.answerChanges >= 1);
+      answerChangeHelpRate = changed.length > 0
+        ? changed.filter((r) => r.correct).length / changed.length
+        : null;
+    }
+
     signals.push({
       slug, name: recs[0].skillName, attempted, correct, accuracy, sufficientEvidence,
       meanTimeMs, slow, fastWrong, slowWrong, misconception,
-      trendPts: null, stabilitySd: null,
-      flaggedWrong: 0, flaggedRight: 0, answerChangeHelpRate: null,
+      trendPts, stabilitySd,
+      flaggedWrong, flaggedRight, answerChangeHelpRate,
     });
   }
 
@@ -139,4 +181,72 @@ export function computePacingCurve(records: AnswerRecord[]): { first: PacingThir
   });
 
   return { first: toThird(buckets.first), middle: toThird(buckets.middle), final: toThird(buckets.final) };
+}
+
+export function computeCohortAccuracy(perStudent: Map<number, SkillSignal[]>): Map<string, number> {
+  const bySlug = new Map<string, number[]>();
+  for (const signals of perStudent.values()) {
+    for (const s of signals) {
+      if (s.attempted < EVIDENCE_FLOOR) continue;
+      if (!bySlug.has(s.slug)) bySlug.set(s.slug, []);
+      bySlug.get(s.slug)!.push(s.accuracy);
+    }
+  }
+
+  const result = new Map<string, number>();
+  for (const [slug, accuracies] of bySlug) {
+    if (accuracies.length >= 5) {
+      result.set(slug, accuracies.reduce((a, b) => a + b, 0) / accuracies.length);
+    }
+  }
+  return result;
+}
+
+export function rankOpportunityAreas(signals: SkillSignal[]): SkillSignal[] {
+  return signals
+    .filter((s) => s.sufficientEvidence)
+    .sort((a, b) => {
+      if (a.accuracy !== b.accuracy) return a.accuracy - b.accuracy;
+      return (a.trendPts ?? 0) - (b.trendPts ?? 0);
+    });
+}
+
+export interface WritingAnalysisRecord {
+  finishedAt: string; // ISO
+  criteriaScores: Record<string, number> | null;
+}
+
+export function computeWritingSignals(
+  records: WritingAnalysisRecord[],
+): { slug: string; mean: number; trendPts: number | null; n: number }[] {
+  const valid = records.filter((r) => r.criteriaScores != null);
+
+  const indexed = valid.map((r, i) => ({ r, i }));
+  const sortedByFinish = [...indexed].sort((a, b) =>
+    a.r.finishedAt < b.r.finishedAt ? -1 : a.r.finishedAt > b.r.finishedAt ? 1 : a.i - b.i);
+
+  const slugs = new Set<string>();
+  for (const r of valid) for (const slug of Object.keys(r.criteriaScores!)) slugs.add(slug);
+
+  const results: { slug: string; mean: number; trendPts: number | null; n: number }[] = [];
+  for (const slug of slugs) {
+    const containing = valid.filter((r) => slug in r.criteriaScores!);
+    const n = containing.length;
+    const mean = containing.reduce((a, r) => a + r.criteriaScores![slug], 0) / n;
+
+    const sortedContaining = sortedByFinish.filter((x) => slug in x.r.criteriaScores!);
+    const olderCount = Math.ceil(sortedContaining.length / 2);
+    const older = sortedContaining.slice(0, olderCount);
+    const newer = sortedContaining.slice(olderCount);
+
+    let trendPts: number | null = null;
+    if (older.length >= 2 && newer.length >= 2) {
+      const olderMean = older.reduce((a, x) => a + x.r.criteriaScores![slug], 0) / older.length;
+      const newerMean = newer.reduce((a, x) => a + x.r.criteriaScores![slug], 0) / newer.length;
+      trendPts = newerMean - olderMean;
+    }
+
+    results.push({ slug, mean, trendPts, n });
+  }
+  return results;
 }
