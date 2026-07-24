@@ -18,7 +18,21 @@ every agent, on any model, without exception):
 
 ## Open
 
-_No open items._
+Milestone 3b-1 — Agentic Coach Backend (plan `docs/superpowers/plans/Milestone3b-1-plan.md`,
+spec `docs/superpowers/specs/2026-07-24-milestone3-agentic-coach-design.md` §5–§6, approved
+2026-07-24):
+
+- [ ] **W-42** — M3b-1 Task 1: schema — `ChatSession`, `ChatMessage`, `Intervention` models + migration.
+- [ ] **W-43** — M3b-1 Task 2 (M3a follow-up): enforce skill topic/subject membership in `createWorksheetQuestionRows` (wrong-topic/writing slug on a math question → 400).
+- [ ] **W-44** — M3b-1 Task 3 (spec §4.9): writing time-used ratio + word-count trends (`computeWritingUsage` in analytics-core, wired into the writing report) with hand-computed vectors.
+- [ ] **W-45** — M3b-1 Task 4: `chatWithTools` tool-calling primitive + `chat` AI role (default `gpt-5-mini`); mocked-fetch unit test.
+- [ ] **W-46** — M3b-1 Task 5: chat read-tool schemas + `dispatchReadTool` (list_students, get_student_skill_report, get_opportunity_areas, get_attempt_details, get_intervention_history) — thin adapters over analytics, workspace-scoped, no stats logic.
+- [ ] **W-47** — M3b-1 Task 6: action tools + confirmation gating — `pending-actions` store (mirrors generation-jobs) + `executeActionTool` (generate_worksheet, save_and_assign_worksheet, create_intervention); nothing mutates until confirmed.
+- [ ] **W-48** — M3b-1 Task 7: chat tool loop (`runChatStep`/`resolvePendingAction`) + grounded system prompt (never state a number absent from tool output; report-first on naming a student; ≥8 questions/skill for intervention worksheets) + suggestedQuestions.
+- [ ] **W-49** — M3b-1 Task 8: intervention service — frozen `diagnosisSnapshot` on create + recomputed outcome (`outcomeStatus`: <8 post → insufficient; +10pts → improving; else not-yet) never stored.
+- [ ] **W-50** — M3b-1 Task 9: chat + interventions API routes (all requireAdmin, students denied) + agent e2e (stub scripts tool-calls on :3106; confirmation gating; snapshot freeze; outcome recompute).
+
+## Done
 
 ## Done
 
