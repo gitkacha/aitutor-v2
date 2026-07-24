@@ -41,17 +41,16 @@ export async function resolveScopeUserIds(req: Request, res: Response): Promise<
   return members.map((m) => m.id);
 }
 
-// Resolves the student ids a worksheet is assigned to at save time (C1). `studentIds`
-// omitted → every student in the admin's workspace (the picker's select-all default);
-// provided → exactly those, but each must be a student in the admin's workspace, else a
-// 400 is written and null returned.
-export async function resolveAssigneeStudentIds(
-  req: Request,
-  res: Response,
+// Workspace-scoped core of assignee resolution (C1), req/res-free so non-HTTP callers
+// (the chat action executor, M3b Task 6) can reuse it. `studentIds` omitted → every
+// student in the workspace (the picker's select-all default); provided → exactly those,
+// but each must be a student in the workspace, else it throws.
+export async function resolveAssigneeStudentIdsForWorkspace(
+  workspaceId: number,
   studentIds: unknown
-): Promise<number[] | null> {
+): Promise<number[]> {
   const workspaceStudents = await prisma.user.findMany({
-    where: { workspaceId: req.user!.workspaceId, role: 'student' },
+    where: { workspaceId, role: 'student' },
     select: { id: true },
   });
   const allIds = workspaceStudents.map((s) => s.id);
@@ -59,15 +58,28 @@ export async function resolveAssigneeStudentIds(
   if (studentIds === undefined || studentIds === null) return allIds;
 
   if (!Array.isArray(studentIds) || !studentIds.every((v) => Number.isInteger(v))) {
-    res.status(400).json({ error: 'studentIds must be an array of student ids', status: 400 });
-    return null;
+    throw new Error('studentIds must be an array of student ids');
   }
   const allowed = new Set(allIds);
   if ((studentIds as number[]).some((id) => !allowed.has(id))) {
-    res.status(400).json({ error: 'studentIds must all be students in your workspace', status: 400 });
-    return null;
+    throw new Error('studentIds must all be students in your workspace');
   }
   return studentIds as number[];
+}
+
+// HTTP wrapper for the save route: translates the core's errors into a 400 response and
+// returns null, preserving the route's existing contract.
+export async function resolveAssigneeStudentIds(
+  req: Request,
+  res: Response,
+  studentIds: unknown
+): Promise<number[] | null> {
+  try {
+    return await resolveAssigneeStudentIdsForWorkspace(req.user!.workspaceId, studentIds);
+  } catch (e: any) {
+    res.status(400).json({ error: e.message, status: 400 });
+    return null;
+  }
 }
 
 // True when the caller may see rows belonging to `ownerId`: their own rows, or —

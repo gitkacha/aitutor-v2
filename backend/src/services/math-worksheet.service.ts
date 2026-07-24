@@ -107,6 +107,38 @@ export async function createWorksheetQuestionRows(
   }
 }
 
+// Persist an admin-reviewed worksheet and assign it, in one transaction (shared by the
+// POST /save route and the M3b chat action executor). Callers resolve `assigneeIds` first
+// (resolveAssigneeStudentIds*) and validate `questions` (validateWorksheetQuestions).
+export async function saveAndAssignWorksheet(params: {
+  workspaceId: number;
+  createdById: number;
+  title: string;
+  topicIds: unknown;
+  questions: WorksheetQuestionJson[];
+  assigneeIds: number[];
+}) {
+  const { workspaceId, createdById, title, topicIds, questions, assigneeIds } = params;
+  return prisma.$transaction(async (tx) => {
+    const created = await tx.mathWorksheet.create({
+      data: {
+        workspaceId,
+        createdById,
+        title,
+        topicIds: JSON.stringify(topicIds || []),
+        questions: JSON.stringify(questions),
+      },
+    });
+    await createWorksheetQuestionRows(created.id, questions, tx);
+    if (assigneeIds.length > 0) {
+      await tx.mathWorksheetAssignment.createMany({
+        data: assigneeIds.map((studentId) => ({ worksheetId: created.id, studentId })),
+      });
+    }
+    return created;
+  });
+}
+
 // Fetch a worksheet's question rows in authored order, materialising them from the
 // stored JSON for worksheets saved before question rows existed.
 export async function getWorksheetQuestionRows(worksheetId: number) {

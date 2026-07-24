@@ -5,8 +5,10 @@
 // data (worksheet generation/assignment, interventions) — schemas only here; Task 6 wires their
 // executors and Task 7/9 wire confirmation flow. dispatchReadTool executes a READ tool by name.
 import prisma from '../lib/prisma';
-import { ChatToolSchema } from './ai.service';
+import { ChatToolSchema, generateMathWorksheetQuestions, resolveMathTopicsForGeneration } from './ai.service';
 import { getStudentSkillReport, getOpportunityAreas } from './analytics.service';
+import { validateWorksheetQuestions, saveAndAssignWorksheet } from './math-worksheet.service';
+import { resolveAssigneeStudentIdsForWorkspace } from '../lib/scope';
 
 export interface ToolContext {
   workspaceId: number;
@@ -225,5 +227,73 @@ export async function dispatchReadTool(name: string, args: any, ctx: ToolContext
 
     default:
       throw new Error(`Unknown read tool: ${name}`);
+  }
+}
+
+// Clamp to the schema's declared 5–50 range (same clamp as the POST /generate route).
+function clampQuestionCount(raw: unknown): number {
+  return Math.max(5, Math.min(50, parseInt(String(raw), 10) || 35));
+}
+
+// Executes a confirmable action tool AFTER the admin has confirmed it (the confirm route,
+// Task 9, calls this then deletes the pending action). Reuses the same generation/save
+// services the HTTP routes use so behaviour and validation stay identical. Errors propagate
+// to the caller. Scoped to ctx.workspaceId / ctx.adminId throughout.
+export async function executeActionTool(name: string, args: any, ctx: ToolContext): Promise<unknown> {
+  switch (name) {
+    case 'generate_worksheet': {
+      if (args.subject && args.subject !== 'math') {
+        throw new Error('generate_worksheet currently supports subject "math" only');
+      }
+      const questionCount = clampQuestionCount(args.questionCount);
+
+      // Selection: explicit topicSlugs, plus the owning topics of any skillSlugs. Empty
+      // set → generation covers every topic (resolveMathTopicsForGeneration's default).
+      const slugSet = new Set<string>(Array.isArray(args.topicSlugs) ? args.topicSlugs : []);
+      if (Array.isArray(args.skillSlugs) && args.skillSlugs.length > 0) {
+        const skills = await prisma.skill.findMany({
+          where: { slug: { in: args.skillSlugs }, subject: 'math' },
+          select: { topic: { select: { slug: true } } },
+        });
+        for (const s of skills) if (s.topic) slugSet.add(s.topic.slug);
+      }
+      const topicSlugs = [...slugSet];
+
+      const topics = await resolveMathTopicsForGeneration(topicSlugs);
+      if (topics.length === 0) {
+        throw new Error('No topics found for the requested selection');
+      }
+
+      const topicSummaries = topics.map((t) => ({ id: t.id, name: t.name, slug: t.slug }));
+      const questions = await generateMathWorksheetQuestions(topics, questionCount);
+      const title = `${topics.map((t) => t.name).join(', ')} practice`;
+      return { title, topics: topicSummaries, questions };
+    }
+
+    case 'save_and_assign_worksheet': {
+      if (!args.title || !validateWorksheetQuestions(args.questions)) {
+        throw new Error(
+          'save_and_assign_worksheet requires a title and a non-empty array of valid questions ' +
+          '({questionText, options[], correctIndex, explanation, topicSlug, skillSlug})'
+        );
+      }
+      const assigneeIds = await resolveAssigneeStudentIdsForWorkspace(ctx.workspaceId, args.studentIds);
+      return saveAndAssignWorksheet({
+        workspaceId: ctx.workspaceId,
+        createdById: ctx.adminId,
+        title: args.title,
+        topicIds: args.topicIds,
+        questions: args.questions,
+        assigneeIds,
+      });
+    }
+
+    case 'create_intervention': {
+      // Wired to intervention.service in Task 8; parked until then.
+      throw new Error('create_intervention not yet wired (Task 8)');
+    }
+
+    default:
+      throw new Error(`Unknown action tool: ${name}`);
   }
 }

@@ -668,6 +668,22 @@ Generate exactly ${count} questions. Make sure distractors are plausible — the
   return { questions: parsed, usage };
 }
 
+// Resolve the topic rows generation runs over, each with its hardest known question for
+// difficulty calibration (W-19). Shared by the POST /generate route and the M3b chat
+// action executor. `topicSlugs` empty/omitted → every topic.
+export async function resolveMathTopicsForGeneration(topicSlugs?: string[]) {
+  const where = topicSlugs && topicSlugs.length > 0 ? { slug: { in: topicSlugs } } : {};
+  return prisma.mathTopic.findMany({
+    where,
+    include: {
+      questions: {
+        orderBy: { percentCorrect: 'asc' },
+        take: 1, // hardest question per topic for difficulty calibration
+      },
+    },
+  });
+}
+
 export async function generateMathWorksheetQuestions(
   topics: MathTopicForGen[],
   questionCount = 35

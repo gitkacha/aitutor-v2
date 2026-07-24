@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
-import { generateMathWorksheetQuestions } from '../services/ai.service';
-import { createWorksheetQuestionRows, validateWorksheetQuestions } from '../services/math-worksheet.service';
+import { generateMathWorksheetQuestions, resolveMathTopicsForGeneration } from '../services/ai.service';
+import { validateWorksheetQuestions, saveAndAssignWorksheet } from '../services/math-worksheet.service';
 import { asyncHandler } from '../lib/async-handler';
 import { requireAdmin, requireAuth } from '../middleware/auth';
 import { resolveAssigneeStudentIds } from '../lib/scope';
@@ -43,27 +43,7 @@ router.post('/generate', requireAdmin, asyncHandler(async (req: Request, res: Re
   const { topicIds } = req.body; // Array of topic slugs, empty = all topics
   const questionCount = Math.max(5, Math.min(50, parseInt(req.body.questionCount) || 35));
 
-  let topics;
-  if (topicIds && topicIds.length > 0) {
-    topics = await prisma.mathTopic.findMany({
-      where: { slug: { in: topicIds } },
-      include: {
-        questions: {
-          orderBy: { percentCorrect: 'asc' },
-          take: 1, // hardest question per topic for difficulty calibration
-        },
-      },
-    });
-  } else {
-    topics = await prisma.mathTopic.findMany({
-      include: {
-        questions: {
-          orderBy: { percentCorrect: 'asc' },
-          take: 1,
-        },
-      },
-    });
-  }
+  const topics = await resolveMathTopicsForGeneration(topicIds);
 
   if (topics.length === 0) {
     return res.status(400).json({ error: 'No topics found' });
@@ -101,25 +81,13 @@ router.post('/save', requireAdmin, asyncHandler(async (req: Request, res: Respon
   if (!assigneeIds) return;
 
   try {
-    const worksheet = await prisma.$transaction(async (tx) => {
-      const created = await tx.mathWorksheet.create({
-        data: {
-          // Tenant scoping (Milestone 2 Phase A); assignment picker lands in C1.
-          workspaceId: req.user!.workspaceId,
-          createdById: req.user!.id,
-          title,
-          topicIds: JSON.stringify(topicIds || []),
-          questions: JSON.stringify(questions),
-        },
-      });
-      await createWorksheetQuestionRows(created.id, questions, tx);
-      // Assign to the admin-selected students (C1).
-      if (assigneeIds.length > 0) {
-        await tx.mathWorksheetAssignment.createMany({
-          data: assigneeIds.map((studentId) => ({ worksheetId: created.id, studentId })),
-        });
-      }
-      return created;
+    const worksheet = await saveAndAssignWorksheet({
+      workspaceId: req.user!.workspaceId,
+      createdById: req.user!.id,
+      title,
+      topicIds,
+      questions,
+      assigneeIds,
     });
 
     res.status(201).json(worksheet);
