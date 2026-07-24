@@ -26,6 +26,16 @@ export default function MathTimedPractice() {
   const startTimeRef = useRef(Date.now());
   const submittedRef = useRef(false);
   const hasStarted = useRef(false);
+  // Per-question dwell time, flags and answer-change counts (Milestone 3a capture) — invisible
+  // to the student, read back by the coaching/analysis layer later.
+  const dwellRef = useRef<Record<number, number>>({});
+  const lastSwitchRef = useRef<number>(Date.now());
+  const changesRef = useRef<Record<number, number>>({});
+  const recordDwell = (qid: number) => {
+    const now = Date.now();
+    dwellRef.current[qid] = (dwellRef.current[qid] ?? 0) + (now - lastSwitchRef.current);
+    lastSwitchRef.current = now;
+  };
 
   const isWorksheet = !!worksheetId;
 
@@ -59,11 +69,16 @@ export default function MathTimedPractice() {
     setEndTime(Date.now() + totalTime * 1000);
     setTimeLeft(totalTime);
     setStarted(true);
+    // Dwell clock starts with the test itself, not at mount — the start-confirmation
+    // screen (W-16) must never inflate Q1's dwell time.
+    lastSwitchRef.current = Date.now();
   };
 
   const submitAttempt = useCallback(async () => {
     if (submittedRef.current) return;
     submittedRef.current = true;
+    const activeQ = questions[currentIndex];
+    if (activeQ) recordDwell(activeQ.id);
     setRunning(false);
     setSubmitting(true);
     setSaveError(false);
@@ -83,6 +98,9 @@ export default function MathTimedPractice() {
         timeTaken: Math.min(elapsed, totalTime - timeLeft),
         source: isWorksheet ? 'worksheet' : 'practice',
         worksheetId: isWorksheet ? worksheetId : undefined,
+        questionTimings: JSON.stringify(dwellRef.current),
+        questionFlags: JSON.stringify([...flagged]),
+        answerChanges: JSON.stringify(changesRef.current),
       });
 
       navigate(`/math-attempt/${attempt.id}`, { replace: true });
@@ -93,7 +111,7 @@ export default function MathTimedPractice() {
       submittedRef.current = false;
       setSaveError(true);
     }
-  }, [questions, answers, topicSlug, totalTime, timeLeft, navigate, isWorksheet, worksheetId]);
+  }, [questions, answers, topicSlug, totalTime, timeLeft, navigate, isWorksheet, worksheetId, currentIndex, flagged]);
 
   const handleTimeUp = useCallback(() => submitAttempt(), [submitAttempt]);
 
@@ -120,7 +138,11 @@ export default function MathTimedPractice() {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
-  const jumpTo = (index: number) => { setCurrentIndex(index); setConfirmed(false); };
+  const jumpTo = (index: number) => {
+    if (currentQ) recordDwell(currentQ.id);
+    setCurrentIndex(index);
+    setConfirmed(false);
+  };
   const flaggedIdx = questions.map((q, i) => ({ q, i })).filter(({ q }) => flagged.has(q.id)).map(({ i }) => i);
   const unansweredIdx = questions.map((q, i) => ({ q, i })).filter(({ q }) => answers[q.id] == null).map(({ i }) => i);
 
@@ -266,6 +288,9 @@ export default function MathTimedPractice() {
             question={currentQ}
             selectedIndex={answers[currentQ.id] ?? -1}
             onSelect={(index) => {
+              if (answers[currentQ.id] != null && answers[currentQ.id] !== index) {
+                changesRef.current[currentQ.id] = (changesRef.current[currentQ.id] ?? 0) + 1;
+              }
               setAnswers(prev => ({ ...prev, [currentQ.id]: index }));
             }}
           />
@@ -276,7 +301,7 @@ export default function MathTimedPractice() {
       <div className="flex items-center justify-between">
         <div className="flex gap-2">
           {currentIndex > 0 && (
-            <Button variant="outline" onClick={() => setCurrentIndex(i => i - 1)}>
+            <Button variant="outline" onClick={() => { if (currentQ) recordDwell(currentQ.id); setCurrentIndex(i => i - 1); }}>
               Previous
             </Button>
           )}
@@ -299,7 +324,7 @@ export default function MathTimedPractice() {
             Submit All
           </Button>
           {!isLast ? (
-            <Button onClick={() => setCurrentIndex(i => i + 1)}>
+            <Button onClick={() => { if (currentQ) recordDwell(currentQ.id); setCurrentIndex(i => i + 1); }}>
               Next
             </Button>
           ) : (

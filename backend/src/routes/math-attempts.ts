@@ -8,10 +8,40 @@ const router = Router();
 
 // POST /api/math/attempts — save a completed attempt
 router.post('/', requireAuth, asyncHandler(async (req: Request, res: Response) => {
-  const { topicId, questions, answers, startedAt, finishedAt, timeTaken, source, worksheetId } = req.body;
+  const {
+    topicId, questions, answers, startedAt, finishedAt, timeTaken, source, worksheetId,
+    questionTimings, questionFlags, answerChanges,
+  } = req.body;
 
   if (!questions || !answers || !startedAt || !finishedAt || timeTaken == null) {
     return res.status(400).json({ error: 'Missing required fields: questions, answers, startedAt, finishedAt, timeTaken' });
+  }
+
+  // Optional per-question capture (Milestone 3a): dwell time and answer-change counts are
+  // JSON objects keyed by question id; flags are a JSON int array. Malformed payloads are
+  // rejected outright rather than silently stored (M10 precedent) — each field is optional,
+  // so omitting it entirely is still valid.
+  const isCountMap = (val: unknown): boolean =>
+    typeof val === 'object' && val !== null && !Array.isArray(val) &&
+    Object.entries(val as Record<string, unknown>).every(
+      ([k, v]) => /^\d+$/.test(k) && typeof v === 'number' && Number.isFinite(v) && v >= 0
+    );
+  const isIntIdArray = (val: unknown): boolean =>
+    Array.isArray(val) && val.every((v) => Number.isInteger(v));
+  const parsesTo = (raw: unknown, validator: (v: unknown) => boolean): boolean => {
+    try {
+      return validator(JSON.parse(raw as string));
+    } catch {
+      return false;
+    }
+  };
+
+  if (
+    (questionTimings != null && !parsesTo(questionTimings, isCountMap)) ||
+    (questionFlags != null && !parsesTo(questionFlags, isIntIdArray)) ||
+    (answerChanges != null && !parsesTo(answerChanges, isCountMap))
+  ) {
+    return res.status(400).json({ error: 'invalid capture payload' });
   }
 
   // Compute score and topic breakdown; questions/answers are client-supplied JSON strings.
@@ -91,6 +121,9 @@ router.post('/', requireAuth, asyncHandler(async (req: Request, res: Response) =
       timeTaken,
       source: source || 'practice',
       worksheetId: worksheetId ?? null,
+      questionTimings: questionTimings ?? null,
+      questionFlags: questionFlags ?? null,
+      answerChanges: answerChanges ?? null,
     },
   });
 

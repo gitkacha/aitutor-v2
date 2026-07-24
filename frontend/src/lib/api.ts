@@ -122,6 +122,9 @@ export interface MathAttempt {
   worksheetId: number | null;
   isDemo: boolean;
   topic: MathTopic | null;
+  questionTimings: string | null;
+  questionFlags: string | null;
+  answerChanges: string | null;
   questionDetails?: MathQuestionFull[];
   answersArray?: number[];
   breakdown?: Record<string, { correct: number; total: number }>;
@@ -179,6 +182,11 @@ export const mathApi = {
     timeTaken: number;
     source?: string;
     worksheetId?: number;
+    // Per-question dwell time, flags and answer-change counts (Milestone 3a capture) — each
+    // a JSON-stringified payload, optional so older callers keep working.
+    questionTimings?: string;
+    questionFlags?: string;
+    answerChanges?: string;
   }) => fetchJSON<MathAttempt>('/math/attempts', {
     method: 'POST',
     body: JSON.stringify(data),
