@@ -231,6 +231,24 @@ export interface GenerationJob<T> {
   error?: string;
 }
 
+// ── Skills (M3a Task 10) ──
+
+export interface Skill {
+  id: number;
+  subject: string; // 'math' | 'writing'
+  topicId: number | null;
+  name: string;
+  slug: string;
+  description: string;
+  examLevelNotes: string;
+  isDemo: boolean;
+  topicSlug: string | null;
+}
+
+export const skillsApi = {
+  list: () => fetchJSON<Skill[]>('/skills'),
+};
+
 // ── Auth (Milestone 2) ──
 
 export interface AuthUser {

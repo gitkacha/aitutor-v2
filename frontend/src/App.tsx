@@ -15,11 +15,19 @@ import Admin from './pages/Admin';
 import MathPracticeHome from './pages/MathPracticeHome';
 import MathTimedPractice from './pages/MathTimedPractice';
 import MathAttemptReview from './pages/MathAttemptReview';
+import Skills from './pages/Skills';
 
 // Super-admin-only route guard (W-15): non-super users are sent to the dashboard.
 function RequireSuperAdmin({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   return user?.isSuperAdmin ? <>{children}</> : <Nav to="/dashboard" replace />;
+}
+
+// Admin-only route guard (M3a Task 10): mirrors RequireSuperAdmin — students are sent
+// to the dashboard rather than seeing a broken/empty admin surface.
+function RequireAdmin({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  return user?.role === 'admin' ? <>{children}</> : <Nav to="/dashboard" replace />;
 }
 
 // The signed-in application shell — everything behind the auth guard (W-11).
@@ -36,6 +44,7 @@ function AppShell() {
           <Route path="/history/:typeSlug" element={<ScoreHistory />} />
           <Route path="/attempt/:id" element={<AttemptDetail />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/skills" element={<RequireAdmin><Skills /></RequireAdmin>} />
           <Route path="/superadmin" element={<RequireSuperAdmin><SuperAdmin /></RequireSuperAdmin>} />
           <Route path="/math/:topicSlug" element={<MathPracticeHome />} />
           <Route path="/math/:topicSlug/start" element={<MathTimedPractice />} />
