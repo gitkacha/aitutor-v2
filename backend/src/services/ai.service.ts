@@ -10,12 +10,13 @@ import { MATH_SKILLS, WRITING_SKILLS } from '../../prisma/seed-skills';
 // env vars — no code change. Defaults: generation gpt-5-mini (fast candidate writer), an
 // independent o4-mini reasoning auditor for verification (W-21 — cheaper than gpt-5, plenty
 // for Year-6 math), gpt-4o-mini for writing analysis.
-type ModelRole = 'generation' | 'verification' | 'analysis';
+type ModelRole = 'generation' | 'verification' | 'analysis' | 'chat';
 
 const ROLE_DEFAULTS: Record<ModelRole, string> = {
   generation: 'gpt-5-mini',
   verification: 'o4-mini',
   analysis: 'gpt-4o-mini',
+  chat: 'gpt-5-mini',
 };
 
 type TokensParam = 'max_completion_tokens' | 'max_tokens';
@@ -125,6 +126,126 @@ export async function chatCompletion(provider: ModelProvider, prompt: string, ma
   // Per-call token/cost logging (W-23).
   console.log('[ai-usage]', JSON.stringify({ model: provider.model, ...(usage || { totalTokens: null }) }));
   return { content: stripControlChars(raw), usage };
+}
+
+// ── Tool-calling primitive (M3b Task 4) ──────────────────────────────────────
+// A multi-turn, OpenAI-function-calling variant of chatCompletion. Where chatCompletion
+// is a single user prompt → text, chatWithTools carries a full message history (including
+// prior assistant tool calls and their tool results) and exposes any function the model
+// wants to call, so a caller can run an agentic loop. Uses the same provider plumbing,
+// tokensParam and reasoning-model temperature rule (this primitive never sends temperature).
+
+// A single function call the model asked for. `arguments` is the raw JSON string the model
+// emitted — parse it at the call site (it may be partial/invalid model output).
+export interface ToolCall {
+  id: string;
+  name: string;
+  arguments: string;
+}
+
+// One turn of the conversation, in this app's own shape (serialised to the OpenAI wire
+// format inside chatWithTools). A `tool` turn carries a function result keyed by
+// `toolCallId`; an `assistant` turn that called functions carries `toolCalls`.
+export interface ChatTurn {
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string;
+  toolCallId?: string;
+  toolCalls?: ToolCall[];
+}
+
+// A function the model may call, described by JSON Schema `parameters`.
+export interface ChatToolSchema {
+  name: string;
+  description: string;
+  parameters: object;
+}
+
+interface ChatWithToolsResponse {
+  choices: Array<{
+    message: {
+      content: string | null;
+      tool_calls?: Array<{ id: string; type: string; function: { name: string; arguments: string } }>;
+    };
+  }>;
+  usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+}
+
+// Serialise one ChatTurn to the OpenAI chat message wire shape.
+function toWireMessage(turn: ChatTurn): Record<string, unknown> {
+  if (turn.role === 'tool') {
+    return { role: 'tool', tool_call_id: turn.toolCallId, content: turn.content };
+  }
+  if (turn.role === 'assistant' && turn.toolCalls && turn.toolCalls.length > 0) {
+    return {
+      role: 'assistant',
+      content: turn.content || null,
+      tool_calls: turn.toolCalls.map((tc) => ({
+        id: tc.id,
+        type: 'function',
+        function: { name: tc.name, arguments: tc.arguments },
+      })),
+    };
+  }
+  return { role: turn.role, content: turn.content };
+}
+
+export async function chatWithTools(
+  provider: ModelProvider,
+  messages: ChatTurn[],
+  tools: ChatToolSchema[],
+  maxTokens: number
+): Promise<{ content: string; toolCalls: ToolCall[]; usage: Usage | null }> {
+  if (!provider.apiKey) {
+    throw new Error('OPENAI_API_KEY is not configured. Add it to backend/.env.');
+  }
+
+  const body: Record<string, unknown> = {
+    model: provider.model,
+    messages: messages.map(toWireMessage),
+    [provider.tokensParam]: maxTokens,
+  };
+  // Reasoning models reject `temperature`; this primitive never sends one regardless.
+  if (tools.length > 0) {
+    body.tools = tools.map((t) => ({
+      type: 'function',
+      function: { name: t.name, description: t.description, parameters: t.parameters },
+    }));
+    body.tool_choice = 'auto';
+  }
+
+  const response = await fetch(`${provider.baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${provider.apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = (await response.text()).slice(0, 300);
+    throw new Error(`OpenAI API error (${response.status}): ${errorText}`);
+  }
+
+  const data = (await response.json()) as ChatWithToolsResponse;
+  const msg = data.choices?.[0]?.message;
+  if (!msg) {
+    throw new Error('OpenAI API returned no message');
+  }
+  const toolCalls: ToolCall[] = (msg.tool_calls || []).map((tc) => ({
+    id: tc.id,
+    name: tc.function.name,
+    arguments: tc.function.arguments,
+  }));
+  const usage: Usage | null = data.usage
+    ? {
+        promptTokens: data.usage.prompt_tokens || 0,
+        completionTokens: data.usage.completion_tokens || 0,
+        totalTokens: data.usage.total_tokens || 0,
+      }
+    : null;
+  console.log('[ai-usage]', JSON.stringify({ role: 'chat', model: provider.model, ...(usage || { totalTokens: null }) }));
+  return { content: msg.content || '', toolCalls, usage };
 }
 
 // Sum of many usages, for a per-worksheet total (W-23).
