@@ -18,6 +18,17 @@ const STUB_ANALYSIS = {
   contentComments: 'Follows the persuasive structure well.',
   overallScore: 78,
   summary: 'A convincing piece with room to tighten sentence flow.',
+  // M3a Task 9: real analyses now carry per-criterion scores; the canned response includes
+  // them so this spec's persisted row looks like production data.
+  criteria: {
+    vocabulary: 82,
+    'sentence-variety': 70,
+    ideas: 80,
+    'text-structure': 74,
+    'punctuation-grammar': 76,
+    audience: 71,
+    cohesion: 73,
+  },
 };
 
 interface CapturedRequest {

@@ -109,6 +109,15 @@ export async function getWorksheetQuestionRows(worksheetId: number) {
     if (validateWorksheetQuestions(json)) {
       await createWorksheetQuestionRows(worksheetId, json);
       rows = await fetchRows();
+    } else {
+      // M3a Task 9: a legacy blob that fails validation (typically pre-taxonomy questions
+      // with no skillSlug) used to be dropped silently, leaving the worksheet looking
+      // empty. Still no behaviour change — but no longer silent. The backfill script
+      // (scripts/backfill-skill-tags.ts) stamps skillSlug into such blobs.
+      console.warn(
+        `[worksheet] worksheet ${worksheetId}: legacy questions blob failed validation — returning no rows. ` +
+        'Run scripts/backfill-skill-tags.ts to stamp missing skill tags.'
+      );
     }
   }
   return rows;

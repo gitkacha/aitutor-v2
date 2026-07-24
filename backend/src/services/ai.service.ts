@@ -1,7 +1,7 @@
 import prisma from '../lib/prisma';
 import { validateStimulus, StimulusSpec } from '../lib/stimulus';
 import { hasDistinctOptions, explanationMatchesKey, keptByEscalation } from '../lib/question-checks';
-import { MATH_SKILLS } from '../../prisma/seed-skills';
+import { MATH_SKILLS, WRITING_SKILLS } from '../../prisma/seed-skills';
 
 // Per-role model providers (W-21). Each role — generation, answer-key verification, writing
 // analysis — resolves its own {model, baseUrl, apiKey} from role-specific env, falling back
@@ -150,10 +150,34 @@ interface AnalysisResult {
   contentComments: string;
   overallScore: number;
   summary: string;
+  // M3a Task 9: JSON string mapping writing-criteria slugs to 0-100 scores, or null when
+  // the model's criteria object was missing/malformed. Stored on Analysis.criteriaScores.
+  criteriaScores: string | null;
 }
 
 const ANALYSIS_SCORE_FIELDS = ['vocabScore', 'structureScore', 'contentScore', 'overallScore'] as const;
 const ANALYSIS_TEXT_FIELDS = ['vocabComments', 'structureComments', 'contentComments', 'summary'] as const;
+
+// M3a Task 9: per-criterion scores against the closed writing taxonomy. WRITING_SKILLS
+// (prisma/seed-skills.ts) is the single source of truth for the 7 slugs — the prompt,
+// the parser and the seeded Skill rows can never disagree.
+const WRITING_CRITERIA_SLUGS = new Set(WRITING_SKILLS.map((s) => s.slug));
+
+// Defensive by design — the opposite of the strict headline-score parse above. The
+// criteria block is an additive enrichment: a missing or malformed "criteria" object
+// (e.g. an older stubbed response, or a model that ignored the instruction) must degrade
+// to null, never fail an otherwise-valid analysis. Unknown slugs and out-of-range or
+// non-numeric values are dropped entry-by-entry; an empty survivor set is stored as null.
+export function parseCriteriaScores(criteria: unknown): string | null {
+  if (criteria == null || typeof criteria !== 'object' || Array.isArray(criteria)) return null;
+  const out: Record<string, number> = {};
+  for (const [slug, value] of Object.entries(criteria as Record<string, unknown>)) {
+    if (!WRITING_CRITERIA_SLUGS.has(slug)) continue;
+    if (typeof value !== 'number' || Number.isNaN(value) || value < 0 || value > 100) continue;
+    out[slug] = Math.round(value);
+  }
+  return Object.keys(out).length > 0 ? JSON.stringify(out) : null;
+}
 
 // Strict parse: a malformed model response must fail the analysis, never degrade
 // into fake scores — failed analyses are not persisted.
@@ -191,6 +215,7 @@ function parseAnalysisResponse(content: string): AnalysisResult {
     contentComments: parsed.contentComments as string,
     overallScore: Math.round(parsed.overallScore as number),
     summary: parsed.summary as string,
+    criteriaScores: parseCriteriaScores(parsed.criteria),
   };
 }
 
@@ -216,6 +241,9 @@ Student's Writing:
 ${attempt.text}
 ---
 
+In addition to the headline scores, score the piece 0-100 on each of these 7 marking criteria (use exactly these keys, all 7 of them, no others):
+${WRITING_SKILLS.map((s) => `- ${s.slug}: ${s.name} — ${s.description}`).join('\n')}
+
 Respond with ONLY a JSON object (no markdown, no code fences) in this exact format:
 {
   "vocabScore": <0-100>,
@@ -225,12 +253,13 @@ Respond with ONLY a JSON object (no markdown, no code fences) in this exact form
   "contentScore": <0-100>,
   "contentComments": "<specific feedback about content and how well it follows the expected structure, referencing the student's actual content>",
   "overallScore": <0-100>,
-  "summary": "<2-3 sentence summary of the overall performance>"
+  "summary": "<2-3 sentence summary of the overall performance>",
+  "criteria": {${WRITING_SKILLS.map((s) => `"${s.slug}": <0-100>`).join(', ')}}
 }
 
 All comments must reference specific parts of the student's text.`;
 
-  const { content } = await chatCompletion(providerFor('analysis'), prompt, 1000, 0.7);
+  const { content } = await chatCompletion(providerFor('analysis'), prompt, 1500, 0.7);
   return parseAnalysisResponse(content);
 }
 

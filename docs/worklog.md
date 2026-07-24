@@ -29,7 +29,7 @@ spec `docs/superpowers/specs/2026-07-24-milestone3-agentic-coach-design.md`, app
 - [ ] **W-36** — M3a Task 6: analytics DB adapter (`analytics.service.ts`) + admin endpoints `GET /api/analytics/students/:id/report` and `GET /api/analytics/opportunity-areas`; students denied.
 - [ ] **W-37** — M3a Task 7: timed-test capture instrumentation — per-question dwell, flags, answer-change counts submitted and stored with the attempt.
 - [ ] **W-38** — M3a Task 8: skill-tagged question generation (closed list in prompt, verifier tag check, `skillId` persisted on save; unknown slug → 400).
-- [ ] **W-39** — M3a Task 9: writing `criteriaScores` from the analysis call (7 criteria, defensive parse) + `backfill-skill-tags.ts` script (dry-run mode, verifier-checked) for the 35 bank questions.
+- [ ] **W-39** — M3a Task 9: writing `criteriaScores` from the analysis call (7 criteria, defensive parse) + `backfill-skill-tags.ts` script (dry-run mode, verifier-checked) for the 35 bank questions. Extended scope (approved, from Task 8's review): the script also stamps `skillSlug` into legacy `MathWorksheet.questions` blobs (via persisted rows when available, else AI), and the worksheet materialisation path warns instead of silently dropping a legacy blob that fails validation.
 - [ ] **W-40** — M3a Task 10: admin Skills browser page (grouped read-only taxonomy view, admin-only nav).
 
 ## Done
