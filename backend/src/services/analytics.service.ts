@@ -9,6 +9,7 @@ import {
   computePacingCurve,
   computeCohortAccuracy,
   rankOpportunityAreas,
+  rankWritingOpportunityAreas,
   computeWritingSignals,
 } from './analytics-core';
 
@@ -233,11 +234,23 @@ export async function getStudentSkillReport(
   return subject === 'math' ? getMathReport(studentId, lastNTests) : getWritingReport(studentId, lastNTests);
 }
 
-export type OpportunityArea =
-  | SkillSignal
-  | WritingSkillSignal
-  | { slug: string; name: string; cohortAccuracy: number; students: number };
+// Workspace-wide cohort ranking (no studentId): one row per skill with the cohort's mean
+// accuracy and how many students had sufficient evidence on it. Math-only — see
+// getOpportunityAreas's doc comment.
+export interface CohortOpportunityArea {
+  slug: string;
+  name: string;
+  cohortAccuracy: number;
+  students: number;
+}
 
+export type OpportunityArea = SkillSignal | WritingSkillSignal | CohortOpportunityArea;
+
+// Returns one of three shapes depending on the (subject, studentId) combination:
+//  - subject: 'math', studentId set    → SkillSignal[]              (per-student math ranking)
+//  - subject: 'writing', studentId set → WritingSkillSignal[]        (per-student writing ranking)
+//  - studentId omitted (workspace-wide) → CohortOpportunityArea[]    (math only; [] for writing —
+//    no cohort baseline exists for writing yet, see the adapter rules note below)
 export async function getOpportunityAreas(
   workspaceId: number,
   subject: 'math' | 'writing',
@@ -246,10 +259,7 @@ export async function getOpportunityAreas(
   if (studentId != null) {
     const report = await getStudentSkillReport(studentId, subject);
     if (subject === 'math') return rankOpportunityAreas(report.skills as SkillSignal[]);
-    const writing = report.skills as WritingSkillSignal[];
-    return writing
-      .filter((s) => s.sufficientEvidence)
-      .sort((a, b) => a.mean - b.mean || (a.trendPts ?? 0) - (b.trendPts ?? 0));
+    return rankWritingOpportunityAreas(report.skills as WritingSkillSignal[]);
   }
 
   // Workspace-wide: cohort computation is math-only per the adapter rules — writing has no

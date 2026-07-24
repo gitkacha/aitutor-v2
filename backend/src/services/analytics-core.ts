@@ -211,6 +211,19 @@ export function rankOpportunityAreas(signals: SkillSignal[]): SkillSignal[] {
     });
 }
 
+// Writing's opportunity ranking: same shape of rule as rankOpportunityAreas but keyed on
+// `mean` (writing has no `accuracy`) — sufficient-evidence only, ascending by mean, ties
+// broken by worse (more negative) trendPts first with null coalesced to 0. Generic over any
+// shape carrying these three fields so the adapter's WritingSkillSignal (which also carries
+// `slug`/`name`/`n`) can be ranked without the core depending on that adapter-only type.
+export function rankWritingOpportunityAreas<
+  T extends { mean: number; trendPts: number | null; sufficientEvidence: boolean }
+>(signals: T[]): T[] {
+  return signals
+    .filter((s) => s.sufficientEvidence)
+    .sort((a, b) => a.mean - b.mean || (a.trendPts ?? 0) - (b.trendPts ?? 0));
+}
+
 export interface WritingAnalysisRecord {
   finishedAt: string; // ISO
   criteriaScores: Record<string, number> | null;

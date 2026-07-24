@@ -115,7 +115,7 @@ describe('pacing curve, n=7 (thirds 3/1/3)', () => {
   });
 });
 
-import { computeCohortAccuracy, rankOpportunityAreas, computeWritingSignals } from './analytics-core';
+import { computeCohortAccuracy, rankOpportunityAreas, rankWritingOpportunityAreas, computeWritingSignals } from './analytics-core';
 
 describe('trend over attempt halves (needs ≥4 questions per half)', () => {
   const mk = (attemptId: number, day: number, corrects: boolean[]) =>
@@ -174,6 +174,22 @@ describe('opportunity ranking: sufficient only, accuracy asc, tie → worse tren
   it('orders s3, s1, s2, s4 and drops insufficient s5', () => {
     const ranked = rankOpportunityAreas([s('s1', 0.4, -5), s('s2', 0.4, null), s('s3', 0.3, 0), s('s4', 0.9, 10), s('s5', 0.1, 0, false)]);
     expect(ranked.map((x) => x.slug)).toEqual(['s3', 's1', 's2', 's4']);
+  });
+});
+
+describe('writing opportunity ranking: sufficient only, mean asc, tie → worse trend first (null = 0)', () => {
+  // WritingSkillSignal-shaped fixtures (slug, name, mean, trendPts, n, sufficientEvidence).
+  interface WritingSkillSignalFixture {
+    slug: string; name: string; mean: number; trendPts: number | null; n: number; sufficientEvidence: boolean;
+  }
+  const w = (slug: string, mean: number, trendPts: number | null, sufficientEvidence = true): WritingSkillSignalFixture =>
+    ({ slug, name: slug.toUpperCase(), mean, trendPts, n: 8, sufficientEvidence });
+  it('orders w3, w1, w2, w4 and drops insufficient w5', () => {
+    // w1/w2 tie on mean 0.5: w1's trendPts -5 sorts before w2's null (coalesced to 0).
+    const ranked = rankWritingOpportunityAreas([
+      w('w1', 0.5, -5), w('w2', 0.5, null), w('w3', 0.3, 0), w('w4', 0.9, 10), w('w5', 0.1, 0, false),
+    ]);
+    expect(ranked.map((x) => x.slug)).toEqual(['w3', 'w1', 'w2', 'w4']);
   });
 });
 
