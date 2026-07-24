@@ -55,14 +55,31 @@ export async function createWorksheetQuestionRows(
   }
 
   // Resolve each skill tag to its Skill row (M3a Task 8) — an unknown slug is a 400,
-  // same pattern as the unknown-topic error above.
+  // same pattern as the unknown-topic error above. Also enforce that the skill belongs
+  // to the question's topic and is a math skill (M3b Task 2).
+  const skillSlugs = [...new Set(questions.map((q) => q.skillSlug))];
+  const skills = await db.skill.findMany({
+    where: { slug: { in: skillSlugs } },
+    select: { id: true, slug: true, subject: true, topicId: true },
+  });
+  const skillBySlug = new Map(skills.map((s) => [s.slug, s]));
+
   const skillIdBySlug = new Map<string, number>();
-  for (const slug of [...new Set(questions.map((q) => q.skillSlug))]) {
-    const skill = await db.skill.findUnique({ where: { slug } });
+  for (const slug of skillSlugs) {
+    const skill = skillBySlug.get(slug);
     if (!skill) {
       throw new Error(`Unknown skill slug: ${slug}`);
     }
     skillIdBySlug.set(slug, skill.id);
+  }
+
+  // Verify each question's skill belongs to its topic and is a math skill (M3b Task 2).
+  for (const q of questions) {
+    const skill = skillBySlug.get(q.skillSlug)!;
+    const questionTopicId = topicBySlug.get(q.topicSlug)!;
+    if (skill.subject !== 'math' || skill.topicId !== questionTopicId) {
+      throw new Error(`Skill slug ${q.skillSlug} does not belong to topic ${q.topicSlug}`);
+    }
   }
 
   for (const q of questions) {

@@ -124,10 +124,11 @@ router.post('/save', requireAdmin, asyncHandler(async (req: Request, res: Respon
 
     res.status(201).json(worksheet);
   } catch (error: any) {
-    if (String(error?.message).startsWith('Unknown topic slug')) {
+    const msg = String(error?.message);
+    if (msg.startsWith('Unknown topic slug')) {
       return res.status(400).json({ error: error.message });
     }
-    if (String(error?.message).startsWith('Unknown skill slug')) {
+    if (msg.startsWith('Unknown skill slug') || msg.includes('does not belong')) {
       return res.status(400).json({ error: error.message });
     }
     console.error('Worksheet save failed:', error);
