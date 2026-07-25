@@ -1,29 +1,44 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { skillsApi, mathApi, Skill, MathTopic } from '@/lib/api';
+import { skillsApi, mathApi, coachingApi, Skill, MathTopic, CoachingModule } from '@/lib/api';
 import { BookOpen, ChevronRight } from 'lucide-react';
 
 // M3a Task 10: read-only browser over the skill taxonomy (Task 2's 89-skill seed) — math
 // skills grouped by topic, plus a "Writing criteria" group. Admin-only (see App.tsx's
-// RequireAdmin route guard and Sidebar's role-gated link).
+// RequireAdmin route guard and Sidebar's role-gated link). M3c Phase 2a (W-67): each math
+// skill row carries a "Generate lesson" / "View lesson" action.
 
-function SkillRow({ skill, expanded, onToggle }: { skill: Skill; expanded: boolean; onToggle: () => void }) {
+function SkillRow({
+  skill,
+  expanded,
+  onToggle,
+  action,
+}: {
+  skill: Skill;
+  expanded: boolean;
+  onToggle: () => void;
+  action?: ReactNode;
+}) {
   return (
     <div className="rounded-lg border border-gray-100 hover:bg-gray-50">
-      <button
-        onClick={onToggle}
-        aria-expanded={expanded}
-        className="flex items-start justify-between gap-3 w-full text-left p-3"
-      >
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-gray-900">{skill.name}</p>
-          <p className="text-xs text-gray-500 mt-0.5">{skill.description}</p>
-        </div>
-        <span className="shrink-0 flex items-center gap-1 text-xs font-medium text-brand-blue mt-0.5">
-          Details
-          <ChevronRight size={14} className={cn('transition-transform', expanded && 'rotate-90')} />
-        </span>
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onToggle}
+          aria-expanded={expanded}
+          className="flex items-start justify-between gap-3 flex-1 min-w-0 text-left p-3"
+        >
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-900">{skill.name}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{skill.description}</p>
+          </div>
+          <span className="shrink-0 flex items-center gap-1 text-xs font-medium text-brand-blue mt-0.5">
+            Details
+            <ChevronRight size={14} className={cn('transition-transform', expanded && 'rotate-90')} />
+          </span>
+        </button>
+        {action && <div className="shrink-0 pr-3">{action}</div>}
+      </div>
       {expanded && (
         <div className="mx-3 mb-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Exam-level notes</p>
@@ -35,21 +50,76 @@ function SkillRow({ skill, expanded, onToggle }: { skill: Skill; expanded: boole
 }
 
 export default function Skills() {
+  const navigate = useNavigate();
   const [skills, setSkills] = useState<Skill[]>([]);
   const [topics, setTopics] = useState<MathTopic[]>([]);
+  const [modules, setModules] = useState<Map<number, CoachingModule>>(new Map());
+  const [generatingSkillId, setGeneratingSkillId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
   useEffect(() => {
-    Promise.all([skillsApi.list(), mathApi.getTopics()])
-      .then(([s, t]) => {
+    Promise.all([skillsApi.list(), mathApi.getTopics(), coachingApi.listAll()])
+      .then(([s, t, mods]) => {
         setSkills(s);
         setTopics(t);
+        // Keep the most recent module per skill (list is newest-first).
+        const bySkill = new Map<number, CoachingModule>();
+        for (const m of mods) if (!bySkill.has(m.skillId)) bySkill.set(m.skillId, m);
+        setModules(bySkill);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
+
+  async function generateLesson(skillId: number) {
+    setGeneratingSkillId(skillId);
+    setError(null);
+    try {
+      const { jobId } = await coachingApi.startGeneration(skillId);
+      const deadline = Date.now() + 90_000;
+      for (;;) {
+        const job = await coachingApi.getGenerationJob(jobId);
+        if (job.status === 'done' && job.result) {
+          navigate(`/admin/modules/${job.result.moduleId}`, {
+            state: { verifierWarnings: job.result.verifierWarnings },
+          });
+          return;
+        }
+        if (job.status === 'error') throw new Error(job.error || 'Generation failed');
+        if (Date.now() > deadline) throw new Error('Generation timed out');
+        await new Promise((r) => setTimeout(r, 400));
+      }
+    } catch (e) {
+      setError((e as Error).message);
+      setGeneratingSkillId(null);
+    }
+  }
+
+  const lessonAction = (skill: Skill): ReactNode => {
+    if (skill.subject !== 'math') return null;
+    const mod = modules.get(skill.id);
+    if (mod) {
+      return (
+        <button
+          onClick={() => navigate(`/admin/modules/${mod.id}`)}
+          className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100"
+        >
+          {mod.status === 'approved' ? 'Approved ✓ · View' : 'View draft'}
+        </button>
+      );
+    }
+    return (
+      <button
+        onClick={() => generateLesson(skill.id)}
+        disabled={generatingSkillId !== null}
+        className="rounded-lg bg-brand-blue px-3 py-1.5 text-xs font-semibold text-white hover:brightness-95 disabled:opacity-50"
+      >
+        {generatingSkillId === skill.id ? 'Generating…' : 'Generate lesson'}
+      </button>
+    );
+  };
 
   const toggle = (id: number) =>
     setExpanded((prev) => {
@@ -93,7 +163,13 @@ export default function Skills() {
           <h2 className="text-lg font-semibold text-gray-900 mb-3">{g.name}</h2>
           <div className="space-y-2">
             {g.skills.map((s) => (
-              <SkillRow key={s.id} skill={s} expanded={expanded.has(s.id)} onToggle={() => toggle(s.id)} />
+              <SkillRow
+                key={s.id}
+                skill={s}
+                expanded={expanded.has(s.id)}
+                onToggle={() => toggle(s.id)}
+                action={lessonAction(s)}
+              />
             ))}
           </div>
         </section>

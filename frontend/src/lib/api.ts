@@ -283,6 +283,7 @@ export const coachingApi = {
   getGenerationJob: (jobId: string) =>
     fetchJSON<GenerationJob<{ moduleId: number; verifierWarnings: string[] }>>(`/coaching/jobs/${jobId}`),
   listForSkill: (skillId: number) => fetchJSON<CoachingModule[]>(`/coaching/modules?skillId=${skillId}`),
+  listAll: () => fetchJSON<CoachingModule[]>('/coaching/modules'),
   get: (id: number) => fetchJSON<CoachingModule>(`/coaching/modules/${id}`),
   update: (id: number, data: { title?: string; content?: string }) =>
     fetchJSON<CoachingModule>(`/coaching/modules/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
