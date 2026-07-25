@@ -18,7 +18,18 @@ every agent, on any model, without exception):
 
 ## Open
 
-_No open items._
+Milestone 3b-2 — Coach Chat + Improvement Journey UI (plan `docs/superpowers/plans/Milestone3b-2-plan.md`,
+spec §5.6/§6.4, approved 2026-07-25; UI direction approved via mockups; workspace-wide Active
+Interventions strip chosen; inline execution):
+
+- [ ] **W-51** — M3b-2 Task 1: `chatApi` + `interventionsApi` (incl. `listActive`) API client + types; unit-tested URL/method/body.
+- [ ] **W-52** — M3b-2 Task 2: per-skill accuracy trend endpoint (`computeSkillTrendSeries` in analytics-core + `getSkillTrend` + `GET /api/analytics/students/:id/skills/:slug/trend`), hand-computed vectors.
+- [ ] **W-53** — M3b-2 Task 3: `ChatTranscript` + `SkillReportCard` pure renderers (hide `__assistantToolCalls` plumbing; tool result → data card; `(system)` turns → status line), fixture unit test.
+- [ ] **W-54** — M3b-2 Task 4: Coach Chat page (`/coach`, admin-only) — transcript, input, suggested-question chips, pending-action confirmation card; e2e against scripted :3106 stub.
+- [ ] **W-55** — M3b-2 Task 5: Improvement Journey timeline in Admin student view — frozen diagnosis, recommendation/rationale verbatim, View-conversation link, live before→after outcome; e2e.
+- [ ] **W-56** — M3b-2 Task 6: workspace-wide `GET /api/interventions/active` endpoint + Active Interventions strip + `SkillTrendChart` (Recharts + intervention ReferenceLines) + heatmap drill-to-skills; e2e + live screenshots.
+
+## Done
 
 ## Done
 
