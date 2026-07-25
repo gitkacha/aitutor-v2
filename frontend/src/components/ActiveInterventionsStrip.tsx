@@ -11,7 +11,7 @@ function ageDays(iso: string): string {
   return d === 0 ? 'today' : d === 1 ? '1 day' : `${d} days`;
 }
 
-export default function ActiveInterventionsStrip() {
+export default function ActiveInterventionsStrip({ onOpen }: { onOpen?: (studentId: number) => void }) {
   const [items, setItems] = useState<ActiveIntervention[] | null>(null);
 
   useEffect(() => {
@@ -35,10 +35,15 @@ export default function ActiveInterventionsStrip() {
               <span className="ml-auto text-[11px] text-gray-400">{ageDays(iv.createdAt)}</span>
             </div>
             <div className="text-xs text-gray-600 mt-1.5">{(iv.skillNames?.length ? iv.skillNames : [iv.skillSlugs]).join(', ')}</div>
-            <div className="mt-2.5">
+            <div className="mt-2.5 flex items-center gap-2">
               <span className={`inline-flex items-center text-[11px] font-bold px-2.5 py-0.5 rounded-full ${interventionStatusClasses(iv.status)}`} data-status={iv.status}>
                 {INTERVENTION_STATUS_LABEL[iv.status] ?? iv.status}
               </span>
+              {onOpen && (
+                <button onClick={() => onOpen(iv.studentId)} className="ml-auto text-xs font-medium text-brand-blue hover:underline">
+                  View intervention →
+                </button>
+              )}
             </div>
           </div>
         ))}

@@ -107,6 +107,16 @@ export default function Admin() {
     return () => { cancelled = true; };
   }, [performanceStudentId]);
 
+  // From an Active Interventions strip card: jump to that student's Improvement Journey
+  // (switch to the Mathematics tab, scope the view to them, and scroll it into view).
+  const openStudentJourney = (studentId: number) => {
+    setActiveTab('math');
+    setPerformanceStudentId(studentId);
+    setTimeout(() => {
+      document.querySelector('[data-testid="improvement-journey"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 350);
+  };
+
   const drillSkills = (topicSlug: string) =>
     allSkills
       .filter((s) => s.subject === 'math' && s.topicSlug === topicSlug)
@@ -416,7 +426,7 @@ export default function Admin() {
       <PendingWorksheets mode="admin" refreshKey={worksheetRefresh} />
 
       {/* Workspace-wide active interventions (M3b-2 Task 6) */}
-      <ActiveInterventionsStrip />
+      <ActiveInterventionsStrip onOpen={openStudentJourney} />
 
       {/* Tab switcher */}
       <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">

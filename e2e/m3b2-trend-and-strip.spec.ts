@@ -90,12 +90,13 @@ test.describe('M3b-2 Task 6 — active endpoint, strip, trend chart, heatmap dri
 
       // Workspace-wide active interventions strip.
       await expect(page.getByTestId('active-interventions')).toBeVisible();
-      await expect(page.getByTestId('active-intervention-card').first()).toBeVisible();
+      const card = page.getByTestId('active-intervention-card').filter({ hasText: 'Elapsed Time' }).first();
+      await expect(card).toBeVisible();
 
-      // Per-student journey with the trend chart.
-      await page.getByRole('button', { name: 'Mathematics' }).last().click();
-      await page.locator('#perf-student').selectOption(String(studentId));
+      // "View intervention" jumps to that student's Improvement Journey (math tab + selected).
+      await card.getByRole('button', { name: /View intervention/ }).click();
       await expect(page.getByTestId('improvement-journey')).toBeVisible();
+      await expect(page.locator('#perf-student')).toHaveValue(String(studentId));
       await expect(page.getByTestId('skill-trend-chart').first()).toBeVisible();
 
       // Heatmap drill: clicking a topic cell reveals its skills.
