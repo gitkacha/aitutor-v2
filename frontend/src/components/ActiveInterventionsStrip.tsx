@@ -1,21 +1,10 @@
 import { useState, useEffect } from 'react';
 import { interventionsApi, ActiveIntervention } from '@/lib/api';
+import { INTERVENTION_STATUS_LABEL, interventionStatusClasses } from '@/lib/intervention-status';
 
 // M3b-2 Task 6: workspace-wide "who needs attention" strip — one card per active intervention
 // across all students, with the recomputed outcome status. Read-only overview above the
 // per-student journey.
-
-const STATUS_LABEL: Record<string, string> = {
-  improving: 'Improving',
-  'not-yet-improving': 'Not yet improving',
-  'insufficient-evidence': 'Not enough data yet',
-};
-
-function statusClasses(status: string): string {
-  if (status === 'improving') return 'bg-green-50 text-green-700';
-  if (status === 'not-yet-improving') return 'bg-amber-50 text-amber-700';
-  return 'bg-gray-100 text-gray-600';
-}
 
 function parseSlugs(raw: string): string[] {
   try {
@@ -56,8 +45,8 @@ export default function ActiveInterventionsStrip() {
             </div>
             <div className="text-xs text-gray-600 mt-1.5">{parseSlugs(iv.skillSlugs).join(', ')}</div>
             <div className="mt-2.5">
-              <span className={`inline-flex items-center text-[11px] font-bold px-2.5 py-0.5 rounded-full ${statusClasses(iv.status)}`} data-status={iv.status}>
-                {STATUS_LABEL[iv.status] ?? iv.status}
+              <span className={`inline-flex items-center text-[11px] font-bold px-2.5 py-0.5 rounded-full ${interventionStatusClasses(iv.status)}`} data-status={iv.status}>
+                {INTERVENTION_STATUS_LABEL[iv.status] ?? iv.status}
               </span>
             </div>
           </div>

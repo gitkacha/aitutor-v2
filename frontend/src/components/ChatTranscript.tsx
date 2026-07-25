@@ -19,10 +19,6 @@ function tryParseObject(raw: string): any | null {
   }
 }
 
-function toolLabel(name: string): string {
-  return name.replace(/_/g, ' ');
-}
-
 export function ChatTranscript({ messages }: { messages: ChatMessage[] }) {
   return (
     <div className="flex flex-col gap-4">
@@ -70,11 +66,10 @@ export function ChatTranscript({ messages }: { messages: ChatMessage[] }) {
             </div>
           );
         }
-        return (
-          <div key={m.id} data-role="tool-note" className="self-center text-xs text-gray-400">
-            Looked up {toolLabel(parsed?.toolName ?? 'data')}
-          </div>
-        );
+        // Other tool results (action placeholders like create_intervention's pending/skipped,
+        // or reads without a dedicated card) carry no admin-facing value here — the confirmation
+        // card and the (system) outcome line already tell that story. Hide them.
+        return null;
       })}
     </div>
   );

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { interventionsApi, InterventionWithOutcome } from '@/lib/api';
 import SkillTrendChart from './SkillTrendChart';
+import { INTERVENTION_STATUS_LABEL, interventionStatusClasses } from '@/lib/intervention-status';
 
 // M3b-2 Task 5: the Improvement Journey for one student — the intervention ledger rendered as a
 // timeline. Each card shows the frozen diagnosis, the coach's recommendation + rationale
@@ -12,22 +13,10 @@ function pct(x: number | null | undefined): string {
   return x == null ? '—' : `${Math.round(x * 100)}%`;
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  improving: 'Improving',
-  'not-yet-improving': 'Not yet improving',
-  'insufficient-evidence': 'Not enough data yet',
-};
-
-function statusClasses(status: string): string {
-  if (status === 'improving') return 'bg-green-50 text-green-700';
-  if (status === 'not-yet-improving') return 'bg-amber-50 text-amber-700';
-  return 'bg-gray-100 text-gray-600';
-}
-
 function StatusChip({ status }: { status: string }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full ${statusClasses(status)}`} data-status={status}>
-      {STATUS_LABEL[status] ?? status}
+    <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full ${interventionStatusClasses(status)}`} data-status={status}>
+      {INTERVENTION_STATUS_LABEL[status] ?? status}
     </span>
   );
 }
