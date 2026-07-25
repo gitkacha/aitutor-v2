@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useHeatmap } from '@/hooks/useHeatmap';
 import Heatmap from '@/components/Heatmap';
+import ImprovementJourney from '@/components/ImprovementJourney';
 import PendingWorksheets from '@/components/PendingWorksheets';
 import { api, mathApi, MathTopic, MathHeatmapEntry, GeneratedMathQuestion, Worksheet, MathWorksheet, AuthUser } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -602,6 +603,9 @@ export default function Admin() {
               onRetry={refreshMath}
             />
           </div>
+
+          {/* Improvement Journey for the selected student (M3b-2 Task 5) */}
+          <ImprovementJourney studentId={performanceStudentId} />
 
           {/* Math Worksheet Generation */}
           {!showMathReview ? (
