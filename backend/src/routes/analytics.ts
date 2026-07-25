@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../lib/async-handler';
 import { requireAdmin } from '../middleware/auth';
 import { canAccessUser } from '../lib/scope';
-import { getStudentSkillReport, getOpportunityAreas } from '../services/analytics.service';
+import { getStudentSkillReport, getOpportunityAreas, getSkillTrend } from '../services/analytics.service';
 
 const router = Router();
 
@@ -39,6 +39,24 @@ router.get('/students/:id/report', requireAdmin, asyncHandler(async (req: Reques
 
   const report = await getStudentSkillReport(id, subject, lastNTests);
   res.json(report);
+}));
+
+// GET /api/analytics/students/:id/skills/:slug/trend?subject=math — admin-only per-skill accuracy
+// series for the trend chart (one point per attempt containing the skill).
+router.get('/students/:id/skills/:slug/trend', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) {
+    return res.status(400).json({ error: 'Invalid student id' });
+  }
+  if (!(await canAccessUser(req, id))) {
+    return res.status(404).json({ error: 'Student not found' });
+  }
+  const subject = parseSubject(req.query.subject);
+  if (subject !== 'math') {
+    return res.status(400).json({ error: 'subject must be "math"' });
+  }
+  const series = await getSkillTrend(id, req.params.slug);
+  res.json(series);
 }));
 
 // GET /api/analytics/opportunity-areas?subject=&studentId= — with studentId, that student's

@@ -12,6 +12,8 @@ import {
   rankWritingOpportunityAreas,
   computeWritingSignals,
   computeWritingUsage,
+  computeSkillTrendSeries,
+  SkillTrendPoint,
 } from './analytics-core';
 
 // Writing timed practice uses a fixed 30-minute limit (frontend TimedPractice.tsx's
@@ -198,6 +200,18 @@ export async function getSkillSignalsSince(studentId: number, sinceISO: string):
   const { records } = await buildMathRecords(attempts);
   const medianMs = await computeStudentMedianMs(studentId);
   return computeSkillSignals(records, medianMs);
+}
+
+// M3b-2: the per-skill accuracy series for the chart. Reuses buildMathRecords (same adapter as
+// the report) over all of the student's math attempts, then computeSkillTrendSeries in the core —
+// no statistics here.
+export async function getSkillTrend(studentId: number, slug: string): Promise<SkillTrendPoint[]> {
+  const attempts = await prisma.mathAttempt.findMany({
+    where: { userId: studentId },
+    orderBy: { finishedAt: 'asc' },
+  });
+  const { records } = await buildMathRecords(attempts);
+  return computeSkillTrendSeries(records, slug);
 }
 
 async function getMathReport(studentId: number, lastNTests: number): Promise<StudentSkillReport> {

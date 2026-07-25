@@ -153,6 +153,27 @@ export function computeSkillSignals(records: AnswerRecord[], medianMs: number | 
   return signals.sort((a, b) => (a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0));
 }
 
+// M3b-2: accuracy over time for one skill — one point per attempt that contains >=1 question of
+// the skill, ascending by finishedAt then attemptId. Feeds the per-skill trend chart; the only
+// statistic is accuracy = correct/attempted within each attempt, computed here (not in the adapter).
+export interface SkillTrendPoint {
+  attemptId: number; finishedAt: string; attempted: number; correct: number; accuracy: number;
+}
+
+export function computeSkillTrendSeries(records: AnswerRecord[], slug: string): SkillTrendPoint[] {
+  const byAttempt = new Map<number, { finishedAt: string; attempted: number; correct: number }>();
+  for (const r of records) {
+    if (r.skillSlug !== slug) continue;
+    const g = byAttempt.get(r.attemptId) ?? { finishedAt: r.finishedAt, attempted: 0, correct: 0 };
+    g.attempted += 1;
+    if (r.correct) g.correct += 1;
+    byAttempt.set(r.attemptId, g);
+  }
+  return [...byAttempt.entries()]
+    .map(([attemptId, g]) => ({ attemptId, finishedAt: g.finishedAt, attempted: g.attempted, correct: g.correct, accuracy: g.correct / g.attempted }))
+    .sort((a, b) => (a.finishedAt < b.finishedAt ? -1 : a.finishedAt > b.finishedAt ? 1 : a.attemptId - b.attemptId));
+}
+
 export interface PacingThird {
   total: number; correct: number; accuracy: number | null;
   unanswered: number; unansweredRate: number | null;

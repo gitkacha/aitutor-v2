@@ -228,3 +228,31 @@ describe('computeWritingUsage', () => {
     expect(one.wordCountMean).toBeCloseTo(50, 6);
   });
 });
+
+import { computeSkillTrendSeries } from './analytics-core';
+
+// M3b-2 Task 2 (W-52): per-skill accuracy over time — one point per attempt containing the skill.
+describe('computeSkillTrendSeries', () => {
+  const r = (attemptId: number, day: number, correct: boolean, slug = 's1') =>
+    rec({ attemptId, finishedAt: `2026-07-0${day}T00:00:00.000Z`, skillSlug: slug, correct });
+
+  it('one point per attempt containing the skill, ascending, with accuracy', () => {
+    const recs = [
+      r(1, 1, true), r(1, 1, false),            // attempt 1: s1 1/2 = 0.5
+      r(2, 2, true), r(2, 2, true),             // attempt 2: s1 2/2 = 1.0
+      rec({ attemptId: 3, finishedAt: '2026-07-03T00:00:00.000Z', skillSlug: 's2', correct: true }), // other skill
+    ];
+    const series = computeSkillTrendSeries(recs, 's1');
+    expect(series.map((p) => p.attemptId)).toEqual([1, 2]);
+    expect(series[0].accuracy).toBeCloseTo(0.5, 6);
+    expect(series[0].attempted).toBe(2);
+    expect(series[0].correct).toBe(1);
+    expect(series[1].accuracy).toBeCloseTo(1, 6);
+  });
+
+  it('sorts by finishedAt then attemptId, and is empty when the skill never appears', () => {
+    expect(computeSkillTrendSeries([], 's1')).toEqual([]);
+    const recs = [r(5, 3, true), r(4, 2, false)]; // out of order
+    expect(computeSkillTrendSeries(recs, 's1').map((p) => p.attemptId)).toEqual([4, 5]);
+  });
+});
