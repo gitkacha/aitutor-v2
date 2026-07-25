@@ -18,7 +18,15 @@ every agent, on any model, without exception):
 
 ## Open
 
-_No open items._
+Milestone 3c Phase 1 — Student Encouragement (plan `docs/superpowers/plans/Milestone3c-1-plan.md`,
+spec `docs/superpowers/specs/2026-07-25-m3c-encouragement-design.md`, approved 2026-07-25;
+subagent-driven):
+
+- [ ] **W-58** — M3c-1 Task 1: `computeSkillImprovements` (analytics-core) — per-skill accuracy + speed improvement, pick-the-larger, evidence-gated; hand-computed vectors.
+- [ ] **W-59** — M3c-1 Task 2: student-facing math improvements adapter + `GET /api/analytics/me/improvements` (requireAuth, own-or-canAccessUser; topics→top-3 skills; topic delta = best skill gain; no answer keys) + e2e.
+- [ ] **W-60** — M3c-1 Task 3: `computeWeeklyStreak` (`lib/streak.ts`, kind rules, hand-computed vectors) + `streakWeeks` on `GET /api/stats` + e2e.
+- [ ] **W-61** — M3c-1 Task 4: Most Improved dashboard panel (treatment A, topic→top-3 skills, accuracy/speed badges) above Opportunity Areas + `improvementsApi` + e2e + live screenshot.
+- [ ] **W-62** — M3c-1 Task 5: weekly streak in the sidebar ("N-week streak 🔥" / gentle zero) + `getStats` type + e2e + live screenshot.
 
 ## Done
 
