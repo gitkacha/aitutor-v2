@@ -4,6 +4,7 @@ import { useHeatmap } from '@/hooks/useHeatmap';
 import { HeatmapEntry, MathHeatmapEntry, mathApi } from '@/lib/api';
 import Heatmap from '@/components/Heatmap';
 import PendingWorksheets from '@/components/PendingWorksheets';
+import MostImproved from '@/components/MostImproved';
 import { BarChart3, Calculator, Target, ArrowRight } from 'lucide-react';
 
 interface Opportunity {
@@ -76,6 +77,9 @@ export default function Dashboard() {
 
       {/* Pending worksheets quick view */}
       <PendingWorksheets mode="student" />
+
+      {/* Most Improved — recent accuracy/speed gains (M3c-1 Task 4) */}
+      <MostImproved />
 
       {/* Opportunity areas — the student's weakest scored areas (C2) */}
       {(() => {

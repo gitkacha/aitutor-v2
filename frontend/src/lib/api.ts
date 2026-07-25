@@ -352,6 +352,26 @@ export const analyticsApi = {
     fetchJSON<{ skills: ReportSkill[] }>(`/analytics/students/${studentId}/report?subject=${subject}`),
 };
 
+// M3c-1: student-facing "most improved" summary (Task 2 endpoint).
+export interface ImprovedSkillDTO {
+  slug: string; name: string;
+  metric: 'accuracy' | 'speed';
+  accuracyFrom: number | null; accuracyTo: number | null;
+  quickerPct: number | null;
+  gainScore: number;
+}
+
+export interface ImprovedTopicDTO {
+  slug: string; name: string;
+  delta: { metric: 'accuracy' | 'speed'; value: number };
+  interventionId: number | null;
+  skills: ImprovedSkillDTO[];
+}
+
+export const improvementsApi = {
+  math: () => fetchJSON<{ topics: ImprovedTopicDTO[] }>('/analytics/me/improvements?subject=math'),
+};
+
 // ── Auth (Milestone 2) ──
 
 export interface AuthUser {
