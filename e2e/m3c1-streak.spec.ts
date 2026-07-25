@@ -26,9 +26,14 @@ test.describe('weekly-goal streak (GET /api/stats)', () => {
       expect(res.status()).toBe(201);
     };
 
-    const now = Date.now();
-    const currentWeekTimes = Array.from({ length: 5 }, (_, i) => new Date(now - i * 60_000));
-    const priorWeekTimes = Array.from({ length: 5 }, (_, i) => new Date(now - 7 * 86_400_000 - i * 60_000));
+    // Anchor mid-week (Thursday noon) so neither batch can straddle the Monday-00:00 week
+    // boundary if the test happens to run near midnight — avoids a ~0.04% flake.
+    const monday = new Date();
+    monday.setHours(0, 0, 0, 0);
+    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+    const midCurrent = monday.getTime() + 3 * 86_400_000 + 12 * 3_600_000; // Thu noon, this week
+    const currentWeekTimes = Array.from({ length: 5 }, (_, i) => new Date(midCurrent - i * 60_000));
+    const priorWeekTimes = Array.from({ length: 5 }, (_, i) => new Date(midCurrent - 7 * 86_400_000 - i * 60_000));
 
     for (const t of [...currentWeekTimes, ...priorWeekTimes]) {
       await submitAttempt(t);

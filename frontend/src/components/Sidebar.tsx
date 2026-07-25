@@ -221,14 +221,9 @@ export default function Sidebar() {
             <div className="text-[11.5px] text-rail-muted mt-0.5">{encouragement}</div>
             <div
               data-testid="weekly-streak"
-              className="text-[11.5px] font-semibold mt-0.5"
-              style={{ color: streakWeeks >= 1 ? '#f2a71b' : undefined }}
+              className={cn('text-[11.5px] mt-0.5', streakWeeks >= 1 ? 'font-semibold text-[#f2a71b]' : 'text-rail-muted')}
             >
-              {streakWeeks >= 1 ? (
-                `${streakWeeks}-week streak 🔥`
-              ) : (
-                <span className="text-rail-muted font-normal">Hit 5 this week to start a streak</span>
-              )}
+              {streakWeeks >= 1 ? `${streakWeeks}-week streak 🔥` : 'Hit 5 this week to start a streak'}
             </div>
           </div>
         </div>

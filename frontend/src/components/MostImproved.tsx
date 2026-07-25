@@ -12,7 +12,8 @@ export default function MostImproved() {
   useEffect(() => {
     improvementsApi.math()
       .then((res) => setTopics(res.topics))
-      .catch(() => {});
+      // Non-critical widget: on failure show nothing, but surface the error for debugging.
+      .catch((e) => console.error('Failed to load improvements:', e));
   }, []);
 
   if (topics.length === 0) return null;

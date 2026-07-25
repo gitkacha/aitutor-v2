@@ -8,8 +8,9 @@ import path from 'path';
 // reusing Task 2's 'perimeter'/'perimeter-rectilinear' pair (and its identical anchor timestamp
 // formula) would duplicate MathAttempt rows at the exact same finishedAt values, so the shared
 // e2e.db's buildMathWindow (last-10-attempts-overall) would blend both specs' attempts into one
-// window and dilute/mask the accuracy gain. This spec uses 'fractions'/'fraction-word-problems',
-// untouched by every other e2e spec (see the topic list in m3c1-improvements.spec.ts's comment).
+// window and dilute/mask the accuracy gain. This spec tags the SKILL 'fraction-word-problems'
+// (untouched by every other e2e spec — the 'fractions' topic is used elsewhere, but not this
+// skill, which is what the per-skill improvement computation keys on).
 
 const dbPath = path.resolve(__dirname, '../backend/prisma/e2e.db');
 const prisma = new PrismaClient({ datasources: { db: { url: `file:${dbPath}` } } });
