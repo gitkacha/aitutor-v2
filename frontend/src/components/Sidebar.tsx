@@ -5,7 +5,7 @@ import { api, mathApi, WritingType, MathTopic, Worksheet, MathWorksheet } from '
 import { worksheetStartState } from '@/lib/worksheet-start';
 import { parseJsonArray } from '@/lib/parse';
 import { useAuth } from '@/lib/auth';
-import { BookOpen, Building2, ChevronRight, Home, LogOut, Menu, Shield, Sparkles, X, Zap } from 'lucide-react';
+import { BookOpen, Building2, ChevronRight, GraduationCap, Home, LogOut, Menu, Shield, Sparkles, X, Zap } from 'lucide-react';
 
 // "Evening Navy" sidebar (docs/mocks/example2.html): a solid deep-navy rail with
 // a weekly momentum ring, colour-coded per-topic scores, an "Up next" pending
@@ -342,6 +342,10 @@ export default function Sidebar() {
                   <Link to="/skills" onClick={() => setMobileOpen(false)} className={itemClass(location.pathname === '/skills')}>
                     <BookOpen size={15} className={location.pathname === '/skills' ? '' : 'text-rail-muted'} />
                     Skills
+                  </Link>
+                  <Link to="/admin/lessons" onClick={() => setMobileOpen(false)} className={itemClass(location.pathname === '/admin/lessons')}>
+                    <GraduationCap size={15} className={location.pathname === '/admin/lessons' ? '' : 'text-rail-muted'} />
+                    Lessons
                   </Link>
                 </>
               )}

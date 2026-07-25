@@ -1,5 +1,5 @@
 import { useState, useEffect, ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { skillsApi, mathApi, coachingApi, Skill, MathTopic, CoachingModule } from '@/lib/api';
 import { BookOpen, ChevronRight } from 'lucide-react';
@@ -157,6 +157,36 @@ export default function Skills() {
       </p>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
+
+      {modules.size > 0 && (
+        <section data-testid="your-lessons" className="bg-white rounded-xl p-6 border border-gray-200">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-gray-900">Your lessons</h2>
+            <Link to="/admin/lessons" className="text-xs font-medium text-brand-blue">View all →</Link>
+          </div>
+          <div className="space-y-2">
+            {Array.from(modules.values()).map((m) => (
+              <Link
+                key={m.id}
+                to={`/admin/modules/${m.id}`}
+                className="flex items-center gap-3 rounded-lg border border-gray-100 p-3 hover:bg-gray-50"
+              >
+                <span className="text-sm font-medium text-gray-900 flex-1 min-w-0">{m.title}</span>
+                <span
+                  className={
+                    m.status === 'approved'
+                      ? 'rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800'
+                      : 'rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800'
+                  }
+                >
+                  {m.status === 'approved' ? 'Approved ✓' : 'Draft'}
+                </span>
+                <ChevronRight size={16} className="text-gray-400 shrink-0" />
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {mathGroups.map((g) => (
         <section key={g.slug ?? 'other'} className="bg-white rounded-xl p-6 border border-gray-200">

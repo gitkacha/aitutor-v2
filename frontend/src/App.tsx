@@ -16,6 +16,7 @@ import MathPracticeHome from './pages/MathPracticeHome';
 import MathTimedPractice from './pages/MathTimedPractice';
 import MathAttemptReview from './pages/MathAttemptReview';
 import Skills from './pages/Skills';
+import AdminLessons from './pages/AdminLessons';
 import ModuleEditor from './pages/ModuleEditor';
 import CoachChat from './pages/CoachChat';
 
@@ -47,6 +48,7 @@ function AppShell() {
           <Route path="/attempt/:id" element={<AttemptDetail />} />
           <Route path="/admin" element={<RequireAdmin><Admin /></RequireAdmin>} />
           <Route path="/skills" element={<RequireAdmin><Skills /></RequireAdmin>} />
+          <Route path="/admin/lessons" element={<RequireAdmin><AdminLessons /></RequireAdmin>} />
           <Route path="/admin/modules/:id" element={<RequireAdmin><ModuleEditor /></RequireAdmin>} />
           <Route path="/coach" element={<RequireAdmin><CoachChat /></RequireAdmin>} />
           <Route path="/superadmin" element={<RequireSuperAdmin><SuperAdmin /></RequireSuperAdmin>} />
