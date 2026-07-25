@@ -18,6 +18,32 @@ every agent, on any model, without exception):
 
 ## Open
 
+Milestone 3c Phase 2 — Coaching library + student lessons (plan
+`docs/superpowers/plans/2026-07-25-m3c-phase2-coaching.md`, spec
+`docs/superpowers/specs/2026-07-25-m3c-phase2-coaching-design.md`, approved 2026-07-26; math-only,
+writing deferred; inline execution). Phase 2a = admin authoring; Phase 2b = student experience;
+user sign-off gates 2a→2b.
+
+_Phase 2a — admin authoring:_
+
+- [ ] **W-63** — 2a Task 1: `coaching.service.ts` generation pipeline — generate (student-voice §8.1 markdown) → verify worked-example arithmetic (verification role) → exactly one retry then save+flag; judgment-authored prompts; control-flow unit tests with AI stubbed.
+- [ ] **W-64** — 2a Task 2: `/api/coaching` router — generate job + poll, list by skill, `GET /modules/:id` with approved-only visibility (student draft → **404**), PATCH (version++ when approved), approve; mounted in `index.ts`; visibility unit test.
+- [ ] **W-65** — 2a Task 3: `assign_coaching` chat action tool — generate-draft-first when no approved module exists; upsert `CoachingAssignment` on `@@unique([moduleId,studentId])` when approved module exists; chat-tools tests.
+- [ ] **W-66** — 2a Task 4: frontend `coachingApi` client + `CoachingModule` types in `api.ts`.
+- [ ] **W-67** — 2a Task 5: Skills browser "Generate lesson" action per math-skill row (generate → poll → open editor) with draft/approved status.
+- [ ] **W-68** — 2a Task 6: module editor page (`ModuleEditor.tsx`) + shared `MarkdownView` (react-markdown dep) — live preview, ⚠ verifier-warning banner, Save + Approve; `/admin/modules/:id` route under RequireAdmin.
+- [ ] **W-69** — 2a Task 7: `e2e/m3c2-coaching-admin.spec.ts` (generate→flag→edit→approve, approved-only visibility, chat generate-first) + full suites green + live screenshot; **HANDOVER for 2a sign-off**.
+
+_Phase 2b — student experience:_
+
+- [ ] **W-70** — 2b Task 8: student endpoints — `GET /modules?approved=1` (library), `GET /assignments/me`, `POST /modules/:id/complete` with lazy assignment upsert (draft → 404); route tests.
+- [ ] **W-71** — 2b Task 9: frontend student coaching api client (`listApproved`, `myAssignments`, `complete`) + summary type.
+- [ ] **W-72** — 2b Task 10: student Lessons library page (`Lessons.tsx`) grouped by topic→skill + `/lessons` route + student sidebar nav.
+- [ ] **W-73** — 2b Task 11: Lesson page (`Lesson.tsx`) — rendered markdown (MarkdownView), calm layout, Mark as complete; `/lesson/:id` route.
+- [ ] **W-74** — 2b Task 12: learn→practise ordering in the pending list — assigned "Learn:" card before its paired "Practise" worksheet with a soft "best after the lesson" hint (paired by interventionId); never hard-locked.
+- [ ] **W-75** — 2b Task 13: post-test review weaving in `MathAttemptReview` — per-question skill chip + "Learn the method →" link on wrong answers whose skill has an approved module.
+- [ ] **W-76** — 2b Task 14: `e2e/m3c2-coaching-student.spec.ts` + `e2e/m3c2-coaching-loop.spec.ts` (end-to-end diagnose→intervene→lesson+worksheet→improvement) + full suites green + live screenshots; **HANDOVER for 2b sign-off**.
+
 Milestone 3c Phase 1 — Student Encouragement (plan `docs/superpowers/plans/Milestone3c-1-plan.md`,
 spec `docs/superpowers/specs/2026-07-25-m3c-encouragement-design.md`, approved 2026-07-25;
 subagent-driven):
