@@ -27,11 +27,12 @@ describe('READ_TOOL_SCHEMAS', () => {
 });
 
 describe('ACTION_TOOL_SCHEMAS', () => {
-  it('contains exactly generate_worksheet, save_and_assign_worksheet, create_intervention', () => {
+  it('contains exactly generate_worksheet, save_and_assign_worksheet, create_intervention, assign_coaching', () => {
     expect(ACTION_TOOL_SCHEMAS.map((t) => t.name)).toEqual([
       'generate_worksheet',
       'save_and_assign_worksheet',
       'create_intervention',
+      'assign_coaching',
     ]);
   });
 

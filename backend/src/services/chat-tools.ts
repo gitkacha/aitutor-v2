@@ -10,6 +10,7 @@ import { getStudentSkillReport, getOpportunityAreas } from './analytics.service'
 import { validateWorksheetQuestions, saveAndAssignWorksheet } from './math-worksheet.service';
 import { resolveAssigneeStudentIdsForWorkspace } from '../lib/scope';
 import { createIntervention, listInterventions } from './intervention.service';
+import { generateCoachingModuleContent } from './coaching.service';
 
 export interface ToolContext {
   workspaceId: number;
@@ -166,6 +167,22 @@ export const ACTION_TOOL_SCHEMAS: ChatToolSchema[] = [
       required: ['studentId', 'skillSlugs', 'recommendation', 'rationale'],
     },
   },
+  {
+    name: 'assign_coaching',
+    description:
+      'Assign a coaching lesson for a math skill to a student. If no approved lesson exists for ' +
+      'that skill yet, this generates a draft lesson for the admin to review and approve first — ' +
+      'it is NOT assigned to the student until an approved lesson exists.',
+    parameters: {
+      type: 'object',
+      properties: {
+        studentId: { type: 'integer', description: 'The id of the student to assign the lesson to.' },
+        skillSlug: { type: 'string', description: 'The slug of the math skill the lesson teaches.' },
+        interventionId: { type: 'integer', description: 'Optional id of the intervention this lesson supports.' },
+      },
+      required: ['studentId', 'skillSlug'],
+    },
+  },
 ];
 
 const ACTION_TOOL_NAMES = new Set(ACTION_TOOL_SCHEMAS.map((t) => t.name));
@@ -304,6 +321,38 @@ export async function executeActionTool(name: string, args: any, ctx: ToolContex
         rationale: args.rationale,
         worksheetIds: args.worksheetIds,
       });
+    }
+
+    case 'assign_coaching': {
+      const skill = await prisma.skill.findFirst({ where: { slug: args.skillSlug, subject: 'math' } });
+      if (!skill) throw new Error(`Math skill not found: ${args.skillSlug}`);
+      await assertStudentInWorkspace(args.studentId, ctx);
+
+      // Only an approved lesson is assignable. If none exists, generate a draft for review —
+      // the confirmation copy tells the admin it must be approved before the student sees it.
+      const approved = await prisma.coachingModule.findFirst({
+        where: { skillId: skill.id, workspaceId: ctx.workspaceId, status: 'approved' },
+        orderBy: { version: 'desc' },
+      });
+      if (!approved) {
+        const gen = await generateCoachingModuleContent({
+          name: skill.name,
+          slug: skill.slug,
+          examLevelNotes: skill.examLevelNotes,
+        });
+        const draft = await prisma.coachingModule.create({
+          data: { workspaceId: ctx.workspaceId, skillId: skill.id, title: gen.title, content: gen.content, status: 'draft' },
+        });
+        return { generatedDraft: true, needsApproval: true, moduleId: draft.id, verifierWarnings: gen.verifierWarnings };
+      }
+
+      // Idempotent on @@unique([moduleId, studentId]) — re-assigning is a no-op update.
+      const assignment = await prisma.coachingAssignment.upsert({
+        where: { moduleId_studentId: { moduleId: approved.id, studentId: args.studentId } },
+        update: {},
+        create: { moduleId: approved.id, studentId: args.studentId, interventionId: args.interventionId ?? null },
+      });
+      return { assigned: true, moduleId: approved.id, assignmentId: assignment.id };
     }
 
     default:
