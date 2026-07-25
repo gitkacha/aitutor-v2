@@ -18,19 +18,25 @@ every agent, on any model, without exception):
 
 ## Open
 
-Milestone 3b-2 — Coach Chat + Improvement Journey UI (plan `docs/superpowers/plans/Milestone3b-2-plan.md`,
-spec §5.6/§6.4, approved 2026-07-25; UI direction approved via mockups; workspace-wide Active
-Interventions strip chosen; inline execution):
-
-- [ ] **W-51** — M3b-2 Task 1: `chatApi` + `interventionsApi` (incl. `listActive`) API client + types; unit-tested URL/method/body.
-- [ ] **W-52** — M3b-2 Task 2: per-skill accuracy trend endpoint (`computeSkillTrendSeries` in analytics-core + `getSkillTrend` + `GET /api/analytics/students/:id/skills/:slug/trend`), hand-computed vectors.
-- [ ] **W-53** — M3b-2 Task 3: `ChatTranscript` + `SkillReportCard` pure renderers (hide `__assistantToolCalls` plumbing; tool result → data card; `(system)` turns → status line), fixture unit test.
-- [ ] **W-54** — M3b-2 Task 4: Coach Chat page (`/coach`, admin-only) — transcript, input, suggested-question chips, pending-action confirmation card; e2e against scripted :3106 stub.
-- [ ] **W-55** — M3b-2 Task 5: Improvement Journey timeline in Admin student view — frozen diagnosis, recommendation/rationale verbatim, View-conversation link, live before→after outcome; e2e.
-- [ ] **W-56** — M3b-2 Task 6: workspace-wide `GET /api/interventions/active` endpoint + Active Interventions strip + `SkillTrendChart` (Recharts + intervention ReferenceLines) + heatmap drill-to-skills; e2e + live screenshots.
-- [ ] **W-57** — Security fix (user-reported 2026-07-25): the frontend `/admin` route and its sidebar link were ungated, so a student could open the admin dashboard shell (backend data already 403-protected). Wrap `/admin` in `RequireAdmin` (redirect students to `/dashboard`) and hide the entire admin "Coach" sidebar section (Admin/Coach Chat/Skills; Platform stays super-admin) from non-staff.
+_No open items._
 
 ## Done
+
+Milestone 3b-2 — Coach Chat + Improvement Journey UI (plan `docs/superpowers/plans/Milestone3b-2-plan.md`,
+spec §5.6/§6.4) — all signed off 2026-07-25 after manual testing incl. a live real-AI run. UI
+direction approved via mockups; workspace-wide Active Interventions strip. Inline execution; whole-
+branch review (Opus) clean (no Critical/Important, 2 Minor fixed); orchestrator re-ran the full
+suites (123→125 e2e, 109 backend + 22 frontend unit, typecheck) and captured live screenshots. Four
+review-driven refinements landed from the user's hands-on testing (friendly skill names, "View
+intervention" link, chat JSON cleanup, admin lockdown), each with a test.
+
+- [x] **W-57** — Security: lock the admin dashboard to admins on the frontend — `/admin` wrapped in `RequireAdmin` (students redirect to `/dashboard`); the entire admin "Coach" sidebar section (Admin/Coach Chat/Skills) hidden from non-staff, Platform stays super-admin. Backend data was already 403-protected; this closes the UI shell. Two dependent specs that had encoded the insecure behaviour were corrected — commit `5f44c7e` · proof: `e2e/w57-admin-lockdown.spec.ts` (RED-first) + 125/125 e2e, 109+22 unit, typecheck + live redirect screenshot · user signed off 2026-07-25
+- [x] **W-56** — M3b-2 Task 6: workspace-wide `GET /api/interventions/active` (admin, before `:id` routes; student name + recomputed status; friendly skill names) + Active Interventions strip with a "View intervention" link + `SkillTrendChart` (Recharts + amber intervention markers) + heatmap drill-to-skills (optional prop, student usage untouched) — commits `51f904e` (+ `2d07f6d` names, `51e1207` view-link) · proof: `e2e/m3b2-trend-and-strip.spec.ts` (backend + UI, RED-first) + full suites + live screenshots · user signed off 2026-07-25
+- [x] **W-55** — M3b-2 Task 5: Improvement Journey timeline in the admin student view — frozen diagnosis, recommendation/rationale verbatim, "View conversation" deep link, live before→after outcome with status chips, embedded trend chart — commit `0104654` · proof: `e2e/m3b2-improvement-journey.spec.ts` (RED-first, creates an intervention via the chat-confirm flow then drives the UI) + full suites · user signed off 2026-07-25
+- [x] **W-54** — M3b-2 Task 4: Coach Chat page (`/coach`, admin-only) — `ChatTranscript` thread, input, grounded suggested-question chips, pending-action confirmation card; `?session=` deep link; the `(system)` status line now strips its raw `Result:` JSON tail — commits `4a3d6a8` (+ `b55506b` JSON strip) · proof: `e2e/m3b2-coach-chat.spec.ts` (4 tests, RED-first, scripted :3106 stub) + full suites + live screenshot · user signed off 2026-07-25
+- [x] **W-53** — M3b-2 Task 3: `ChatTranscript` + `SkillReportCard` pure renderers — hides `__assistantToolCalls` plumbing, renders `get_student_skill_report` results as data cards, `(system)` turns as status lines, other tool results hidden — commit `ebf0622` · proof: `frontend/src/components/ChatTranscript.test.tsx` (RED-first fixture) + full suites · user signed off 2026-07-25
+- [x] **W-52** — M3b-2 Task 2: per-skill accuracy trend endpoint — `computeSkillTrendSeries` (analytics-core, one point per attempt with the skill, ascending) + `getSkillTrend` (reuses `buildMathRecords`, no adapter stats) + `GET /api/analytics/students/:id/skills/:slug/trend` (requireAdmin) — commit `5e1d58b` · proof: `analytics-core.test.ts` vectors (RED-first) + `e2e/m3b2-skill-trend.spec.ts` (per-attempt assertions robust to shared e2e.db) + full suites · user signed off 2026-07-25
+- [x] **W-51** — M3b-2 Task 1: `chatApi` (create/list/get session, sendMessage, confirm) + `interventionsApi` (list/listActive/outcome) + `analyticsApi` API client and types over `fetchJSON` — commit `e552f7d` · proof: `frontend/src/__tests__/api.test.ts` (RED-first URL/method/body) + full suites · user signed off 2026-07-25
 
 ## Done
 
