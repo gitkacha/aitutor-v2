@@ -28,6 +28,7 @@ Interventions strip chosen; inline execution):
 - [ ] **W-54** — M3b-2 Task 4: Coach Chat page (`/coach`, admin-only) — transcript, input, suggested-question chips, pending-action confirmation card; e2e against scripted :3106 stub.
 - [ ] **W-55** — M3b-2 Task 5: Improvement Journey timeline in Admin student view — frozen diagnosis, recommendation/rationale verbatim, View-conversation link, live before→after outcome; e2e.
 - [ ] **W-56** — M3b-2 Task 6: workspace-wide `GET /api/interventions/active` endpoint + Active Interventions strip + `SkillTrendChart` (Recharts + intervention ReferenceLines) + heatmap drill-to-skills; e2e + live screenshots.
+- [ ] **W-57** — Security fix (user-reported 2026-07-25): the frontend `/admin` route and its sidebar link were ungated, so a student could open the admin dashboard shell (backend data already 403-protected). Wrap `/admin` in `RequireAdmin` (redirect students to `/dashboard`) and hide the entire admin "Coach" sidebar section (Admin/Coach Chat/Skills; Platform stays super-admin) from non-staff.
 
 ## Done
 

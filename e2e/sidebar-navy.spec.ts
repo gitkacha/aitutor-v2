@@ -19,13 +19,14 @@ async function oldestPendingTitle(request: APIRequestContext): Promise<string> {
 }
 
 test.describe('evening navy sidebar', () => {
-  test('shows the weekly momentum ring and Subjects/Coach section labels', async ({ page }) => {
+  test('shows the weekly momentum ring and Subjects label; hides the admin Coach section for students', async ({ page }) => {
     await page.goto('/dashboard');
     const rail = page.locator('aside');
     await expect(rail.getByText(/of 5 sessions/)).toBeVisible();
     await expect(rail.getByText('Subjects', { exact: true })).toBeVisible();
-    await expect(rail.getByText('Coach', { exact: true })).toBeVisible();
-    await expect(rail.getByRole('link', { name: 'Admin' })).toBeVisible();
+    // The admin "Coach" section (Admin/Coach Chat/Skills) is hidden from students (W-57).
+    await expect(rail.getByText('Coach', { exact: true })).toHaveCount(0);
+    await expect(rail.getByRole('link', { name: 'Admin' })).toHaveCount(0);
   });
 
   test('nav items carry colour-coded scores; untouched topics show a dash', async ({ page, request, baseURL }) => {

@@ -46,12 +46,14 @@ test.describe('W-11 — frontend auth shell', () => {
   });
 
   test('the original destination is restored after login', async ({ page }) => {
-    await page.goto('/admin');
+    // Use a student-accessible protected route (W-57 now blocks students from /admin, so it can
+    // no longer stand in for a generic protected destination here).
+    await page.goto('/math/arithmetic');
     await expect(page).toHaveURL(/\/login/);
     await page.getByLabel('Email').fill(STUDENT.email);
     await page.getByLabel('Password').fill(STUDENT.password);
     await page.getByRole('button', { name: 'Sign in' }).click();
-    await expect(page).toHaveURL(/\/admin/);
+    await expect(page).toHaveURL(/\/math\/arithmetic/);
   });
 
   test('sign out returns to login and the guard re-engages', async ({ page }) => {

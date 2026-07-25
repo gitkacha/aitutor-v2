@@ -314,31 +314,35 @@ export default function Sidebar() {
             )}
           </div>
 
-          <div className={sectLabel}>Coach</div>
-          <Link to="/admin" onClick={() => setMobileOpen(false)} className={itemClass(location.pathname === '/admin')}>
-            <Shield size={15} className={location.pathname === '/admin' ? '' : 'text-rail-muted'} />
-            Admin
-          </Link>
-          {/* Coach Chat — admins only (M3b-2 Task 4) */}
-          {user?.role === 'admin' && (
-            <Link to="/coach" onClick={() => setMobileOpen(false)} className={itemClass(location.pathname === '/coach')}>
-              <Sparkles size={15} className={location.pathname === '/coach' ? '' : 'text-rail-muted'} />
-              Coach Chat
-            </Link>
-          )}
-          {/* Skills taxonomy browser — admins only (M3a Task 10) */}
-          {user?.role === 'admin' && (
-            <Link to="/skills" onClick={() => setMobileOpen(false)} className={itemClass(location.pathname === '/skills')}>
-              <BookOpen size={15} className={location.pathname === '/skills' ? '' : 'text-rail-muted'} />
-              Skills
-            </Link>
-          )}
-          {/* Platform console — super-admins only (W-15) */}
-          {user?.isSuperAdmin && (
-            <Link to="/superadmin" onClick={() => setMobileOpen(false)} className={itemClass(location.pathname === '/superadmin')}>
-              <Building2 size={15} className={location.pathname === '/superadmin' ? '' : 'text-rail-muted'} />
-              Platform
-            </Link>
+          {/* Admin/staff section (W-57): hidden entirely from students. An admin sees
+              Admin/Coach Chat/Skills; a super-admin additionally (or only) sees Platform. */}
+          {(user?.role === 'admin' || user?.isSuperAdmin) && (
+            <>
+              <div className={sectLabel}>Coach</div>
+              {user?.role === 'admin' && (
+                <>
+                  <Link to="/admin" onClick={() => setMobileOpen(false)} className={itemClass(location.pathname === '/admin')}>
+                    <Shield size={15} className={location.pathname === '/admin' ? '' : 'text-rail-muted'} />
+                    Admin
+                  </Link>
+                  <Link to="/coach" onClick={() => setMobileOpen(false)} className={itemClass(location.pathname === '/coach')}>
+                    <Sparkles size={15} className={location.pathname === '/coach' ? '' : 'text-rail-muted'} />
+                    Coach Chat
+                  </Link>
+                  <Link to="/skills" onClick={() => setMobileOpen(false)} className={itemClass(location.pathname === '/skills')}>
+                    <BookOpen size={15} className={location.pathname === '/skills' ? '' : 'text-rail-muted'} />
+                    Skills
+                  </Link>
+                </>
+              )}
+              {/* Platform console — super-admins only (W-15) */}
+              {user?.isSuperAdmin && (
+                <Link to="/superadmin" onClick={() => setMobileOpen(false)} className={itemClass(location.pathname === '/superadmin')}>
+                  <Building2 size={15} className={location.pathname === '/superadmin' ? '' : 'text-rail-muted'} />
+                  Platform
+                </Link>
+              )}
+            </>
           )}
         </nav>
 

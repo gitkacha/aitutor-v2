@@ -44,7 +44,7 @@ function AppShell() {
           <Route path="/practice/:typeSlug/start" element={<TimedPractice />} />
           <Route path="/history/:typeSlug" element={<ScoreHistory />} />
           <Route path="/attempt/:id" element={<AttemptDetail />} />
-          <Route path="/admin" element={<Admin />} />
+          <Route path="/admin" element={<RequireAdmin><Admin /></RequireAdmin>} />
           <Route path="/skills" element={<RequireAdmin><Skills /></RequireAdmin>} />
           <Route path="/coach" element={<RequireAdmin><CoachChat /></RequireAdmin>} />
           <Route path="/superadmin" element={<RequireSuperAdmin><SuperAdmin /></RequireSuperAdmin>} />
