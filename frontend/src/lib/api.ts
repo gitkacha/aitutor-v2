@@ -249,6 +249,85 @@ export const skillsApi = {
   list: () => fetchJSON<Skill[]>('/skills'),
 };
 
+// ── Coach chat + interventions (Milestone 3b-2) ──────────────────────────────
+export interface ChatMessage {
+  id: number;
+  sessionId: number;
+  role: 'user' | 'assistant' | 'tool';
+  content: string;
+  createdAt: string;
+}
+
+export interface PendingAction {
+  id: string;
+  toolName: string;
+  args: any;
+}
+
+export interface ChatStepResult {
+  messages: ChatMessage[];
+  suggestedQuestions: string[];
+  pendingAction?: PendingAction;
+}
+
+export interface ChatSessionSummary {
+  id: number;
+  title: string;
+  createdAt: string;
+}
+
+export type OutcomeStatus = 'insufficient-evidence' | 'improving' | 'not-yet-improving';
+
+export interface PerSkillOutcome {
+  slug: string;
+  before: number;
+  postAttempted: number;
+  postAccuracy: number;
+  status: OutcomeStatus;
+}
+
+export interface InterventionWithOutcome {
+  id: number;
+  studentId: number;
+  createdById: number;
+  chatSessionId: number | null;
+  skillSlugs: string;
+  diagnosisSnapshot: string;
+  recommendation: string;
+  rationale: string;
+  worksheetIds: string;
+  coachingModuleIds: string;
+  status: string;
+  createdAt: string;
+  outcome: { perSkill: PerSkillOutcome[]; status: string };
+}
+
+// Workspace-wide active-interventions strip (one row per active intervention, any student).
+export interface ActiveIntervention {
+  id: number;
+  studentId: number;
+  studentName: string;
+  skillSlugs: string;
+  createdAt: string;
+  status: string;
+}
+
+export const chatApi = {
+  createSession: () => fetchJSON<{ id: number }>('/chat/sessions', { method: 'POST', body: '{}' }),
+  listSessions: () => fetchJSON<ChatSessionSummary[]>('/chat/sessions'),
+  getSession: (id: number) => fetchJSON<{ id: number; title: string; messages: ChatMessage[] }>(`/chat/sessions/${id}`),
+  sendMessage: (id: number, content: string) =>
+    fetchJSON<ChatStepResult>(`/chat/sessions/${id}/messages`, { method: 'POST', body: JSON.stringify({ content }) }),
+  confirm: (id: number, actionId: string, approve: boolean) =>
+    fetchJSON<ChatStepResult>(`/chat/sessions/${id}/confirm`, { method: 'POST', body: JSON.stringify({ actionId, approve }) }),
+};
+
+export const interventionsApi = {
+  list: (studentId: number) => fetchJSON<InterventionWithOutcome[]>(`/interventions?studentId=${studentId}`),
+  listActive: () => fetchJSON<ActiveIntervention[]>('/interventions/active'),
+  outcome: (id: number) => fetchJSON<{ perSkill: PerSkillOutcome[]; status: string }>(`/interventions/${id}/outcome`),
+};
+
 // ── Auth (Milestone 2) ──
 
 export interface AuthUser {
