@@ -18,6 +18,7 @@ import MathAttemptReview from './pages/MathAttemptReview';
 import Skills from './pages/Skills';
 import AdminLessons from './pages/AdminLessons';
 import ModuleEditor from './pages/ModuleEditor';
+import Lesson from './pages/Lesson';
 import CoachChat from './pages/CoachChat';
 
 // Super-admin-only route guard (W-15): non-super users are sent to the dashboard.
@@ -57,6 +58,7 @@ function AppShell() {
           {/* ScoreHistory reads :typeSlug for both subjects */}
           <Route path="/math-history/:typeSlug" element={<ScoreHistory subject="math" />} />
           <Route path="/math-attempt/:id" element={<MathAttemptReview />} />
+          <Route path="/lesson/:id" element={<Lesson />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>

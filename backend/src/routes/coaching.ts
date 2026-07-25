@@ -43,11 +43,18 @@ router.get('/jobs/:jobId', requireAdmin, asyncHandler(async (req: Request, res: 
   res.json({ status: job.status, result: job.result, error: job.error });
 }));
 
-// GET /api/coaching/modules?skillId= — admin list of a skill's modules (draft + approved).
-router.get('/modules', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+// GET /api/coaching/modules — list modules for the workspace.
+//  - admins see all (draft + approved); `?skillId=` filters to a skill, `?approved=1` to approved.
+//  - students ALWAYS see approved only (§8.2) — the flag is implied and drafts never leak.
+router.get('/modules', requireAuth, asyncHandler(async (req: Request, res: Response) => {
   const skillId = req.query.skillId != null ? Number(req.query.skillId) : undefined;
+  const approvedOnly = req.user!.role !== 'admin' || req.query.approved === '1';
   const modules = await prisma.coachingModule.findMany({
-    where: { workspaceId: req.user!.workspaceId, ...(skillId ? { skillId } : {}) },
+    where: {
+      workspaceId: req.user!.workspaceId,
+      ...(skillId ? { skillId } : {}),
+      ...(approvedOnly ? { status: 'approved' } : {}),
+    },
     include: { skill: { select: { name: true, slug: true, topicId: true } } },
     orderBy: { createdAt: 'desc' },
   });
@@ -100,6 +107,22 @@ router.post('/modules/:id/approve', requireAdmin, asyncHandler(async (req: Reque
     include: { skill: { select: { name: true, slug: true, topicId: true } } },
   });
   res.json(approved);
+}));
+
+// POST /api/coaching/modules/:id/complete — student marks a lesson complete. Lazily creates the
+// assignment (interventionId null) if the student reached the lesson self-serve, so completion
+// always has a home and admins can see engagement (§4.1/§4.3). 404 if the module isn't approved.
+router.post('/modules/:id/complete', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+  const mod = await prisma.coachingModule.findFirst({
+    where: { id: Number(req.params.id), workspaceId: req.user!.workspaceId },
+  });
+  if (!mod || mod.status !== 'approved') return res.status(404).json({ error: 'Module not found' });
+  const assignment = await prisma.coachingAssignment.upsert({
+    where: { moduleId_studentId: { moduleId: mod.id, studentId: req.user!.id } },
+    update: { completedAt: new Date() },
+    create: { moduleId: mod.id, studentId: req.user!.id, completedAt: new Date() },
+  });
+  res.json({ completedAt: assignment.completedAt });
 }));
 
 export default router;

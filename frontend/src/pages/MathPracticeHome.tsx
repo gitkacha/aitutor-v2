@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { mathApi, MathTopic, MathAttempt, MathWorksheet, GeneratedMathQuestion } from '@/lib/api';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { mathApi, coachingApi, MathTopic, MathAttempt, MathWorksheet, GeneratedMathQuestion, CoachingModule } from '@/lib/api';
 import { parseJsonArray } from '@/lib/parse';
 import { Button } from '@/components/ui/button';
-import { Clock, Grid3x3, FileText } from 'lucide-react';
+import { Clock, Grid3x3, FileText, GraduationCap, ChevronRight } from 'lucide-react';
 
 export default function MathPracticeHome() {
   const { topicSlug } = useParams<{ topicSlug: string }>();
@@ -11,6 +11,7 @@ export default function MathPracticeHome() {
   const [topic, setTopic] = useState<MathTopic | null>(null);
   const [attempts, setAttempts] = useState<MathAttempt[]>([]);
   const [worksheets, setWorksheets] = useState<MathWorksheet[]>([]);
+  const [lessons, setLessons] = useState<CoachingModule[]>([]);
   const [loading, setLoading] = useState(true);
   const isAllTopics = topicSlug === 'all-topics';
 
@@ -40,12 +41,15 @@ export default function MathPracticeHome() {
         mathApi.getTopic(topicSlug),
         mathApi.getAttempts(topicSlug),
         mathApi.getWorksheets(),
+        coachingApi.listApproved(),
       ])
-        .then(([t, a, ws]) => {
+        .then(([t, a, ws, mods]) => {
           setTopic(t);
           setAttempts(a);
           // Filter worksheets that include this topic
           setWorksheets(ws.filter(w => parseJsonArray<string>(w.topicIds).includes(topicSlug)));
+          // Approved lessons whose skill belongs to this topic (W-80).
+          setLessons(mods.filter((m) => m.skill?.topicId === t.id));
         })
         .catch(() => navigate('/dashboard'))
         .finally(() => setLoading(false));
@@ -90,6 +94,34 @@ export default function MathPracticeHome() {
         </div>
         <p className="text-gray-600 mt-2">{topic.description}</p>
       </div>
+
+      {/* Lessons for this topic (W-80) — learn the method before you practise. */}
+      {lessons.length > 0 && (
+        <div data-testid="topic-lessons" className="bg-white rounded-xl p-6 border border-gray-200">
+          <div className="flex items-center gap-2 mb-3">
+            <GraduationCap size={18} className="text-brand-green" />
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Lessons</h2>
+          </div>
+          <p className="text-sm text-gray-500 -mt-1 mb-3">Learn the method, then try the practice below.</p>
+          <div className="space-y-2">
+            {lessons.map((m) => (
+              <Link
+                key={m.id}
+                to={`/lesson/${m.id}`}
+                className="flex items-center gap-3 rounded-lg border border-gray-100 p-3 hover:bg-gray-50"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-900">{m.title}</p>
+                  {m.skill && <p className="text-xs text-gray-500 mt-0.5">{m.skill.name}</p>}
+                </div>
+                <span className="shrink-0 flex items-center gap-1 text-xs font-semibold text-brand-blue">
+                  Learn the method <ChevronRight size={14} />
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Test info */}
       <div className="bg-white rounded-xl p-6 border border-gray-200">
