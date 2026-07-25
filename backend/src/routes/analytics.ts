@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../lib/async-handler';
-import { requireAdmin } from '../middleware/auth';
+import { requireAdmin, requireAuth } from '../middleware/auth';
 import { canAccessUser } from '../lib/scope';
-import { getStudentSkillReport, getOpportunityAreas, getSkillTrend } from '../services/analytics.service';
+import { getStudentSkillReport, getOpportunityAreas, getSkillTrend, getMathImprovements } from '../services/analytics.service';
 
 const router = Router();
 
@@ -81,6 +81,31 @@ router.get('/opportunity-areas', requireAdmin, asyncHandler(async (req: Request,
 
   const areas = await getOpportunityAreas(req.user!.workspaceId, subject, studentId);
   res.json(areas);
+}));
+
+// GET /api/analytics/me/improvements?subject=math&studentId? — a student's "most improved"
+// topics. requireAuth (not requireAdmin): a student may see their own; with ?studentId=, an
+// admin may view a member of their workspace (out-of-scope → 404, same B1 pattern as the other
+// routes). math-only for now — computeSkillImprovements has no writing equivalent yet.
+router.get('/me/improvements', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+  const subject = req.query.subject;
+  if (subject !== 'math') {
+    return res.status(400).json({ error: 'subject must be "math"' });
+  }
+
+  let targetId = req.user!.id;
+  if (req.query.studentId !== undefined) {
+    const id = parseInt(req.query.studentId as string);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid studentId' });
+    }
+    if (!(await canAccessUser(req, id))) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+    targetId = id;
+  }
+
+  res.json(await getMathImprovements(targetId));
 }));
 
 export default router;

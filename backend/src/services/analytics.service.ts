@@ -3,6 +3,7 @@ import {
   AnswerRecord,
   SkillSignal,
   WritingAnalysisRecord,
+  ImprovedSkill,
   EVIDENCE_FLOOR,
   median,
   computeSkillSignals,
@@ -13,6 +14,7 @@ import {
   computeWritingSignals,
   computeWritingUsage,
   computeSkillTrendSeries,
+  computeSkillImprovements,
   SkillTrendPoint,
 } from './analytics-core';
 
@@ -354,4 +356,82 @@ export async function getOpportunityAreas(
       students: studentsCountBySlug.get(slug) ?? 0,
     }))
     .sort((a, b) => a.cohortAccuracy - b.cohortAccuracy);
+}
+
+// M3c-1 Task 2 (W-59): student-facing "most improved" adapter. A topic surfaces when at least
+// one of its skills clears computeSkillImprovements' evidence floor + gain threshold; each
+// topic shows up to its top-3 improved skills (already gainScore-descending, since
+// computeSkillImprovements sorts the whole list that way and grouping preserves order) and the
+// best (first) skill's gain as the topic-level delta. No statistics computed here — grouping,
+// topic resolution and ranking only.
+export interface ImprovedTopic {
+  slug: string;
+  name: string;
+  delta: { metric: 'accuracy' | 'speed'; value: number };
+  interventionId: number | null;
+  skills: ImprovedSkill[];
+}
+
+export async function getMathImprovements(studentId: number): Promise<{ topics: ImprovedTopic[] }> {
+  const { records } = await buildMathWindow(studentId, DEFAULT_WINDOW);
+  const improvements = computeSkillImprovements(records);
+  if (improvements.length === 0) return { topics: [] };
+
+  const skillRows = await prisma.skill.findMany({
+    where: { slug: { in: improvements.map((s) => s.slug) } },
+    select: { slug: true, topic: { select: { slug: true, name: true } } },
+  });
+  const topicBySkillSlug = new Map<string, { slug: string; name: string }>();
+  for (const row of skillRows) {
+    if (row.topic) topicBySkillSlug.set(row.slug, { slug: row.topic.slug, name: row.topic.name });
+  }
+
+  // Group by topic, skipping any improved skill whose topic can't resolve. `improvements` is
+  // already sorted desc by gainScore, so pushing in iteration order keeps each group's skills
+  // in that same order.
+  const byTopic = new Map<string, { name: string; skills: ImprovedSkill[] }>();
+  for (const imp of improvements) {
+    const topic = topicBySkillSlug.get(imp.slug);
+    if (!topic) continue;
+    if (!byTopic.has(topic.slug)) byTopic.set(topic.slug, { name: topic.name, skills: [] });
+    byTopic.get(topic.slug)!.skills.push(imp);
+  }
+  if (byTopic.size === 0) return { topics: [] };
+
+  // Most recent active intervention per targeted skill, for the "shown skill has an active
+  // intervention" badge — matched against each topic's shown (top-3) skills only.
+  const interventions = await prisma.intervention.findMany({
+    where: { studentId, status: 'active' },
+    orderBy: { createdAt: 'desc' },
+  });
+  const findInterventionId = (shownSlugs: string[]): number | null => {
+    for (const iv of interventions) {
+      let targeted: string[];
+      try {
+        targeted = JSON.parse(iv.skillSlugs);
+      } catch {
+        continue;
+      }
+      if (shownSlugs.some((slug) => targeted.includes(slug))) return iv.id;
+    }
+    return null;
+  };
+
+  const topics: ImprovedTopic[] = [];
+  for (const [topicSlug, { name, skills }] of byTopic) {
+    const shown = skills.slice(0, 3);
+    const best = shown[0];
+    const value = Math.round(best.metric === 'accuracy' ? best.accGainPts! : best.quickerPct!);
+    topics.push({
+      slug: topicSlug,
+      name,
+      delta: { metric: best.metric, value },
+      interventionId: findInterventionId(shown.map((s) => s.slug)),
+      skills: shown,
+    });
+  }
+
+  topics.sort((a, b) => b.skills.length - a.skills.length || b.skills[0].gainScore - a.skills[0].gainScore);
+
+  return { topics: topics.slice(0, 5) };
 }
