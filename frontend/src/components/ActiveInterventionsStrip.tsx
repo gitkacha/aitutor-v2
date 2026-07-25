@@ -6,15 +6,6 @@ import { INTERVENTION_STATUS_LABEL, interventionStatusClasses } from '@/lib/inte
 // across all students, with the recomputed outcome status. Read-only overview above the
 // per-student journey.
 
-function parseSlugs(raw: string): string[] {
-  try {
-    const v = JSON.parse(raw);
-    return Array.isArray(v) ? v : [];
-  } catch {
-    return [];
-  }
-}
-
 function ageDays(iso: string): string {
   const d = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 86_400_000));
   return d === 0 ? 'today' : d === 1 ? '1 day' : `${d} days`;
@@ -43,7 +34,7 @@ export default function ActiveInterventionsStrip() {
               <b className="text-sm text-gray-900">{iv.studentName}</b>
               <span className="ml-auto text-[11px] text-gray-400">{ageDays(iv.createdAt)}</span>
             </div>
-            <div className="text-xs text-gray-600 mt-1.5">{parseSlugs(iv.skillSlugs).join(', ')}</div>
+            <div className="text-xs text-gray-600 mt-1.5">{(iv.skillNames?.length ? iv.skillNames : [iv.skillSlugs]).join(', ')}</div>
             <div className="mt-2.5">
               <span className={`inline-flex items-center text-[11px] font-bold px-2.5 py-0.5 rounded-full ${interventionStatusClasses(iv.status)}`} data-status={iv.status}>
                 {INTERVENTION_STATUS_LABEL[iv.status] ?? iv.status}

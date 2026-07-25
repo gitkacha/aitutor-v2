@@ -139,6 +139,7 @@ export interface ActiveInterventionRow {
   studentId: number;
   studentName: string;
   skillSlugs: string;
+  skillNames: string[]; // friendly display names for the targeted skills, in skillSlugs order
   createdAt: Date;
   status: string;
 }
@@ -149,14 +150,28 @@ export async function listActiveInterventions(workspaceId: number): Promise<Acti
     orderBy: { createdAt: 'desc' },
     include: { student: { select: { name: true } } },
   });
+
+  // Resolve every targeted slug to its display name once (one query, not per-row).
+  const allSlugs = new Set<string>();
+  for (const r of rows) {
+    try { for (const s of JSON.parse(r.skillSlugs)) allSlugs.add(s); } catch { /* skip malformed */ }
+  }
+  const skills = await prisma.skill.findMany({ where: { slug: { in: [...allSlugs] } }, select: { slug: true, name: true } });
+  const nameBySlug = new Map(skills.map((s) => [s.slug, s.name]));
+
   return Promise.all(
-    rows.map(async (r) => ({
-      id: r.id,
-      studentId: r.studentId,
-      studentName: r.student.name,
-      skillSlugs: r.skillSlugs,
-      createdAt: r.createdAt,
-      status: (await getInterventionOutcome(r.id)).status,
-    }))
+    rows.map(async (r) => {
+      let slugs: string[] = [];
+      try { slugs = JSON.parse(r.skillSlugs); } catch { slugs = []; }
+      return {
+        id: r.id,
+        studentId: r.studentId,
+        studentName: r.student.name,
+        skillSlugs: r.skillSlugs,
+        skillNames: slugs.map((s) => nameBySlug.get(s) ?? s),
+        createdAt: r.createdAt,
+        status: (await getInterventionOutcome(r.id)).status,
+      };
+    })
   );
 }

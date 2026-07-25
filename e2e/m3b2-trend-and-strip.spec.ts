@@ -67,6 +67,9 @@ test.describe('M3b-2 Task 6 — active endpoint, strip, trend chart, heatmap dri
     expect(typeof mine.studentName).toBe('string');
     expect(mine.studentName.length).toBeGreaterThan(0);
     expect(typeof mine.status).toBe('string');
+    // Friendly skill names, not raw slugs (the seeded 'elapsed-time' shows as 'Elapsed Time').
+    expect(Array.isArray(mine.skillNames)).toBe(true);
+    expect(mine.skillNames[0]).toBe('Elapsed Time');
 
     const denied = await student.get('/api/interventions/active');
     expect(denied.status()).toBe(403);

@@ -308,6 +308,7 @@ export interface ActiveIntervention {
   studentId: number;
   studentName: string;
   skillSlugs: string;
+  skillNames: string[];
   createdAt: string;
   status: string;
 }
