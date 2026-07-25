@@ -417,21 +417,26 @@ export async function getMathImprovements(studentId: number): Promise<{ topics: 
     return null;
   };
 
-  const topics: ImprovedTopic[] = [];
-  for (const [topicSlug, { name, skills }] of byTopic) {
+  // Rank topics by their TRUE improved-skill count (captured before slicing to the top-3 shown),
+  // then by best gainScore — so a topic with 9 improved skills outranks one with 4 even though
+  // both display only 3.
+  const ranked = [...byTopic.entries()]
+    .map(([topicSlug, { name, skills }]) => ({ topicSlug, name, skills, improvedCount: skills.length }))
+    .sort((a, b) => b.improvedCount - a.improvedCount || b.skills[0].gainScore - a.skills[0].gainScore)
+    .slice(0, 5);
+
+  const topics: ImprovedTopic[] = ranked.map(({ topicSlug, name, skills }) => {
     const shown = skills.slice(0, 3);
     const best = shown[0];
     const value = Math.round(best.metric === 'accuracy' ? best.accGainPts! : best.quickerPct!);
-    topics.push({
+    return {
       slug: topicSlug,
       name,
       delta: { metric: best.metric, value },
       interventionId: findInterventionId(shown.map((s) => s.slug)),
       skills: shown,
-    });
-  }
+    };
+  });
 
-  topics.sort((a, b) => b.skills.length - a.skills.length || b.skills[0].gainScore - a.skills[0].gainScore);
-
-  return { topics: topics.slice(0, 5) };
+  return { topics };
 }

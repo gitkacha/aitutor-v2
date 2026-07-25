@@ -315,6 +315,12 @@ describe('computeSkillImprovements', () => {
     expect(computeSkillImprovements(recs).length).toBe(0);
   });
 
+  it('degenerate older mean of 0ms → no spurious speed gain (excluded)', () => {
+    // older half all 0ms, flat accuracy → quickerPct null (guarded), accGain 0 → not eligible
+    const recs = [...half(1,1,n(2,4),[0,0,0,0]), ...half(2,2,n(2,4),[50,50,50,50])];
+    expect(computeSkillImprovements(recs).length).toBe(0);
+  });
+
   it('sorted by gainScore desc', () => {
     const recs = [
       ...half(1,1,n(2,10),Array(10).fill(null),'lo'), ...half(2,2,n(4,10),Array(10).fill(null),'lo'), // +20

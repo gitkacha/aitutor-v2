@@ -294,7 +294,8 @@ export function computeSkillImprovements(records: AnswerRecord[]): ImprovedSkill
       if (olderTimed.length >= 3 && newerTimed.length >= 3) {
         const olderMean = olderTimed.reduce((a, r) => a + r.timeMs!, 0) / olderTimed.length;
         const newerMean = newerTimed.reduce((a, r) => a + r.timeMs!, 0) / newerTimed.length;
-        quickerPct = (olderMean - newerMean) / olderMean * 100;
+        // Spec §1.1: only when olderMeanMs > 0 (a degenerate zero mean would give a spurious gain).
+        quickerPct = olderMean > 0 ? (olderMean - newerMean) / olderMean * 100 : null;
       }
     }
 
