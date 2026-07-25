@@ -216,7 +216,7 @@ export default function Sidebar() {
           <div className="min-w-0">
             <div className="text-[10px] font-bold uppercase tracking-[.12em] text-rail-muted">This week</div>
             <div className="text-[13px] font-semibold text-white mt-0.5">
-              {sessions} of {SESSION_GOAL} sessions done
+              {done} of {SESSION_GOAL} sessions done
             </div>
             <div className="text-[11.5px] text-rail-muted mt-0.5">{encouragement}</div>
             <div

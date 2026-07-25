@@ -18,6 +18,8 @@ every agent, on any model, without exception):
 
 ## Open
 
+- [ ] **W-77** — Sidebar weekly-goal card read "6 of 5 sessions done" once a student did more than 5 sessions in a week: the ring text used the capped `done` but the label used the raw uncapped `sessions` (`Sidebar.tsx:219`). Label now uses `done` so it reads "5 of 5 sessions done" (consistent with the ring). Proof: `e2e/m3c1-streak-ui.spec.ts` (over-goal case).
+
 Milestone 3c Phase 2 — Coaching library + student lessons (plan
 `docs/superpowers/plans/2026-07-25-m3c-phase2-coaching.md`, spec
 `docs/superpowers/specs/2026-07-25-m3c-phase2-coaching-design.md`, approved 2026-07-26; math-only,

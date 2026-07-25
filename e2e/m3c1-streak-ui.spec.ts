@@ -50,4 +50,38 @@ test.describe('weekly streak (sidebar)', () => {
     const n = parseInt(text!.match(/(\d+)-week streak/)![1], 10);
     expect(n).toBeGreaterThanOrEqual(2);
   });
+
+  // W-77: doing MORE than the goal must not read "6 of 5 sessions done" — the label caps at the
+  // goal like the ring does.
+  test('the sessions-done label caps at the goal when the student exceeds it', async ({ page, request }) => {
+    const questions = await (await request.get('/api/math/questions?topic=arithmetic')).json();
+    const q = questions[0];
+
+    const monday = new Date();
+    monday.setHours(0, 0, 0, 0);
+    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+    const midCurrent = new Date(monday.getTime() + 3 * 86_400_000 + 12 * 3_600_000); // Thu noon this week
+
+    // Six sessions this week — one past the goal of 5.
+    for (let i = 0; i < 6; i++) {
+      const at = new Date(midCurrent.getTime() + i * 60_000);
+      const res = await request.post('/api/math/attempts', {
+        data: {
+          topicId: q.topicId,
+          questions: JSON.stringify([q.id]),
+          answers: JSON.stringify([0]),
+          startedAt: new Date(at.getTime() - 30_000).toISOString(),
+          finishedAt: at.toISOString(),
+          timeTaken: 30,
+          source: 'practice',
+        },
+      });
+      expect(res.status()).toBe(201);
+    }
+
+    await page.goto('/dashboard');
+    // Capped, consistent with the 5/5 ring — never "6 of 5" (or higher).
+    await expect(page.getByText('5 of 5 sessions done')).toBeVisible();
+    await expect(page.getByText(/[6-9]\d* of 5 sessions done/)).toHaveCount(0);
+  });
 });
