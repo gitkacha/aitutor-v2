@@ -16,7 +16,7 @@ const fixture: ChatMessage[] = [
   msg({ id: 2, role: 'assistant', content: JSON.stringify({ __assistantToolCalls: [{ id: 'c1', name: 'get_student_skill_report', arguments: '{}' }] }) }),
   msg({ id: 3, role: 'tool', content: JSON.stringify({ toolName: 'get_student_skill_report', args: {}, result: { skills: [{ slug: 'decimal-division', name: 'Decimal Division', accuracy: 0.4, attempted: 10, sufficientEvidence: true }] }, toolCallId: 'c1' }) }),
   msg({ id: 4, role: 'assistant', content: 'She is strongest at ordering decimals.' }),
-  msg({ id: 5, role: 'user', content: '(system) The admin approved the "create_intervention" action. It completed.' }),
+  msg({ id: 5, role: 'user', content: '(system) The admin approved the "create_intervention" action. It completed. Result: {"id":1,"studentId":2,"diagnosisSnapshot":"{\\"capturedAt\\":\\"x\\"}"}' }),
 ];
 
 describe('ChatTranscript', () => {
@@ -40,5 +40,12 @@ describe('ChatTranscript', () => {
     render(<ChatTranscript messages={fixture} />);
     const el = screen.getByText(/The admin approved/);
     expect(el.getAttribute('data-role')).toBe('status');
+  });
+
+  it('strips the raw "Result: {…}" JSON tail from a (system) status line', () => {
+    const { container } = render(<ChatTranscript messages={fixture} />);
+    expect(container.innerHTML).not.toContain('diagnosisSnapshot');
+    expect(container.innerHTML).not.toContain('"studentId"');
+    expect(screen.getByText(/The admin approved.*It completed\./)).toBeTruthy();
   });
 });

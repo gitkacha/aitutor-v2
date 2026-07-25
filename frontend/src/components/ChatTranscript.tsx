@@ -25,9 +25,15 @@ export function ChatTranscript({ messages }: { messages: ChatMessage[] }) {
       {messages.map((m) => {
         if (m.role === 'user') {
           if (m.content.startsWith('(system)')) {
+            // These action-outcome turns carry a "Result: {…}" JSON tail meant for the model, not
+            // the admin — show only the human sentence, never the raw object.
+            const status = m.content
+              .replace(/^\(system\)\s*/, '')
+              .replace(/\s*Result:\s*[[{][\s\S]*$/, '')
+              .trim();
             return (
               <div key={m.id} data-role="status" className="self-center text-xs text-gray-400">
-                {m.content.replace(/^\(system\)\s*/, '')}
+                {status}
               </div>
             );
           }
