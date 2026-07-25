@@ -256,3 +256,70 @@ describe('computeSkillTrendSeries', () => {
     expect(computeSkillTrendSeries(recs, 's1').map((p) => p.attemptId)).toEqual([4, 5]);
   });
 });
+
+import { computeSkillImprovements } from './analytics-core';
+
+// A skill from two attempts (older = attempt1, newer = attempt2) so splitAttemptHalves gives
+// older={1}, newer={2}. corrects/times are per-question arrays for that attempt.
+const half = (attemptId: number, day: number, corrects: boolean[], times: (number|null)[], slug='s1') =>
+  corrects.map((c, i) => rec({ attemptId, finishedAt: `2026-07-0${day}T00:00:00.000Z`, skillSlug: slug, skillName: slug.toUpperCase(), correct: c, timeMs: times[i] }));
+const n = (k: number, total: number): boolean[] => Array.from({ length: total }, (_, i) => i < k); // k trues of total
+
+describe('computeSkillImprovements', () => {
+  it('accuracy win: older 1/4 (25%) → newer 3/4 (75%) = +50 pts, metric accuracy', () => {
+    const recs = [...half(1,1,n(1,4),[null,null,null,null]), ...half(2,2,n(3,4),[null,null,null,null])];
+    const [s] = computeSkillImprovements(recs);
+    expect(s.metric).toBe('accuracy');
+    expect(s.accGainPts).toBeCloseTo(50, 6);
+    expect(s.accuracyFrom).toBeCloseTo(0.25, 6);
+    expect(s.accuracyTo).toBeCloseTo(0.75, 6);
+    expect(s.gainScore).toBeCloseTo(50, 6);
+  });
+
+  it('speed win: flat accuracy, older mean 100000 → newer 70000 = 30% quicker, metric speed', () => {
+    const recs = [...half(1,1,n(2,4),[100000,100000,100000,100000]), ...half(2,2,n(2,4),[70000,70000,70000,70000])];
+    const [s] = computeSkillImprovements(recs);
+    expect(s.accGainPts).toBeCloseTo(0, 6);   // computed, below the +8 gate
+    expect(s.metric).toBe('speed');
+    expect(s.quickerPct).toBeCloseTo(30, 6);
+    expect(s.gainScore).toBeCloseTo(30, 6);
+  });
+
+  it('both improved → pick the larger: accGain +10 vs quicker 25% → speed', () => {
+    const recs = [...half(1,1,n(4,10),Array(10).fill(100000)), ...half(2,2,n(5,10),Array(10).fill(75000))];
+    const [s] = computeSkillImprovements(recs);
+    expect(s.accGainPts).toBeCloseTo(10, 6);   // 50% − 40%
+    expect(s.quickerPct).toBeCloseTo(25, 6);   // (100000 − 75000)/100000
+    expect(s.metric).toBe('speed');            // 25 > 10
+    expect(s.gainScore).toBeCloseTo(25, 6);
+  });
+
+  it('accuracy gate: +4 pts (below 8) excluded; +8 pts included', () => {
+    const below = [...half(1,1,n(10,25),Array(25).fill(null)), ...half(2,2,n(11,25),Array(25).fill(null))]; // 40%→44% = +4
+    expect(computeSkillImprovements(below).length).toBe(0);
+    const at = [...half(1,1,n(10,25),Array(25).fill(null)), ...half(2,2,n(12,25),Array(25).fill(null))];    // 40%→48% = +8
+    const [s] = computeSkillImprovements(at);
+    expect(s.metric).toBe('accuracy');
+    expect(s.accGainPts).toBeCloseTo(8, 6);
+  });
+
+  it('speed gate: 10% quicker (below 15) excluded; 20% quicker included', () => {
+    const below = [...half(1,1,n(2,4),[100000,100000,100000,100000]), ...half(2,2,n(2,4),[90000,90000,90000,90000])]; // 10%
+    expect(computeSkillImprovements(below).length).toBe(0);
+    const at = [...half(1,1,n(2,4),[100000,100000,100000,100000]), ...half(2,2,n(2,4),[80000,80000,80000,80000])];    // 20%
+    expect(computeSkillImprovements(at)[0].metric).toBe('speed');
+  });
+
+  it('insufficient evidence (attempted < 8) → excluded', () => {
+    const recs = [...half(1,1,[true],[null]), ...half(2,2,[false],[null])]; // 2 attempted
+    expect(computeSkillImprovements(recs).length).toBe(0);
+  });
+
+  it('sorted by gainScore desc', () => {
+    const recs = [
+      ...half(1,1,n(2,10),Array(10).fill(null),'lo'), ...half(2,2,n(4,10),Array(10).fill(null),'lo'), // +20
+      ...half(1,1,n(1,10),Array(10).fill(null),'hi'), ...half(2,2,n(6,10),Array(10).fill(null),'hi'), // +50
+    ];
+    expect(computeSkillImprovements(recs).map((s) => s.slug)).toEqual(['hi', 'lo']);
+  });
+});

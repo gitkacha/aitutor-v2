@@ -16,6 +16,15 @@ export interface SkillSignal {
   cohortAccuracy?: number;
 }
 
+export interface ImprovedSkill {
+  slug: string; name: string;
+  metric: 'accuracy' | 'speed';
+  accGainPts: number | null;      // (newerHalfAcc - olderHalfAcc) * 100
+  quickerPct: number | null;      // (olderMeanMs - newerMeanMs) / olderMeanMs * 100
+  accuracyFrom: number | null; accuracyTo: number | null; // older/newer half accuracy, 0..1
+  gainScore: number;              // max(accGainPts ?? -Infinity, quickerPct ?? -Infinity)
+}
+
 export const EVIDENCE_FLOOR = 8;
 export const EXAM_ANCHOR_MS = 68600;
 
@@ -243,6 +252,77 @@ export function rankWritingOpportunityAreas<
   return signals
     .filter((s) => s.sufficientEvidence)
     .sort((a, b) => a.mean - b.mean || (a.trendPts ?? 0) - (b.trendPts ?? 0));
+}
+
+// M3c-1: compute skill improvements based on accuracy and speed changes between older/newer attempt halves.
+export function computeSkillImprovements(records: AnswerRecord[]): ImprovedSkill[] {
+  const groups = new Map<string, AnswerRecord[]>();
+  for (const r of records) {
+    if (!groups.has(r.skillSlug)) groups.set(r.skillSlug, []);
+    groups.get(r.skillSlug)!.push(r);
+  }
+
+  const improvements: ImprovedSkill[] = [];
+
+  for (const [slug, recs] of groups) {
+    const attempted = recs.length;
+    if (attempted < EVIDENCE_FLOOR) continue;
+
+    const { older, newer } = splitAttemptHalves(recs);
+    const olderRecs = recs.filter((r) => older.has(r.attemptId));
+    const newerRecs = recs.filter((r) => newer.has(r.attemptId));
+
+    // Accuracy branch: only when each half has >= 4 records of the skill
+    let accGainPts: number | null = null;
+    let accuracyFrom: number | null = null;
+    let accuracyTo: number | null = null;
+
+    if (olderRecs.length >= 4 && newerRecs.length >= 4) {
+      const accOlder = olderRecs.filter((r) => r.correct).length / olderRecs.length;
+      const accNewer = newerRecs.filter((r) => r.correct).length / newerRecs.length;
+      accGainPts = (accNewer - accOlder) * 100;
+      accuracyFrom = accOlder;
+      accuracyTo = accNewer;
+    }
+
+    // Speed branch: only when each half has >= 3 records with timeMs != null
+    let quickerPct: number | null = null;
+    {
+      const olderTimed = olderRecs.filter((r) => r.timeMs != null);
+      const newerTimed = newerRecs.filter((r) => r.timeMs != null);
+
+      if (olderTimed.length >= 3 && newerTimed.length >= 3) {
+        const olderMean = olderTimed.reduce((a, r) => a + r.timeMs!, 0) / olderTimed.length;
+        const newerMean = newerTimed.reduce((a, r) => a + r.timeMs!, 0) / newerTimed.length;
+        quickerPct = (olderMean - newerMean) / olderMean * 100;
+      }
+    }
+
+    // Eligibility check: (accGainPts ?? -Infinity) >= 8 OR (quickerPct ?? -Infinity) >= 15
+    const accGainPtsVal = accGainPts ?? -Infinity;
+    const quickerPctVal = quickerPct ?? -Infinity;
+
+    // Small epsilon tolerance for floating point precision (e.g., 12/25 * 100 may be 8.000000000000002)
+    const isEligible = accGainPtsVal >= 8 - 1e-9 || quickerPctVal >= 15 - 1e-9;
+    if (!isEligible) continue;
+
+    // Compute gainScore and metric
+    const gainScore = Math.max(accGainPtsVal, quickerPctVal);
+    const metric = (quickerPct != null && quickerPct > accGainPtsVal) ? 'speed' : 'accuracy';
+
+    improvements.push({
+      slug,
+      name: recs[0].skillName,
+      metric,
+      accGainPts,
+      quickerPct,
+      accuracyFrom,
+      accuracyTo,
+      gainScore,
+    });
+  }
+
+  return improvements.sort((a, b) => b.gainScore - a.gainScore);
 }
 
 export interface WritingAnalysisRecord {
