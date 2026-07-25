@@ -18,6 +18,7 @@ every agent, on any model, without exception):
 
 ## Open
 
+- [ ] **W-78** — Coach chat showed an empty assistant bubble (looked broken) when the model returned empty content with no tool calls — reproduced from `dev.db` session 9 ("generate a lesson on vedic math…" → assistant message len=0). Root cause: `driveLoop` (chat.service.ts:145) persisted the empty turn unguarded. Fix: substitute a helpful fallback when content is empty and no tool call was made. Also completed W-65 — the system prompt never mentioned the coaching-lesson capability (`assign_coaching` tool added in W-65), so "generate a lesson" had no guidance; added it. Proof: `e2e/w78-chat-empty-response.spec.ts`.
 - [ ] **W-77** — Sidebar weekly-goal card read "6 of 5 sessions done" once a student did more than 5 sessions in a week: the ring text used the capped `done` but the label used the raw uncapped `sessions` (`Sidebar.tsx:219`). Label now uses `done` so it reads "5 of 5 sessions done" (consistent with the ring). Proof: `e2e/m3c1-streak-ui.spec.ts` (over-goal case).
 
 Milestone 3c Phase 2 — Coaching library + student lessons (plan

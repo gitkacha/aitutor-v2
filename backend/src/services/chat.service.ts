@@ -32,6 +32,12 @@ const ALL_TOOLS = [...READ_TOOL_SCHEMAS, ...ACTION_TOOL_SCHEMAS];
 const EXHAUSTED_REPLY =
   "I wasn't able to finish that within a reasonable number of steps. Could you narrow the question or ask about one thing at a time?";
 
+// The model occasionally returns empty content with no tool call (e.g. an off-topic request, or a
+// reasoning model that spends its whole budget thinking). Never show the admin a blank bubble —
+// substitute a helpful nudge back toward what the coach can actually do (W-78).
+const NO_ANSWER_REPLY =
+  "I couldn't put together a response for that. I can look up how a student is doing, or set up targeted practice and lessons for them — which student would you like to focus on?";
+
 const SYSTEM_PROMPT = `You are a coaching assistant for a teacher/admin using the NSW Selective Prep Coach.
 You help them understand a student's performance and plan targeted practice.
 
@@ -45,9 +51,13 @@ Hard rules:
   not enough data yet to judge it — never call it a weakness or a strength from thin data.
 - When proposing a worksheet as an intervention, make sure at least 8 questions target each skill
   you want to be able to measure, and say so to the admin.
-- Actions (generating/saving worksheets, creating interventions) require the admin's confirmation;
-  propose them clearly and let the confirmation happen — do not claim an action is done until you
-  are told it was. Propose ONE action at a time.
+- Actions (generating/saving worksheets, creating interventions, assigning a coaching lesson)
+  require the admin's confirmation; propose them clearly and let the confirmation happen — do not
+  claim an action is done until you are told it was. Propose ONE action at a time.
+- Coaching lessons teach ONE skill from the taxonomy. To set one up, use assign_coaching with the
+  student and the skill slug; if no approved lesson exists yet it generates a draft for the admin to
+  review and approve first. If the admin asks for a lesson on something that isn't a skill you can
+  identify, ask them which student and which skill they mean rather than inventing one.
 - Be concise and specific. Prefer the student's actual skill names and the numbers the tools return.`;
 
 // A stored assistant tool-call turn is JSON with this discriminant; plain assistant text is
@@ -142,7 +152,8 @@ async function driveLoop(sessionId: number, ctx: ToolContext): Promise<ChatStepR
     const { content, toolCalls } = await chatWithTools(providerFor('chat'), buildTranscript(messages), ALL_TOOLS, MAX_TOKENS);
 
     if (toolCalls.length === 0) {
-      await persist(sessionId, 'assistant', content);
+      // Guard against a blank turn — an empty answer is never shown to the admin (W-78).
+      await persist(sessionId, 'assistant', content.trim() ? content : NO_ANSWER_REPLY);
       return undefined;
     }
 
