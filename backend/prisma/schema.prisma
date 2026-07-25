@@ -173,8 +173,9 @@ model Skill {
   description    String
   examLevelNotes String
   isDemo         Boolean @default(false)
-  topic          MathTopic?     @relation(fields: [topicId], references: [id])
-  questions      MathQuestion[]
+  topic           MathTopic?     @relation(fields: [topicId], references: [id])
+  questions       MathQuestion[]
+  coachingModules CoachingModule[]
 }
 
 model MathQuestion {
@@ -277,4 +278,33 @@ model Intervention {
   student           User      @relation("InterventionStudent", fields: [studentId], references: [id])
   createdBy         User      @relation("InterventionCreator", fields: [createdById], references: [id])
   chatSession       ChatSession? @relation(fields: [chatSessionId], references: [id])
+}
+
+// M3c — coaching lessons. A module teaches one skill; only `approved` modules are assignable or
+// visible to students. Assignments track completion; interventionId is null for self-directed
+// (student self-serve) assignments. §2/§8 of the M3 design.
+model CoachingModule {
+  id           Int      @id @default(autoincrement())
+  workspaceId  Int
+  skillId      Int
+  title        String
+  content      String   // markdown, structure in §8.1
+  status       String   @default("draft") // 'draft' | 'approved'
+  reviewedById Int?
+  version      Int      @default(1)
+  createdAt    DateTime @default(now())
+  skill        Skill    @relation(fields: [skillId], references: [id])
+  assignments  CoachingAssignment[]
+}
+
+model CoachingAssignment {
+  id             Int       @id @default(autoincrement())
+  moduleId       Int
+  studentId      Int
+  interventionId Int?
+  completedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  module         CoachingModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@unique([moduleId, studentId])
 }
