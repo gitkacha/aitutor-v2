@@ -249,6 +249,52 @@ export const skillsApi = {
   list: () => fetchJSON<Skill[]>('/skills'),
 };
 
+// ── Coaching modules + lessons (Milestone 3c Phase 2) ────────────────────────
+export interface CoachingModule {
+  id: number;
+  workspaceId: number;
+  skillId: number;
+  title: string;
+  content: string;
+  status: 'draft' | 'approved';
+  reviewedById: number | null;
+  version: number;
+  createdAt: string;
+  skill?: { name: string; slug: string; topicId: number | null };
+}
+
+export interface CoachingAssignmentSummary {
+  id: number;
+  moduleId: number;
+  title: string;
+  skillId: number;
+  status: 'draft' | 'approved';
+  completedAt: string | null;
+  interventionId: number | null;
+}
+
+export const coachingApi = {
+  // Admin authoring
+  startGeneration: (skillId: number) =>
+    fetchJSON<{ jobId: string }>('/coaching/modules/generate', {
+      method: 'POST',
+      body: JSON.stringify({ skillId }),
+    }),
+  getGenerationJob: (jobId: string) =>
+    fetchJSON<GenerationJob<{ moduleId: number; verifierWarnings: string[] }>>(`/coaching/jobs/${jobId}`),
+  listForSkill: (skillId: number) => fetchJSON<CoachingModule[]>(`/coaching/modules?skillId=${skillId}`),
+  get: (id: number) => fetchJSON<CoachingModule>(`/coaching/modules/${id}`),
+  update: (id: number, data: { title?: string; content?: string }) =>
+    fetchJSON<CoachingModule>(`/coaching/modules/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  approve: (id: number) =>
+    fetchJSON<CoachingModule>(`/coaching/modules/${id}/approve`, { method: 'POST', body: '{}' }),
+  // Student (W-70/W-71)
+  listApproved: () => fetchJSON<CoachingModule[]>('/coaching/modules?approved=1'),
+  myAssignments: () => fetchJSON<CoachingAssignmentSummary[]>('/coaching/assignments/me'),
+  complete: (moduleId: number) =>
+    fetchJSON<{ completedAt: string }>(`/coaching/modules/${moduleId}/complete`, { method: 'POST', body: '{}' }),
+};
+
 // ── Coach chat + interventions (Milestone 3b-2) ──────────────────────────────
 export interface ChatMessage {
   id: number;
