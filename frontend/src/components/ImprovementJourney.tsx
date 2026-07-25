@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { interventionsApi, InterventionWithOutcome } from '@/lib/api';
+import SkillTrendChart from './SkillTrendChart';
 
 // M3b-2 Task 5: the Improvement Journey for one student — the intervention ledger rendered as a
 // timeline. Each card shows the frozen diagnosis, the coach's recommendation + rationale
@@ -96,6 +97,7 @@ function InterventionCard({ iv }: { iv: InterventionWithOutcome }) {
             ))}
             {iv.outcome.perSkill.length === 0 && <p className="text-sm text-gray-400">No post-intervention attempts yet.</p>}
           </div>
+          {skills[0] && <SkillTrendChart studentId={iv.studentId} slug={skills[0].slug} interventionDates={[iv.createdAt]} />}
         </div>
       </div>
     </div>

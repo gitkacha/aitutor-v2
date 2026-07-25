@@ -131,3 +131,32 @@ export async function listInterventions(
     }))
   );
 }
+
+// M3b-2: the workspace-wide active-interventions strip. One row per active intervention across
+// the workspace, joined with the student's name and its recomputed (never stored) status.
+export interface ActiveInterventionRow {
+  id: number;
+  studentId: number;
+  studentName: string;
+  skillSlugs: string;
+  createdAt: Date;
+  status: string;
+}
+
+export async function listActiveInterventions(workspaceId: number): Promise<ActiveInterventionRow[]> {
+  const rows = await prisma.intervention.findMany({
+    where: { workspaceId, status: 'active' },
+    orderBy: { createdAt: 'desc' },
+    include: { student: { select: { name: true } } },
+  });
+  return Promise.all(
+    rows.map(async (r) => ({
+      id: r.id,
+      studentId: r.studentId,
+      studentName: r.student.name,
+      skillSlugs: r.skillSlugs,
+      createdAt: r.createdAt,
+      status: (await getInterventionOutcome(r.id)).status,
+    }))
+  );
+}

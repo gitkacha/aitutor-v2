@@ -7,9 +7,15 @@ import prisma from '../lib/prisma';
 import { asyncHandler } from '../lib/async-handler';
 import { requireAdmin } from '../middleware/auth';
 import { canAccessUser } from '../lib/scope';
-import { listInterventions, getInterventionOutcome } from '../services/intervention.service';
+import { listInterventions, getInterventionOutcome, listActiveInterventions } from '../services/intervention.service';
 
 const router = Router();
+
+// GET /api/interventions/active — the workspace-wide active-interventions strip (any student).
+// Declared before the ':id' style routes so 'active' isn't parsed as an id.
+router.get('/active', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+  res.json(await listActiveInterventions(req.user!.workspaceId));
+}));
 
 // GET /api/interventions?studentId= — a student's intervention history (with live outcomes).
 router.get('/', requireAdmin, asyncHandler(async (req: Request, res: Response) => {

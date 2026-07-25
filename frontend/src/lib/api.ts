@@ -328,6 +328,29 @@ export const interventionsApi = {
   outcome: (id: number) => fetchJSON<{ perSkill: PerSkillOutcome[]; status: string }>(`/interventions/${id}/outcome`),
 };
 
+export interface SkillTrendPoint {
+  attemptId: number;
+  finishedAt: string;
+  attempted: number;
+  correct: number;
+  accuracy: number;
+}
+
+export interface ReportSkill {
+  slug: string;
+  name: string;
+  accuracy: number;
+  attempted: number;
+  sufficientEvidence: boolean;
+}
+
+export const analyticsApi = {
+  skillTrend: (studentId: number, slug: string) =>
+    fetchJSON<SkillTrendPoint[]>(`/analytics/students/${studentId}/skills/${slug}/trend?subject=math`),
+  report: (studentId: number, subject: 'math' | 'writing') =>
+    fetchJSON<{ skills: ReportSkill[] }>(`/analytics/students/${studentId}/report?subject=${subject}`),
+};
+
 // ── Auth (Milestone 2) ──
 
 export interface AuthUser {

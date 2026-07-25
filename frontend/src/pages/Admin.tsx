@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useHeatmap } from '@/hooks/useHeatmap';
 import Heatmap from '@/components/Heatmap';
 import ImprovementJourney from '@/components/ImprovementJourney';
+import ActiveInterventionsStrip from '@/components/ActiveInterventionsStrip';
 import PendingWorksheets from '@/components/PendingWorksheets';
-import { api, mathApi, MathTopic, MathHeatmapEntry, GeneratedMathQuestion, Worksheet, MathWorksheet, AuthUser } from '@/lib/api';
+import { api, mathApi, skillsApi, analyticsApi, Skill, ReportSkill, MathTopic, MathHeatmapEntry, GeneratedMathQuestion, Worksheet, MathWorksheet, AuthUser } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Shield, Plus, Database, Trash2, Calculator, FileText, Users, UserPlus } from 'lucide-react';
 import StimulusFigure from '@/components/StimulusFigure';
@@ -25,6 +26,9 @@ export default function Admin() {
   const navigate = useNavigate();
   // Per-student performance view (C1): undefined = whole-workspace aggregate.
   const [performanceStudentId, setPerformanceStudentId] = useState<number | undefined>(undefined);
+  // Heatmap drill-to-skills (M3b-2 Task 6): the taxonomy + the selected student's per-skill report.
+  const [allSkills, setAllSkills] = useState<Skill[]>([]);
+  const [reportSkills, setReportSkills] = useState<ReportSkill[]>([]);
   const { data: writingHeatmap, loading: writingHeatmapLoading, error: writingHeatmapError, refresh: refreshWriting } = useHeatmap(performanceStudentId);
 
   // Workspace members (C1)
@@ -90,6 +94,26 @@ export default function Admin() {
   // members panel (C1).
   const loadWorkspaceUsers = () => api.getWorkspaceUsers().then((r) => setWorkspaceUsers(r.users)).catch(() => {});
   useEffect(() => { loadWorkspaceUsers(); }, []);
+
+  // Heatmap drill data (M3b-2 Task 6): the skill taxonomy once, and the selected student's
+  // per-skill math report so drilled skill cells can be coloured by accuracy.
+  useEffect(() => { skillsApi.list().then(setAllSkills).catch(() => setAllSkills([])); }, []);
+  useEffect(() => {
+    if (performanceStudentId == null) { setReportSkills([]); return; }
+    let cancelled = false;
+    analyticsApi.report(performanceStudentId, 'math')
+      .then((r) => { if (!cancelled) setReportSkills(r.skills ?? []); })
+      .catch(() => { if (!cancelled) setReportSkills([]); });
+    return () => { cancelled = true; };
+  }, [performanceStudentId]);
+
+  const drillSkills = (topicSlug: string) =>
+    allSkills
+      .filter((s) => s.subject === 'math' && s.topicSlug === topicSlug)
+      .map((s) => {
+        const r = reportSkills.find((x) => x.slug === s.slug);
+        return { slug: s.slug, name: s.name, accuracy: r ? r.accuracy : null, attempted: r ? r.attempted : 0 };
+      });
 
   // Re-scope the math heatmap when the selected student changes (writing is handled by
   // useHeatmap's own dependency).
@@ -391,6 +415,9 @@ export default function Admin() {
       {/* Pending worksheets quick view (both subjects) */}
       <PendingWorksheets mode="admin" refreshKey={worksheetRefresh} />
 
+      {/* Workspace-wide active interventions (M3b-2 Task 6) */}
+      <ActiveInterventionsStrip />
+
       {/* Tab switcher */}
       <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
         <button
@@ -601,6 +628,7 @@ export default function Admin() {
               loading={mathHeatmapLoading}
               error={mathHeatmapError}
               onRetry={refreshMath}
+              drill={performanceStudentId != null ? drillSkills : undefined}
             />
           </div>
 
