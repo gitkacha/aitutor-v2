@@ -22,11 +22,11 @@ Milestone 3c Phase 1 — Student Encouragement (plan `docs/superpowers/plans/Mil
 spec `docs/superpowers/specs/2026-07-25-m3c-encouragement-design.md`, approved 2026-07-25;
 subagent-driven):
 
-- [ ] **W-58** — M3c-1 Task 1: `computeSkillImprovements` (analytics-core) — per-skill accuracy + speed improvement, pick-the-larger, evidence-gated; hand-computed vectors.
-- [ ] **W-59** — M3c-1 Task 2: student-facing math improvements adapter + `GET /api/analytics/me/improvements` (requireAuth, own-or-canAccessUser; topics→top-3 skills; topic delta = best skill gain; no answer keys) + e2e.
-- [ ] **W-60** — M3c-1 Task 3: `computeWeeklyStreak` (`lib/streak.ts`, kind rules, hand-computed vectors) + `streakWeeks` on `GET /api/stats` + e2e.
-- [ ] **W-61** — M3c-1 Task 4: Most Improved dashboard panel (treatment A, topic→top-3 skills, accuracy/speed badges) above Opportunity Areas + `improvementsApi` + e2e + live screenshot.
-- [ ] **W-62** — M3c-1 Task 5: weekly streak in the sidebar ("N-week streak 🔥" / gentle zero) + `getStats` type + e2e + live screenshot.
+- [x] **W-58** — M3c-1 Task 1: `computeSkillImprovements` (analytics-core) — per-skill accuracy + speed improvement, pick-the-larger, evidence-gated; hand-computed vectors. _(commit 857ad2f, ranking+speed-guard fix 58ef4c7; proof: `backend/src/services/analytics-core.test.ts`, 121 backend unit green; user sign-off 2026-07-25)_
+- [x] **W-59** — M3c-1 Task 2: student-facing math improvements adapter + `GET /api/analytics/me/improvements` (requireAuth, own-or-canAccessUser; topics→top-3 skills; topic delta = best skill gain; no answer keys) + e2e. _(commit 3dcbbef, ranking fix 58ef4c7; proof: `e2e/m3c1-improvements.spec.ts`; user sign-off 2026-07-25)_
+- [x] **W-60** — M3c-1 Task 3: `computeWeeklyStreak` (`lib/streak.ts`, kind rules, hand-computed vectors) + `streakWeeks` on `GET /api/stats` + e2e. _(commit 471670a; proof: `e2e/m3c1-streak.spec.ts` + `backend/src/lib/streak.test.ts`; user sign-off 2026-07-25)_
+- [x] **W-61** — M3c-1 Task 4: Most Improved dashboard panel (treatment A, topic→top-3 skills, accuracy/speed badges) above Opportunity Areas + `improvementsApi` + e2e + live screenshot. _(commit 3095c20, polish 7ce125f; proof: `e2e/m3c1-most-improved-ui.spec.ts` + live demo screenshot; user sign-off 2026-07-25)_
+- [x] **W-62** — M3c-1 Task 5: weekly streak in the sidebar ("N-week streak 🔥" / gentle zero) + `getStats` type + e2e + live screenshot. _(commit 42d5eed, polish 7ce125f; proof: `e2e/m3c1-streak-ui.spec.ts` + live demo screenshot; user sign-off 2026-07-25)_
 
 ## Done
 
