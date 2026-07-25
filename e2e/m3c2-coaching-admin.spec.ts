@@ -5,8 +5,8 @@ import path from 'path';
 
 // M3c Phase 2a (W-64): the /api/coaching router — generation job, approved-only visibility, and
 // approve. Router behaviour is proven at the API level (the repo has no supertest); the AI is a
-// per-spec stub on 3106 that branches on the request body: our generation prompt contains
-// "coaching lesson", our verifier prompt contains "maths checker".
+// per-spec stub on 3106 that branches on the request body: only the verifier prompt contains
+// "Check ONLY the arithmetic" (the retry generation prompt also says "maths checker").
 
 const dbPath = path.resolve(__dirname, '../backend/prisma/e2e.db');
 const prisma = new PrismaClient({ datasources: { db: { url: `file:${dbPath}` } } });
