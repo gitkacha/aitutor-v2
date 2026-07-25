@@ -18,21 +18,26 @@ every agent, on any model, without exception):
 
 ## Open
 
-Milestone 3b-1 — Agentic Coach Backend (plan `docs/superpowers/plans/Milestone3b-1-plan.md`,
-spec `docs/superpowers/specs/2026-07-24-milestone3-agentic-coach-design.md` §5–§6, approved
-2026-07-24):
-
-- [ ] **W-42** — M3b-1 Task 1: schema — `ChatSession`, `ChatMessage`, `Intervention` models + migration.
-- [ ] **W-43** — M3b-1 Task 2 (M3a follow-up): enforce skill topic/subject membership in `createWorksheetQuestionRows` (wrong-topic/writing slug on a math question → 400).
-- [ ] **W-44** — M3b-1 Task 3 (spec §4.9): writing time-used ratio + word-count trends (`computeWritingUsage` in analytics-core, wired into the writing report) with hand-computed vectors.
-- [ ] **W-45** — M3b-1 Task 4: `chatWithTools` tool-calling primitive + `chat` AI role (default `gpt-5-mini`); mocked-fetch unit test.
-- [ ] **W-46** — M3b-1 Task 5: chat read-tool schemas + `dispatchReadTool` (list_students, get_student_skill_report, get_opportunity_areas, get_attempt_details, get_intervention_history) — thin adapters over analytics, workspace-scoped, no stats logic.
-- [ ] **W-47** — M3b-1 Task 6: action tools + confirmation gating — `pending-actions` store (mirrors generation-jobs) + `executeActionTool` (generate_worksheet, save_and_assign_worksheet, create_intervention); nothing mutates until confirmed.
-- [ ] **W-48** — M3b-1 Task 7: chat tool loop (`runChatStep`/`resolvePendingAction`) + grounded system prompt (never state a number absent from tool output; report-first on naming a student; ≥8 questions/skill for intervention worksheets) + suggestedQuestions.
-- [ ] **W-49** — M3b-1 Task 8: intervention service — frozen `diagnosisSnapshot` on create + recomputed outcome (`outcomeStatus`: <8 post → insufficient; +10pts → improving; else not-yet) never stored.
-- [ ] **W-50** — M3b-1 Task 9: chat + interventions API routes (all requireAdmin, students denied) + agent e2e (stub scripts tool-calls on :3106; confirmation gating; snapshot freeze; outcome recompute).
+_No open items._
 
 ## Done
+
+Milestone 3b-1 — Agentic Coach Backend (plan `docs/superpowers/plans/Milestone3b-1-plan.md`,
+spec §5–§6) — all signed off 2026-07-25 after handover. Subagent-driven (fresh implementer +
+independent spec/quality review per task; Task 7 done inline under a session-limit fallback,
+still independently reviewed, 4 review findings fixed). Final whole-branch review (Opus) clean —
+no Critical/Important; orchestrator re-ran the full suites in-session: 116/116 e2e, 107 backend +
+12 frontend unit, typecheck clean. UI (M3b-2) is the next phase.
+
+- [x] **W-50** — M3b-1 Task 9: chat + interventions API (7 routes, all requireAdmin, workspace-scoped, students 403) + chat-session link threaded into interventions + agent e2e (scripted tool-calls on the :3106 stub) proving grounded reads, confirmation gating (row only after confirm), snapshot freeze, and outcome recompute — commit `7419b2f` · proof: `e2e/m3b-chat.spec.ts` + `e2e/m3b-interventions.spec.ts` (RED-first) + 116/116 e2e · user signed off 2026-07-25
+- [x] **W-49** — M3b-1 Task 8: intervention service — frozen server-computed `diagnosisSnapshot` on create + recomputed-on-read outcome (`outcomeStatus`: <8 post → insufficient-evidence; +0.10 → improving; else not-yet; worst-of aggregation), never stored; `getSkillSignalsSince` reuses the shared analytics builder (no stats in the service) — commit `cb4adc4` · proof: `intervention.service.test.ts` outcomeStatus vectors (RED-first) + M3b e2e · user signed off 2026-07-25
+- [x] **W-48** — M3b-1 Task 7: chat tool loop (`runChatStep`/`resolvePendingAction` over a shared `driveLoop`) + grounded system prompt (no number absent from tool output; report-first; evidence gate; ≥8 q/skill) + deterministic 3–5 suggestedQuestions; transcript-validity invariant (every tool call answered in-step) upheld across the confirm cycle — commits `3d49a38` + `6bb83e1` (review fixes) · proof: whole-branch transcript trace + M3b chat e2e · user signed off 2026-07-25
+- [x] **W-47** — M3b-1 Task 6: action tools + confirmation gating — `pending-actions` store (mirrors generation-jobs, workspace-scoped) + `executeActionTool`; DRY-extracted `saveAndAssignWorksheet`/`resolveMathTopicsForGeneration`/`resolveAssigneeStudentIdsForWorkspace` (routes refactored, behaviour verified unchanged); nothing mutates until confirm — commit `271d628` · proof: `pending-actions.test.ts` (RED-first) + full suites · user signed off 2026-07-25
+- [x] **W-46** — M3b-1 Task 5: chat read-tool schemas + `dispatchReadTool` (5 read tools) over analytics.service, workspace-scoped on every path, no stats logic — commit `06b85bc` · proof: `chat-tools.test.ts` (RED-first) + full suites · user signed off 2026-07-25
+- [x] **W-45** — M3b-1 Task 4: `chatWithTools` OpenAI function-calling primitive + `chat` AI role (`gpt-5-mini`); wire format verified field-by-field; `chatCompletion` untouched — commit `cddce6c` · proof: `ai.service.test.ts` mocked-fetch (RED-first, request+response shape) + full suites · user signed off 2026-07-25
+- [x] **W-44** — M3b-1 Task 3 (spec §4.9): writing time-used ratio (fixed 1800s limit) + word-count trends (`computeWritingUsage`, wired into the writing report only) — commit `5a6436a` · proof: `analytics-core.test.ts` hand-computed vectors (RED-first) + full suites · user signed off 2026-07-25
+- [x] **W-43** — M3b-1 Task 2 (M3a follow-up): `createWorksheetQuestionRows` enforces skill topic/subject membership (wrong-topic or writing slug on a math question → 400); batch findMany, routes' behaviour unchanged — commit `e5ded13` · proof: `e2e/m3b-save-membership.spec.ts` (negative + positive control, RED-first) + full suites · user signed off 2026-07-25
+- [x] **W-42** — M3b-1 Task 1: schema — `ChatSession`, `ChatMessage` (cascade), `Intervention` models + additive migration (verified live on dev.db) — commit `842a02d` · proof: migration applied + typecheck clean · user signed off 2026-07-25
 
 ## Done
 
