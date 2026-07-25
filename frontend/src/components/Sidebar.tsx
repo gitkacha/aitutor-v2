@@ -5,7 +5,7 @@ import { api, mathApi, WritingType, MathTopic, Worksheet, MathWorksheet } from '
 import { worksheetStartState } from '@/lib/worksheet-start';
 import { parseJsonArray } from '@/lib/parse';
 import { useAuth } from '@/lib/auth';
-import { BookOpen, Building2, ChevronRight, Home, LogOut, Menu, Shield, X, Zap } from 'lucide-react';
+import { BookOpen, Building2, ChevronRight, Home, LogOut, Menu, Shield, Sparkles, X, Zap } from 'lucide-react';
 
 // "Evening Navy" sidebar (docs/mocks/example2.html): a solid deep-navy rail with
 // a weekly momentum ring, colour-coded per-topic scores, an "Up next" pending
@@ -319,6 +319,13 @@ export default function Sidebar() {
             <Shield size={15} className={location.pathname === '/admin' ? '' : 'text-rail-muted'} />
             Admin
           </Link>
+          {/* Coach Chat — admins only (M3b-2 Task 4) */}
+          {user?.role === 'admin' && (
+            <Link to="/coach" onClick={() => setMobileOpen(false)} className={itemClass(location.pathname === '/coach')}>
+              <Sparkles size={15} className={location.pathname === '/coach' ? '' : 'text-rail-muted'} />
+              Coach Chat
+            </Link>
+          )}
           {/* Skills taxonomy browser — admins only (M3a Task 10) */}
           {user?.role === 'admin' && (
             <Link to="/skills" onClick={() => setMobileOpen(false)} className={itemClass(location.pathname === '/skills')}>
