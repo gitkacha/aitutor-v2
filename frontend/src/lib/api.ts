@@ -438,7 +438,7 @@ export const api = {
   // studentId (admin only, C1) scopes a heatmap to one workspace student.
   getHeatmap: (studentId?: number) =>
     fetchJSON<HeatmapEntry[]>(`/heatmap${studentId ? `?studentId=${studentId}` : ''}`),
-  getStats: () => fetchJSON<{ sessionsThisWeek: number }>('/stats'),
+  getStats: () => fetchJSON<{ sessionsThisWeek: number; streakWeeks: number }>('/stats'),
   // Background job (W-19): start returns a jobId; poll for the result.
   startGeneration: (typeIds: number[]) =>
     fetchJSON<{ jobId: string }>('/worksheets/generate', {

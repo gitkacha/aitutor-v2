@@ -62,6 +62,7 @@ export default function Sidebar() {
   const [writingScores, setWritingScores] = useState<Record<string, number | null>>({});
   const [mathScores, setMathScores] = useState<Record<string, number | null>>({});
   const [sessions, setSessions] = useState(0);
+  const [streakWeeks, setStreakWeeks] = useState(0);
   const [upNext, setUpNext] = useState<Pending | null>(null);
   const [writingExpanded, setWritingExpanded] = useState(true);
   const [mathExpanded, setMathExpanded] = useState(false);
@@ -94,7 +95,10 @@ export default function Sidebar() {
     // the momentum ring.
     api
       .getStats()
-      .then((s) => setSessions(s.sessionsThisWeek))
+      .then((s) => {
+        setSessions(s.sessionsThisWeek);
+        setStreakWeeks(s.streakWeeks);
+      })
       .catch(() => {});
     Promise.all([api.getWorksheets(), mathApi.getWorksheets()])
       .then(([w, m]) => {
@@ -215,6 +219,17 @@ export default function Sidebar() {
               {sessions} of {SESSION_GOAL} sessions done
             </div>
             <div className="text-[11.5px] text-rail-muted mt-0.5">{encouragement}</div>
+            <div
+              data-testid="weekly-streak"
+              className="text-[11.5px] font-semibold mt-0.5"
+              style={{ color: streakWeeks >= 1 ? '#f2a71b' : undefined }}
+            >
+              {streakWeeks >= 1 ? (
+                `${streakWeeks}-week streak 🔥`
+              ) : (
+                <span className="text-rail-muted font-normal">Hit 5 this week to start a streak</span>
+              )}
+            </div>
           </div>
         </div>
 
