@@ -11,9 +11,10 @@ describe('READ_TOOL_SCHEMAS', () => {
     'get_opportunity_areas',
     'get_attempt_details',
     'get_intervention_history',
+    'list_worksheets',
   ];
 
-  it('contains exactly the 5 expected read tool names', () => {
+  it('contains exactly the expected read tool names', () => {
     expect(READ_TOOL_SCHEMAS.map((t) => t.name).sort()).toEqual([...expectedNames].sort());
   });
 
@@ -27,12 +28,13 @@ describe('READ_TOOL_SCHEMAS', () => {
 });
 
 describe('ACTION_TOOL_SCHEMAS', () => {
-  it('contains exactly generate_worksheet, save_and_assign_worksheet, create_intervention, assign_coaching', () => {
+  it('contains exactly the expected action tool names', () => {
     expect(ACTION_TOOL_SCHEMAS.map((t) => t.name)).toEqual([
       'generate_worksheet',
       'save_and_assign_worksheet',
       'create_intervention',
       'assign_coaching',
+      'delete_worksheet',
     ]);
   });
 

@@ -11,6 +11,7 @@ import { validateWorksheetQuestions, saveAndAssignWorksheet } from './math-works
 import { resolveAssigneeStudentIdsForWorkspace } from '../lib/scope';
 import { createIntervention, listInterventions } from './intervention.service';
 import { generateCoachingModuleContent } from './coaching.service';
+import { deleteWorksheetIfUnattempted } from './worksheet-delete';
 
 export interface ToolContext {
   workspaceId: number;
@@ -87,6 +88,13 @@ export const READ_TOOL_SCHEMAS: ChatToolSchema[] = [
       },
       required: ['studentId'],
     },
+  },
+  {
+    name: 'list_worksheets',
+    description:
+      'List the worksheets in this workspace with their attempt counts, so you can identify one to ' +
+      'delete. Returns both math and writing worksheets. Only worksheets with 0 attempts can be deleted.',
+    parameters: { type: 'object', properties: {}, required: [] },
   },
 ];
 
@@ -183,6 +191,20 @@ export const ACTION_TOOL_SCHEMAS: ChatToolSchema[] = [
       required: ['studentId', 'skillSlug'],
     },
   },
+  {
+    name: 'delete_worksheet',
+    description:
+      'Delete an UNATTEMPTED worksheet (use list_worksheets to find its id). Refuses if the ' +
+      'worksheet has any attempt, so a student\'s work is never lost.',
+    parameters: {
+      type: 'object',
+      properties: {
+        subject: { type: 'string', enum: ['math', 'writing'], description: 'The worksheet subject.' },
+        worksheetId: { type: 'integer', description: 'The id of the worksheet to delete.' },
+      },
+      required: ['subject', 'worksheetId'],
+    },
+  },
 ];
 
 const ACTION_TOOL_NAMES = new Set(ACTION_TOOL_SCHEMAS.map((t) => t.name));
@@ -244,6 +266,25 @@ export async function dispatchReadTool(name: string, args: any, ctx: ToolContext
     case 'get_intervention_history': {
       await assertStudentInWorkspace(args.studentId, ctx);
       return listInterventions(args.studentId);
+    }
+
+    case 'list_worksheets': {
+      const [math, writing] = await Promise.all([
+        prisma.mathWorksheet.findMany({
+          where: { workspaceId: ctx.workspaceId },
+          select: { id: true, title: true, _count: { select: { attempts: true } } },
+          orderBy: { createdAt: 'desc' },
+        }),
+        prisma.worksheet.findMany({
+          where: { workspaceId: ctx.workspaceId },
+          select: { id: true, title: true, _count: { select: { attempts: true } } },
+          orderBy: { createdAt: 'desc' },
+        }),
+      ]);
+      return [
+        ...math.map((w) => ({ id: w.id, subject: 'math', title: w.title, attemptCount: w._count.attempts })),
+        ...writing.map((w) => ({ id: w.id, subject: 'writing', title: w.title, attemptCount: w._count.attempts })),
+      ];
     }
 
     default:
@@ -353,6 +394,13 @@ export async function executeActionTool(name: string, args: any, ctx: ToolContex
         create: { moduleId: approved.id, studentId: args.studentId, interventionId: args.interventionId ?? null },
       });
       return { assigned: true, moduleId: approved.id, assignmentId: assignment.id };
+    }
+
+    case 'delete_worksheet': {
+      const subject = args.subject === 'writing' ? 'writing' : 'math';
+      const result = await deleteWorksheetIfUnattempted(subject, Number(args.worksheetId), ctx.workspaceId);
+      if (!result.ok) throw new Error(result.error);
+      return { deleted: true, subject, worksheetId: Number(args.worksheetId) };
     }
 
     default:

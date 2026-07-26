@@ -6,6 +6,7 @@ import { requireAdmin, requireAuth } from '../middleware/auth';
 import { resolveAssigneeStudentIds } from '../lib/scope';
 import { createJob, getJobForWorkspace } from '../lib/generation-jobs';
 import { buildWorksheetInterventionMap } from '../lib/intervention-worksheets';
+import { deleteWorksheetIfUnattempted } from '../services/worksheet-delete';
 
 const router = Router();
 
@@ -133,13 +134,8 @@ router.get('/', requireAuth, asyncHandler(async (req: Request, res: Response) =>
 router.delete('/:id', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid worksheet id' });
-  const ws = await prisma.worksheet.findFirst({ where: { id, workspaceId: req.user!.workspaceId } });
-  if (!ws) return res.status(404).json({ error: 'Worksheet not found' });
-  const attemptCount = await prisma.attempt.count({ where: { worksheetId: id } });
-  if (attemptCount > 0) {
-    return res.status(409).json({ error: 'This worksheet has attempts and cannot be deleted.' });
-  }
-  await prisma.worksheet.delete({ where: { id } });
+  const result = await deleteWorksheetIfUnattempted('writing', id, req.user!.workspaceId);
+  if (!result.ok) return res.status(result.status).json({ error: result.error });
   res.json({ deleted: true });
 }));
 
