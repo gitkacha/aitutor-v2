@@ -57,8 +57,11 @@ W-72 `Lessons.tsx` + `/lessons` route + student sidebar link — proof `e2e/m3c2
 W-73 `Lesson.tsx` — proof `e2e/m3c2-student-lessons.spec.ts`. W-74 Learn cards before practice in
 `PendingWorksheets` — proof `e2e/m3c2-learn-practise-order.spec.ts`. W-75 skill chip + "Learn the
 method →" link in `MathAttemptReview` (review include gained `skill`) — proof
-`e2e/m3c2-review-links.spec.ts`. (W-74's interventionId-paired per-worksheet hint deferred; Learn
-cards render before worksheets structurally.)
+`e2e/m3c2-review-links.spec.ts`. W-74 also does the tight interventionId pairing: the worksheet
+list endpoints stamp each worksheet with its `interventionId` (reverse-mapped from
+`Intervention.worksheetIds` via `lib/intervention-worksheets.ts`, unit-tested), and the specific
+worksheet whose paired lesson is incomplete shows a "✨ best after the lesson" hint (never locked) —
+proof `e2e/m3c2-learn-practise-order.spec.ts` (paired-hint test).
 
 Milestone 3c Phase 1 — Student Encouragement (plan `docs/superpowers/plans/Milestone3c-1-plan.md`,
 spec `docs/superpowers/specs/2026-07-25-m3c-encouragement-design.md`, approved 2026-07-25;

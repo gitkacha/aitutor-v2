@@ -45,6 +45,12 @@ export default function PendingWorksheets({ mode, refreshKey = 0 }: PendingWorks
   if (writing.length === 0 && math.length === 0 && lessons.length === 0) return null;
 
   const hasPractice = writing.length > 0 || math.length > 0;
+  // Interventions that still have an incomplete lesson — their paired worksheet gets a soft hint.
+  const pairedInterventionIds = new Set(
+    lessons.map((l) => l.interventionId).filter((x): x is number => x != null),
+  );
+  const bestAfterLesson = (interventionId: number | null | undefined) =>
+    interventionId != null && pairedInterventionIds.has(interventionId);
 
   const startMathWorksheet = (ws: MathWorksheet) => {
     const slugs = parseJsonArray<string>(ws.topicIds);
@@ -107,6 +113,9 @@ export default function PendingWorksheets({ mode, refreshKey = 0 }: PendingWorks
                     <p className="text-xs text-gray-400">
                       Writing · {typeName(ws.typeId)} · {prompts.length} prompt{prompts.length !== 1 ? 's' : ''} · 30 min
                     </p>
+                    {mode === 'student' && bestAfterLesson(ws.interventionId) && (
+                      <p className="text-xs font-medium text-brand-green mt-0.5">✨ best after the lesson</p>
+                    )}
                   </div>
                 </div>
                 {mode === 'student' ? (
@@ -151,6 +160,9 @@ export default function PendingWorksheets({ mode, refreshKey = 0 }: PendingWorks
                     <p className="text-xs text-gray-400">
                       Mathematics · {questions.length} questions · {questions.length} min
                     </p>
+                    {mode === 'student' && bestAfterLesson(ws.interventionId) && (
+                      <p className="text-xs font-medium text-brand-green mt-0.5">✨ best after the lesson</p>
+                    )}
                   </div>
                 </div>
                 {mode === 'student' ? (

@@ -75,6 +75,7 @@ export interface Worksheet {
   createdAt: string;
   isDemo?: boolean;
   attempts?: Attempt[];
+  interventionId?: number | null;
 }
 
 // ── Mathematics Types ──
@@ -148,6 +149,7 @@ export interface MathWorksheet {
   createdAt: string;
   isDemo?: boolean;
   attempts?: MathAttempt[];
+  interventionId?: number | null;
 }
 
 // ── Math API ──

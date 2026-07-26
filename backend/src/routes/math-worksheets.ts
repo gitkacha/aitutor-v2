@@ -6,6 +6,7 @@ import { asyncHandler } from '../lib/async-handler';
 import { requireAdmin, requireAuth } from '../middleware/auth';
 import { resolveAssigneeStudentIds } from '../lib/scope';
 import { createJob, getJobForWorkspace } from '../lib/generation-jobs';
+import { buildWorksheetInterventionMap } from '../lib/intervention-worksheets';
 
 const router = Router();
 
@@ -123,7 +124,16 @@ router.get('/', requireAuth, asyncHandler(async (req: Request, res: Response) =>
     },
   });
 
-  res.json(stripWorksheetAnswersForStudents(worksheets, user.role));
+  // Stamp each worksheet with the intervention that paired it (W-74), so the pending list can flag
+  // the specific worksheet whose paired lesson is still incomplete.
+  const interventions = await prisma.intervention.findMany({
+    where: user.role === 'admin' ? { workspaceId: user.workspaceId } : { studentId: user.id },
+    select: { id: true, worksheetIds: true },
+  });
+  const ivMap = buildWorksheetInterventionMap(interventions, 'math');
+  const enriched = worksheets.map((w) => ({ ...w, interventionId: ivMap.get(w.id) ?? null }));
+
+  res.json(stripWorksheetAnswersForStudents(enriched, user.role));
 }));
 
 export default router;
