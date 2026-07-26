@@ -137,25 +137,41 @@ router.get('/', requireAuth, asyncHandler(async (req: Request, res: Response) =>
 
   const topicSlug = req.query.topic as string | undefined;
 
-  const where: any = { userId: { in: userIds } };
+  let topic: { id: number } | null = null;
   if (topicSlug) {
-    const topic = await prisma.mathTopic.findUnique({
-      where: { slug: topicSlug },
-    });
+    topic = await prisma.mathTopic.findUnique({ where: { slug: topicSlug }, select: { id: true } });
     if (!topic) {
       // Same contract as math-questions: an unknown slug is an error, never "everything".
       return res.status(404).json({ error: 'Topic not found' });
     }
-    where.topicId = topic.id;
   }
 
   const attempts = await prisma.mathAttempt.findMany({
-    where,
+    where: { userId: { in: userIds } },
     orderBy: { finishedAt: 'desc' },
     include: { topic: true },
   });
 
-  res.json(attempts);
+  if (!topicSlug || !topic) return res.json(attempts);
+  const topicId = topic.id;
+
+  // W-82: a topic's history is its single-topic practice attempts (topicId column) PLUS any
+  // worksheet attempts (topicId null) whose per-topic breakdown includes this slug — the heatmap
+  // counts those worksheet attempts, so they must be reachable and clickable here. All-Topics
+  // practice attempts stay on the All Topics page (their own reachable home), so they're not pulled
+  // into every individual topic's history.
+  const covering = attempts.filter((a) => {
+    if (a.topicId === topicId) return true;
+    if (a.source !== 'worksheet') return false;
+    try {
+      const breakdown = JSON.parse(a.topicBreakdown) as Record<string, { correct: number; total: number }>;
+      const entry = breakdown?.[topicSlug];
+      return !!entry && entry.total > 0;
+    } catch {
+      return false;
+    }
+  });
+  res.json(covering);
 }));
 
 // GET /api/math/attempts/:id — single attempt with full question details

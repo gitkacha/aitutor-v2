@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { mathApi, coachingApi, MathTopic, MathAttempt, MathWorksheet, GeneratedMathQuestion, CoachingModule } from '@/lib/api';
 import { parseJsonArray } from '@/lib/parse';
+import { topicScore } from '@/lib/topic-score';
 import { Button } from '@/components/ui/button';
 import { Clock, Grid3x3, FileText, GraduationCap, ChevronRight } from 'lucide-react';
 
@@ -56,10 +57,13 @@ export default function MathPracticeHome() {
     }
   }, [topicSlug, navigate, isAllTopics]);
 
+  // For a single topic, score each attempt by its per-topic breakdown (so worksheet/all-topics
+  // attempts count for THIS topic exactly as the heatmap does); All Topics uses the whole score.
+  const attemptPercent = (a: MathAttempt) =>
+    isAllTopics ? Math.round((a.score / a.totalQuestions) * 100) : topicScore(a, topicSlug!).percent;
+
   const averageScore = attempts.length > 0
-    ? Math.round(
-        attempts.reduce((sum, a) => sum + Math.round((a.score / a.totalQuestions) * 100), 0) / attempts.length
-      )
+    ? Math.round(attempts.reduce((sum, a) => sum + attemptPercent(a), 0) / attempts.length)
     : null;
 
   const handleStartWorksheet = async (worksheet: MathWorksheet) => {
@@ -164,15 +168,21 @@ export default function MathPracticeHome() {
               </p>
             )}
             <div className="mt-3 space-y-2">
-              {attempts.slice(0, 5).map((a) => (
-                <button
-                  key={a.id}
-                  onClick={() => navigate(`/math-attempt/${a.id}`)}
-                  className="flex items-center gap-2 text-sm text-brand-blue hover:underline"
-                >
-                  {new Date(a.finishedAt).toLocaleDateString()} — Score: {a.score}/{a.totalQuestions} ({Math.round((a.score / a.totalQuestions) * 100)}%)
-                </button>
-              ))}
+              {attempts.slice(0, 5).map((a) => {
+                const ts = isAllTopics
+                  ? { correct: a.score, total: a.totalQuestions, percent: Math.round((a.score / a.totalQuestions) * 100) }
+                  : topicScore(a, topicSlug!);
+                return (
+                  <button
+                    key={a.id}
+                    onClick={() => navigate(`/math-attempt/${a.id}`)}
+                    className="flex items-center gap-2 text-sm text-brand-blue hover:underline"
+                  >
+                    {new Date(a.finishedAt).toLocaleDateString()} — Score: {ts.correct}/{ts.total} ({ts.percent}%)
+                    {!isAllTopics && a.source === 'worksheet' && <span className="text-xs text-gray-400">· worksheet</span>}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

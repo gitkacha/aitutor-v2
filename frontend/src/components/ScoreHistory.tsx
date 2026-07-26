@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api, mathApi } from '@/lib/api';
+import { topicScore } from '@/lib/topic-score';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -64,7 +65,7 @@ export default function ScoreHistory({ subject = 'writing' }: ScoreHistoryProps)
     .reverse()
     .map((a: any) => ({
       date: new Date(a.finishedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }),
-      score: isMath ? Math.round((a.score / a.totalQuestions) * 100) : (a.analysis?.overallScore ?? 0),
+      score: isMath ? topicScore(a, typeSlug ?? '').percent : (a.analysis?.overallScore ?? 0),
       id: a.id,
     }));
 
@@ -126,7 +127,10 @@ export default function ScoreHistory({ subject = 'writing' }: ScoreHistoryProps)
                   </span>
                   <span className="font-semibold text-brand-blue">
                     {isMath
-                      ? `Score: ${a.score}/${a.totalQuestions} (${Math.round((a.score / a.totalQuestions) * 100)}%)`
+                      ? (() => {
+                          const ts = topicScore(a, typeSlug ?? '');
+                          return `Score: ${ts.correct}/${ts.total} (${ts.percent}%)`;
+                        })()
                       : `Score: ${a.analysis?.overallScore ?? 'Pending'}`}
                   </span>
                 </div>
