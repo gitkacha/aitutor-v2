@@ -127,6 +127,22 @@ router.get('/', requireAuth, asyncHandler(async (req: Request, res: Response) =>
   res.json(worksheets.map((w) => ({ ...w, interventionId: ivMap.get(w.id) ?? null })));
 }));
 
+// DELETE /api/worksheets/:id — admins may delete a writing worksheet only if it has NO attempts
+// (W-83). Assignments cascade away; orphaned worksheet-source prompts are inert (excluded from
+// random practice per H4).
+router.delete('/:id', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid worksheet id' });
+  const ws = await prisma.worksheet.findFirst({ where: { id, workspaceId: req.user!.workspaceId } });
+  if (!ws) return res.status(404).json({ error: 'Worksheet not found' });
+  const attemptCount = await prisma.attempt.count({ where: { worksheetId: id } });
+  if (attemptCount > 0) {
+    return res.status(409).json({ error: 'This worksheet has attempts and cannot be deleted.' });
+  }
+  await prisma.worksheet.delete({ where: { id } });
+  res.json({ deleted: true });
+}));
+
 // GET /api/worksheets/available/:typeId — get worksheets for a specific writing type
 router.get('/available/:typeId', requireAuth, asyncHandler(async (req: Request, res: Response) => {
   const typeId = parseInt(req.params.typeId);

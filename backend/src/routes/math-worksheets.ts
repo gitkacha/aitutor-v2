@@ -136,4 +136,19 @@ router.get('/', requireAuth, asyncHandler(async (req: Request, res: Response) =>
   res.json(stripWorksheetAnswersForStudents(enriched, user.role));
 }));
 
+// DELETE /api/math/worksheets/:id — admins may delete a worksheet only if it has NO attempts, so
+// deletion can never orphan an attempt (W-83). Assignments + persisted question rows cascade away.
+router.delete('/:id', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid worksheet id' });
+  const ws = await prisma.mathWorksheet.findFirst({ where: { id, workspaceId: req.user!.workspaceId } });
+  if (!ws) return res.status(404).json({ error: 'Worksheet not found' });
+  const attemptCount = await prisma.mathAttempt.count({ where: { worksheetId: id } });
+  if (attemptCount > 0) {
+    return res.status(409).json({ error: 'This worksheet has attempts and cannot be deleted.' });
+  }
+  await prisma.mathWorksheet.delete({ where: { id } });
+  res.json({ deleted: true });
+}));
+
 export default router;

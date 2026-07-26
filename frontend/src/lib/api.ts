@@ -213,6 +213,7 @@ export const mathApi = {
       body: JSON.stringify({ title, topicIds, questions, studentIds }),
     }),
   getWorksheets: () => fetchJSON<MathWorksheet[]>('/math/worksheets'),
+  deleteWorksheet: (id: number) => fetchJSON<{ deleted: boolean }>(`/math/worksheets/${id}`, { method: 'DELETE' }),
 };
 
 // ── Writing Worksheet (generation + review) ──
@@ -504,6 +505,7 @@ export const api = {
       body: JSON.stringify({ title, typeIds, prompts, studentIds }),
     }),
   getWorksheets: () => fetchJSON<Worksheet[]>('/worksheets'),
+  deleteWorksheet: (id: number) => fetchJSON<{ deleted: boolean }>(`/worksheets/${id}`, { method: 'DELETE' }),
   loadDemo: () => fetchJSON<{ message: string }>('/demo/load', { method: 'POST' }),
   clearDemo: () => fetchJSON<{ message: string }>('/demo/clear', { method: 'POST' }),
   // Workspace member management (C1) — admin only.

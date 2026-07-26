@@ -274,6 +274,31 @@ export default function Admin() {
     }
   };
 
+  // W-83: delete an unattempted worksheet (the row only offers this when it has no attempts;
+  // the server also refuses a worksheet with attempts).
+  const handleDeleteMathWorksheet = async (id: number, title: string) => {
+    if (!window.confirm(`Delete "${title}"? This can't be undone.`)) return;
+    try {
+      await mathApi.deleteWorksheet(id);
+      setMessage(`Deleted "${title}".`);
+      mathApi.getWorksheets().then(setMathWorksheets).catch(() => {});
+      setWorksheetRefresh((n) => n + 1);
+    } catch (e: any) {
+      setMessage(`Error: ${e.message}`);
+    }
+  };
+  const handleDeleteWritingWorksheet = async (id: number, title: string) => {
+    if (!window.confirm(`Delete "${title}"? This can't be undone.`)) return;
+    try {
+      await api.deleteWorksheet(id);
+      setMessage(`Deleted "${title}".`);
+      api.getWorksheets().then(setWritingWorksheets).catch(() => {});
+      setWorksheetRefresh((n) => n + 1);
+    } catch (e: any) {
+      setMessage(`Error: ${e.message}`);
+    }
+  };
+
   // Workspace members (C1)
   const handleAddMember = async () => {
     setMessage(null);
@@ -588,6 +613,14 @@ export default function Admin() {
                           >
                             {expandedWritingWs === ws.id ? 'Hide' : 'View'}
                           </button>
+                          {atts.length === 0 && (
+                            <button
+                              onClick={() => handleDeleteWritingWorksheet(ws.id, ws.title)}
+                              className="text-xs font-medium text-red-600 hover:underline"
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </div>
                       {expandedWritingWs === ws.id && (
@@ -801,6 +834,14 @@ export default function Admin() {
                           >
                             {expandedMathWs === ws.id ? 'Hide' : 'View'}
                           </button>
+                          {atts.length === 0 && (
+                            <button
+                              onClick={() => handleDeleteMathWorksheet(ws.id, ws.title)}
+                              className="text-xs font-medium text-red-600 hover:underline"
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </div>
                       {expandedMathWs === ws.id && (
