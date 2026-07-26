@@ -9,7 +9,24 @@ const dbPath = path.resolve(__dirname, '../backend/prisma/e2e.db');
 const prisma = new PrismaClient({ datasources: { db: { url: `file:${dbPath}` } } });
 
 const LESSON_TITLE = 'Balancing the See-Saw';
-const LESSON_MD = '## The idea\nA number sentence is a see-saw — keep both sides equal.\n\n## Traps to avoid\nDon\'t rush.';
+const LESSON_MD = [
+  '## The idea',
+  'A number sentence is a see-saw — keep both sides equal.',
+  '',
+  '## Step by step',
+  '1. Cover the missing number.',
+  '2. Find the target.',
+  '',
+  '## Speed technique',
+  'Work backwards from the total.',
+  '',
+  '## Worked examples',
+  '7 + 5 = 12.',
+  '',
+  '## Traps to avoid',
+  "- Don't do the same operation instead of the opposite.",
+  '- Forgetting to check both sides.',
+].join('\n');
 
 test.describe('W-70/W-73/W-80 — student sees lessons under the topic', () => {
   test.use({ storageState: 'e2e/.auth/student.json' });
@@ -40,7 +57,11 @@ test.describe('W-70/W-73/W-80 — student sees lessons under the topic', () => {
     // Open it → the lesson page renders the markdown.
     await lessons.getByText(LESSON_TITLE).click();
     await expect(page).toHaveURL(new RegExp(`/lesson/${moduleId}`));
+    // Playbook sections all render (parser splits the markdown into styled sections).
     await expect(page.getByRole('heading', { name: 'The idea' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Speed technique' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Traps to avoid' })).toBeVisible();
+    await expect(page.getByText('Show-off move')).toBeVisible();
 
     // Mark it complete.
     await page.getByRole('button', { name: /Mark as complete/i }).click();

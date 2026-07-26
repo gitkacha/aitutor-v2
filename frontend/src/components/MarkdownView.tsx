@@ -1,10 +1,11 @@
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { type Components } from 'react-markdown';
 
 // M3c Phase 2 (W-68): shared read-only markdown renderer for coaching lessons — used by the admin
-// module editor preview and (Phase 2b) the student Lesson page. react-markdown renders no raw HTML
-// by default, so module content cannot inject markup. Styling is done with explicit component
-// overrides (the project has no @tailwindcss/typography plugin).
-export default function MarkdownView({ content }: { content: string }) {
+// module editor preview and the student Lesson page. react-markdown renders no raw HTML by default,
+// so module content cannot inject markup. Styling is done with explicit component overrides (the
+// project has no @tailwindcss/typography plugin). Callers may pass `components` to override specific
+// elements per context (e.g. the Playbook lesson renders trap bullets as amber cards) — W-81.
+export default function MarkdownView({ content, components }: { content: string; components?: Components }) {
   return (
     <div className="text-gray-800 leading-relaxed">
       <ReactMarkdown
@@ -31,6 +32,7 @@ export default function MarkdownView({ content }: { content: string }) {
               {children}
             </a>
           ),
+          ...components,
         }}
       >
         {content}
