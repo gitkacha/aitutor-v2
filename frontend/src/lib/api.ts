@@ -103,6 +103,8 @@ export interface MathQuestionFull {
   explanation: string;
   percentCorrect: number | null;
   isDemo: boolean;
+  skillId?: number | null;
+  skill?: { name: string; slug: string } | null;
   topic: MathTopic;
   stimulusGroup: MathStimulusGroup | null;
 }

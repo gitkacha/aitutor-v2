@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { api, mathApi, Worksheet, MathWorksheet, WritingType } from '@/lib/api';
+import { useNavigate, Link } from 'react-router-dom';
+import { api, mathApi, coachingApi, Worksheet, MathWorksheet, WritingType, CoachingAssignmentSummary } from '@/lib/api';
 import { worksheetStartState } from '@/lib/worksheet-start';
 import { parseJsonArray } from '@/lib/parse';
 import { Button } from '@/components/ui/button';
-import { Calculator, ClipboardList, Pencil } from 'lucide-react';
+import { Calculator, ClipboardList, Pencil, GraduationCap, ChevronRight } from 'lucide-react';
 import MathWorksheetContent from './MathWorksheetContent';
 
 interface PendingWorksheetsProps {
@@ -20,6 +20,9 @@ export default function PendingWorksheets({ mode, refreshKey = 0 }: PendingWorks
   const [writing, setWriting] = useState<Worksheet[]>([]);
   const [math, setMath] = useState<MathWorksheet[]>([]);
   const [types, setTypes] = useState<WritingType[]>([]);
+  // W-74: incomplete assigned lessons, shown as "Learn" cards BEFORE the practice worksheets
+  // (learn → practise ordering). Student mode only.
+  const [lessons, setLessons] = useState<CoachingAssignmentSummary[]>([]);
   // Which pending row (admin) is expanded to show its content — one at a time, keyed
   // `w-<id>` / `m-<id>` so writing and math ids can't clash (W-27).
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -32,9 +35,16 @@ export default function PendingWorksheets({ mode, refreshKey = 0 }: PendingWorks
         setTypes(t);
       })
       .catch(() => {});
-  }, [refreshKey]);
+    if (mode === 'student') {
+      coachingApi.myAssignments()
+        .then((a) => setLessons(a.filter((x) => x.completedAt === null)))
+        .catch(() => {});
+    }
+  }, [refreshKey, mode]);
 
-  if (writing.length === 0 && math.length === 0) return null;
+  if (writing.length === 0 && math.length === 0 && lessons.length === 0) return null;
+
+  const hasPractice = writing.length > 0 || math.length > 0;
 
   const startMathWorksheet = (ws: MathWorksheet) => {
     const slugs = parseJsonArray<string>(ws.topicIds);
@@ -62,6 +72,28 @@ export default function PendingWorksheets({ mode, refreshKey = 0 }: PendingWorks
           : 'Assigned worksheets the student has not attempted yet.'}
       </p>
       <div className="space-y-2">
+        {/* W-74: assigned lessons come first — learn the method, then practise. */}
+        {lessons.map((l) => (
+          <Link
+            key={`l-${l.id}`}
+            to={`/lesson/${l.moduleId}`}
+            className="flex items-center justify-between gap-3 p-3 rounded-lg border border-green-100 bg-green-50/60 hover:bg-green-50"
+          >
+            <div className="flex items-start gap-3 min-w-0">
+              <GraduationCap size={16} className="text-brand-green mt-0.5 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">Learn: {l.title}</p>
+                <p className="text-xs text-gray-500">Lesson · best before you practise</p>
+              </div>
+            </div>
+            <span className="shrink-0 flex items-center gap-1 text-xs font-semibold text-brand-green">
+              Learn <ChevronRight size={14} />
+            </span>
+          </Link>
+        ))}
+        {mode === 'student' && lessons.length > 0 && hasPractice && (
+          <p className="pt-1 pb-1 text-xs font-semibold uppercase tracking-wider text-gray-400">Then practise</p>
+        )}
         {writing.map((ws) => {
           const prompts = parseJsonArray<string>(ws.prompts);
           const key = `w-${ws.id}`;

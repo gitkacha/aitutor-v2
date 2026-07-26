@@ -179,7 +179,7 @@ router.get('/:id', requireAuth, asyncHandler(async (req: Request, res: Response)
   const questionIds: number[] = JSON.parse(attempt.questions);
   const questions = await prisma.mathQuestion.findMany({
     where: { id: { in: questionIds } },
-    include: { stimulusGroup: true, topic: true },
+    include: { stimulusGroup: true, topic: true, skill: { select: { name: true, slug: true } } },
   });
 
   // Reorder questions to match the stored order

@@ -109,6 +109,27 @@ router.post('/modules/:id/approve', requireAdmin, asyncHandler(async (req: Reque
   res.json(approved);
 }));
 
+// GET /api/coaching/assignments/me — the caller's lesson assignments (approved modules only), for
+// the pending "learn → practise" list. Includes completion + the intervention that paired it (W-74).
+router.get('/assignments/me', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+  const assignments = await prisma.coachingAssignment.findMany({
+    where: { studentId: req.user!.id, module: { workspaceId: req.user!.workspaceId, status: 'approved' } },
+    include: { module: { select: { id: true, title: true, skillId: true, status: true } } },
+    orderBy: { createdAt: 'desc' },
+  });
+  res.json(
+    assignments.map((a) => ({
+      id: a.id,
+      moduleId: a.moduleId,
+      title: a.module.title,
+      skillId: a.module.skillId,
+      status: a.module.status,
+      completedAt: a.completedAt,
+      interventionId: a.interventionId,
+    })),
+  );
+}));
+
 // POST /api/coaching/modules/:id/complete — student marks a lesson complete. Lazily creates the
 // assignment (interventionId null) if the student reached the lesson self-serve, so completion
 // always has a home and admins can see engagement (§4.1/§4.3). 404 if the module isn't approved.

@@ -239,6 +239,17 @@ export default function Sidebar() {
             Dashboard
           </Link>
 
+          {user?.role === 'student' && (
+            <Link
+              to="/lessons"
+              onClick={() => setMobileOpen(false)}
+              className={itemClass(location.pathname === '/lessons')}
+            >
+              <GraduationCap size={15} className={location.pathname === '/lessons' ? '' : 'text-rail-muted'} />
+              Lessons
+            </Link>
+          )}
+
           <div className={sectLabel}>Subjects</div>
 
           {/* Writing */}

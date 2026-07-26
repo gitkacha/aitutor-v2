@@ -18,14 +18,6 @@ every agent, on any model, without exception):
 
 ## Open
 
-Milestone 3c Phase 2b — student lesson experience (Direction A "Playbook"; plan
-`docs/superpowers/plans/2026-07-25-m3c-phase2-coaching.md`):
-
-- [ ] **W-70** — Student coaching endpoints: `GET /api/coaching/modules` returns approved-only for non-admins (drafts never leak, §8.2); `POST /api/coaching/modules/:id/complete` lazily upserts the assignment (interventionId null) then sets `completedAt` (404 for a non-approved module). Proof: `e2e/m3c2-student-lessons.spec.ts`.
-- [ ] **W-73** — Student Lesson page (`Lesson.tsx`, `/lesson/:id`): renders the approved lesson markdown (MarkdownView) in a calm layout with Mark-as-complete. Proof: `e2e/m3c2-student-lessons.spec.ts`.
-- [ ] **W-81** — Lesson page restyled in the Direction A "Playbook" look: the markdown is split on `##` headings and each section is rendered on a step-spine with its own treatment — green "Your trick / Show-off move" callout for the speed technique, amber "Gotcha" cards for the traps, clean steps/examples otherwise; header gets a read-time + skill meta. `MarkdownView` gained an optional `components` override. Proof: `e2e/m3c2-student-lessons.spec.ts` (all sections render; "Show-off move" present) + live screenshot.
-- [ ] **W-80** — Lessons surfaced under the relevant topic on the student topic page (`MathPracticeHome`): a "Lessons" card lists approved lessons whose skill belongs to that topic, each opening the Lesson page. Proof: `e2e/m3c2-student-lessons.spec.ts`.
-
 - [ ] **W-79** — Generated coaching lessons were hard to find after generation (you land on the editor, but there was no persistent list; chat-generated drafts were invisible). Added (a) an admin **Lessons index** at `/admin/lessons` (sidebar Coach section) listing all modules grouped by topic with Draft/Approved pills and click-through to the editor, and (b) a **"Your lessons"** summary at the top of the Skills page. Proof: `e2e/m3c2-lessons-discovery.spec.ts`.
 - [ ] **W-78** — Coach chat showed an empty assistant bubble (looked broken) when the model returned empty content with no tool calls — reproduced from `dev.db` session 9 ("generate a lesson on vedic math…" → assistant message len=0). Root cause: `driveLoop` (chat.service.ts:145) persisted the empty turn unguarded. Fix: substitute a helpful fallback when content is empty and no tool call was made. Also completed W-65 — the system prompt never mentioned the coaching-lesson capability (`assign_coaching` tool added in W-65), so "generate a lesson" had no guidance; added it. Proof: `e2e/w78-chat-empty-response.spec.ts`.
 - [ ] **W-77** — Sidebar weekly-goal card read "6 of 5 sessions done" once a student did more than 5 sessions in a week: the ring text used the capped `done` but the label used the raw uncapped `sessions` (`Sidebar.tsx:219`). Label now uses `done` so it reads "5 of 5 sessions done" (consistent with the ring). Proof: `e2e/m3c1-streak-ui.spec.ts` (over-goal case).
@@ -55,6 +47,18 @@ _Phase 2b — student experience:_
 - [ ] **W-74** — 2b Task 12: learn→practise ordering in the pending list — assigned "Learn:" card before its paired "Practise" worksheet with a soft "best after the lesson" hint (paired by interventionId); never hard-locked.
 - [ ] **W-75** — 2b Task 13: post-test review weaving in `MathAttemptReview` — per-question skill chip + "Learn the method →" link on wrong answers whose skill has an approved module.
 - [ ] **W-76** — 2b Task 14: `e2e/m3c2-coaching-student.spec.ts` + `e2e/m3c2-coaching-loop.spec.ts` (end-to-end diagnose→intervene→lesson+worksheet→improvement) + full suites green + live screenshots; **HANDOVER for 2b sign-off**.
+- [ ] **W-80** — (added) Lessons surfaced under the relevant topic on the student topic page (`MathPracticeHome`) — a "Lessons" card lists approved lessons for that topic, each opening the Lesson page. Proof: `e2e/m3c2-student-lessons.spec.ts`.
+- [ ] **W-81** — (added) Lesson page restyled in the Direction A "Playbook" look — markdown split on `##` headings, each section on a step-spine: green "Show-off move" callout for the speed technique, amber "Gotcha" cards for the traps; header read-time + skill meta; `MarkdownView` gained a `components` override. Proof: `e2e/m3c2-student-lessons.spec.ts` + live screenshot.
+
+Implementation notes for the 2b items above (this session): W-70 `GET /modules` approved-only for
+non-admins + `GET /assignments/me` + `POST /modules/:id/complete` (lazy upsert) — proof
+`e2e/m3c2-student-lessons.spec.ts`. W-71 `coachingApi` gained `listApproved/myAssignments/complete`.
+W-72 `Lessons.tsx` + `/lessons` route + student sidebar link — proof `e2e/m3c2-lessons-library.spec.ts`.
+W-73 `Lesson.tsx` — proof `e2e/m3c2-student-lessons.spec.ts`. W-74 Learn cards before practice in
+`PendingWorksheets` — proof `e2e/m3c2-learn-practise-order.spec.ts`. W-75 skill chip + "Learn the
+method →" link in `MathAttemptReview` (review include gained `skill`) — proof
+`e2e/m3c2-review-links.spec.ts`. (W-74's interventionId-paired per-worksheet hint deferred; Learn
+cards render before worksheets structurally.)
 
 Milestone 3c Phase 1 — Student Encouragement (plan `docs/superpowers/plans/Milestone3c-1-plan.md`,
 spec `docs/superpowers/specs/2026-07-25-m3c-encouragement-design.md`, approved 2026-07-25;

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { mathApi, MathAttempt } from '@/lib/api';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { mathApi, coachingApi, MathAttempt } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, GraduationCap } from 'lucide-react';
 import MathQuestionCard from '@/components/MathQuestionCard';
 import MathStimulusDisplay from '@/components/MathStimulusDisplay';
 
@@ -11,6 +11,8 @@ export default function MathAttemptReview() {
   const navigate = useNavigate();
   const [attempt, setAttempt] = useState<MathAttempt | null>(null);
   const [loading, setLoading] = useState(true);
+  // W-75: skillId → approved lesson id, so a missed question can link to "Learn the method".
+  const [lessonBySkill, setLessonBySkill] = useState<Map<number, number>>(new Map());
 
   useEffect(() => {
     if (!id) return;
@@ -20,6 +22,14 @@ export default function MathAttemptReview() {
       .then(setAttempt)
       .catch(() => navigate('/dashboard'))
       .finally(() => setLoading(false));
+    // Best-effort: which skills have an approved lesson (so we only link where one exists).
+    coachingApi.listApproved()
+      .then((mods) => {
+        const map = new Map<number, number>();
+        for (const m of mods) if (!map.has(m.skillId)) map.set(m.skillId, m.id);
+        setLessonBySkill(map);
+      })
+      .catch(() => {});
   }, [id, navigate]);
 
   if (loading) {
@@ -119,7 +129,12 @@ export default function MathAttemptReview() {
                 <span className={`text-sm font-medium ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
                   Question {i + 1} — {isCorrect ? 'Correct' : 'Incorrect'}
                 </span>
-                <span className="text-xs text-gray-400 ml-auto">{q.topic?.name || ''}</span>
+                {q.skill?.name && (
+                  <span className="ml-auto rounded-full bg-white/70 px-2 py-0.5 text-xs font-medium text-gray-600 border border-gray-200">
+                    {q.skill.name}
+                  </span>
+                )}
+                {!q.skill?.name && <span className="text-xs text-gray-400 ml-auto">{q.topic?.name || ''}</span>}
               </div>
               <div className="p-4">
                 {q.stimulusGroup && (
@@ -139,6 +154,15 @@ export default function MathAttemptReview() {
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Explanation</p>
                   <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{q.explanation}</p>
                 </div>
+                {/* W-75: got it wrong and there's a lesson for this skill — point them to it. */}
+                {!isCorrect && q.skillId != null && lessonBySkill.has(q.skillId) && (
+                  <Link
+                    to={`/lesson/${lessonBySkill.get(q.skillId)}`}
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-green-50 px-3 py-2 text-sm font-semibold text-green-800 hover:bg-green-100"
+                  >
+                    <GraduationCap size={15} /> Learn the method →
+                  </Link>
+                )}
               </div>
             </div>
           );
