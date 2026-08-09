@@ -72,7 +72,14 @@ function startStub(state: StubState): Promise<http.Server> {
         reply = { skillSlug: 'mental-addition-subtraction' };
       } else {
         state.generationCalls++;
-        reply = state.generationCalls === 1 ? state.firstBatch : state.laterBatch;
+        if (state.generationCalls === 1) {
+          reply = state.firstBatch;
+        } else {
+          // W-87 de-dup drops repeats, and a real model never repeats questions — so make each
+          // later batch's questions unique per call by tagging their text.
+          const c = state.generationCalls;
+          reply = (state.laterBatch as any[]).map((q, i) => ({ ...q, questionText: `${q.questionText} (v${c}.${i})` }));
+        }
       }
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(reply) } }] }));

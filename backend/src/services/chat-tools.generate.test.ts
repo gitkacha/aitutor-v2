@@ -42,7 +42,7 @@ describe('generate_worksheet action (shared generation + save unassigned)', () =
 
     // Uses the exact same generator the Admin UI route uses.
     expect(ai.generateMathWorksheet).toHaveBeenCalledTimes(1);
-    expect(ai.generateMathWorksheet).toHaveBeenCalledWith(['directions'], 16);
+    expect(ai.generateMathWorksheet).toHaveBeenCalledWith(['directions'], 16, ctx.workspaceId);
 
     // Saved with NO assignees.
     const saveArgs = wsService.saveAndAssignWorksheet.mock.calls[0][0];
@@ -57,6 +57,6 @@ describe('generate_worksheet action (shared generation + save unassigned)', () =
   it('resolves skillSlugs to their topics before generating', async () => {
     prismaMock.skill.findMany.mockResolvedValue([{ topic: { slug: 'directions' } }]);
     await executeActionTool('generate_worksheet', { subject: 'math', skillSlugs: ['compass-directions', 'turns-and-bearings'], questionCount: 16 }, ctx);
-    expect(ai.generateMathWorksheet).toHaveBeenCalledWith(['directions'], 16);
+    expect(ai.generateMathWorksheet).toHaveBeenCalledWith(['directions'], 16, ctx.workspaceId);
   });
 });

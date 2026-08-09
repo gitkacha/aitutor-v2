@@ -52,8 +52,9 @@ router.post('/generate', requireAdmin, asyncHandler(async (req: Request, res: Re
 
   // Run generation as a background job (W-19) so the admin can navigate away and re-attach. The job
   // uses the shared generateMathWorksheet — the EXACT same generation the coach chat uses (W-86).
-  const jobId = createJob('math', req.user!.workspaceId, async () => {
-    const result = await generateMathWorksheet(topicIds, req.body.questionCount);
+  const workspaceId = req.user!.workspaceId;
+  const jobId = createJob('math', workspaceId, async () => {
+    const result = await generateMathWorksheet(topicIds, req.body.questionCount, workspaceId);
     return { topics: result.topics, questions: result.questions };
   });
   res.status(202).json({ jobId });

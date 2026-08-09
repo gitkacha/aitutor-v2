@@ -293,7 +293,7 @@ export async function executeActionTool(name: string, args: any, ctx: ToolContex
       // UNASSIGNED and return a COMPACT reference — the questions never go back through the model
       // (that bloated the transcript and produced an empty narration). The admin reviews and assigns
       // it from the Admin → Saved Worksheets UI.
-      const { title, topics, questions } = await generateMathWorksheet([...slugSet], args.questionCount);
+      const { title, topics, questions } = await generateMathWorksheet([...slugSet], args.questionCount, ctx.workspaceId);
       const worksheet = await saveAndAssignWorksheet({
         workspaceId: ctx.workspaceId,
         createdById: ctx.adminId,

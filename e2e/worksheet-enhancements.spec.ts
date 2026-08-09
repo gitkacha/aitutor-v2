@@ -14,16 +14,21 @@ import http from 'http';
 const STUB_PORT = 3106;
 const STUB_BATCH_SIZE = 10; // stub under-delivers vs a 35-question ask, like the real model did
 
-function makeStubQuestions(n: number) {
-  return Array.from({ length: n }, (_, i) => ({
-    questionText: `Stub question ${i + 1}: what is ${i + 2} × 10?`,
-    options: [`${(i + 2) * 10 - 10}`, `${(i + 2) * 10}`, `${(i + 2) * 10 + 10}`, `${(i + 2) * 10 + 20}`, `${(i + 2) * 10 + 30}`],
-    correctIndex: 1,
-    explanation: `${i + 2} × 10 = ${(i + 2) * 10}. Therefore, the answer is Option B.`,
-    topicSlug: 'arithmetic',
-    topicName: 'Arithmetic',
-    skillSlug: 'mental-multiplication-strategies',
-  }));
+// Distinct across batches (a real model wouldn't repeat questions) so W-87's de-dup keeps them —
+// `batch` offsets the numbers, giving each generation call unique question texts.
+function makeStubQuestions(n: number, batch = 1) {
+  return Array.from({ length: n }, (_, i) => {
+    const k = (batch - 1) * n + i + 2; // globally unique multiplier per question
+    return {
+      questionText: `Stub question ${(batch - 1) * n + i + 1}: what is ${k} × 10?`,
+      options: [`${k * 10 - 10}`, `${k * 10}`, `${k * 10 + 10}`, `${k * 10 + 20}`, `${k * 10 + 30}`],
+      correctIndex: 1,
+      explanation: `${k} × 10 = ${k * 10}. Therefore, the answer is Option B.`,
+      topicSlug: 'arithmetic',
+      topicName: 'Arithmetic',
+      skillSlug: 'mental-multiplication-strategies',
+    };
+  });
 }
 
 function startGenerationStub(calls: { count: number }): Promise<http.Server> {
@@ -41,7 +46,7 @@ function startGenerationStub(calls: { count: number }): Promise<http.Server> {
         reply = { skillSlug: 'mental-multiplication-strategies' };
       } else {
         calls.count++; // count generation calls only
-        reply = makeStubQuestions(STUB_BATCH_SIZE);
+        reply = makeStubQuestions(STUB_BATCH_SIZE, calls.count);
       }
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(reply) } }] }));

@@ -589,7 +589,33 @@ function isValidGeneratedQuestion(q: any, allowedSlugs: Set<string>): boolean {
   return true;
 }
 
-async function generateQuestionBatch(topics: MathTopicForGen[], count: number): Promise<{ questions: any[]; usage: Usage | null }> {
+// W-87: strict de-duplication of generated questions — no exact/normalized repeats, and no
+// re-skinned direction/turn questions that resolve to the same rotation from the same start.
+export function normalizeQuestionText(text: string): string {
+  return String(text).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+const MAX_AVOID_IN_PROMPT = 40;
+export function buildUniquenessInstructions(avoidTexts: string[]): string {
+  const lines = [
+    'UNIQUENESS — STRICT. Every question must be genuinely different from every other question in',
+    'this worksheet AND from previous worksheets. Two questions are duplicates if they reduce to the',
+    'same problem even when the wording, names, or objects differ.',
+    '- Direction / turning questions: never reuse the same STARTING compass direction together with the',
+    '  same sequence and counts of turns (half turns, quarter turns, or degrees). For each such question',
+    '  change BOTH the starting direction and the turns/degrees so that no two resolve to the same rotation.',
+    '- Do not rephrase, re-skin, renumber, or make a trivial variation of any earlier question.',
+  ];
+  const avoid = avoidTexts.filter((t) => t && t.trim()).slice(-MAX_AVOID_IN_PROMPT);
+  if (avoid.length > 0) {
+    lines.push('');
+    lines.push('DO NOT produce any question equivalent to these already-used questions:');
+    for (const t of avoid) lines.push(`- ${t.slice(0, 200)}`);
+  }
+  return lines.join('\n');
+}
+
+async function generateQuestionBatch(topics: MathTopicForGen[], count: number, avoidTexts: string[] = []): Promise<{ questions: any[]; usage: Usage | null }> {
   const exemplars = topics.map(t => {
     const hardest = t.questions[0];
     if (!hardest) return null;
@@ -609,6 +635,8 @@ ${topics.map(t => `- ${t.name} (${t.slug}):\n${skillsForTopic(t.slug).map(s => `
 DIFFICULTY REQUIREMENT: Each question must be at or above the difficulty of the hardest known reference question for its topic. Here are the hardest reference questions per topic (with their cohort % Correct — lower % = harder):
 
 ${exemplars.map(e => `- ${e!.topic}: ${e!.percentCorrect}% correct (hard). Example: "${e!.question}"`).join('\n')}
+
+${buildUniquenessInstructions(avoidTexts)}
 
 For each question, provide a detailed "Question Feedback" style explanation.
 
@@ -686,13 +714,18 @@ export async function resolveMathTopicsForGeneration(topicSlugs?: string[]) {
 
 export async function generateMathWorksheetQuestions(
   topics: MathTopicForGen[],
-  questionCount = 35
+  questionCount = 35,
+  avoidTexts: string[] = []
 ): Promise<GeneratedMathQuestion[]> {
   const allowedSlugs = new Set(topics.map(t => t.slug));
   const nameBySlug = new Map(topics.map(t => [t.slug, t.name]));
   const collected: GeneratedMathQuestion[] = [];
   const totals: UsageTotals = { calls: 0, totalTokens: 0, byModel: {} };
   const genModel = providerFor('generation').model;
+  // W-87: strict de-dup. `seen` holds normalized text of previous-worksheet questions AND everything
+  // collected this run; `promptAvoid` is fed to each batch so the model avoids re-skinning them.
+  const seen = new Set(avoidTexts.map(normalizeQuestionText));
+  const promptAvoid: string[] = [...avoidTexts];
 
   // Verification drops some candidates, so allow extra top-up calls.
   const maxCalls = Math.ceil(questionCount / GENERATION_BATCH_SIZE) + 5;
@@ -701,7 +734,7 @@ export async function generateMathWorksheetQuestions(
   for (let call = 0; call < maxCalls && collected.length < questionCount; call++) {
     const need = Math.min(GENERATION_BATCH_SIZE, questionCount - collected.length);
     try {
-      const batchResult = await generateQuestionBatch(topics, need);
+      const batchResult = await generateQuestionBatch(topics, need, promptAvoid);
       accumulate(totals, genModel, batchResult.usage);
       const candidates: GeneratedMathQuestion[] = batchResult.questions
         .filter(q => isValidGeneratedQuestion(q, allowedSlugs) && hasDistinctOptions(q.options.map(String)))
@@ -716,9 +749,18 @@ export async function generateMathWorksheetQuestions(
           ...(q.stimulus !== undefined ? { stimulus: q.stimulus } : {}),
         }));
 
+      // W-87: drop any exact/normalized duplicate (of a prior worksheet or of anything already
+      // collected this run) BEFORE spending verifier calls on it.
+      const fresh = candidates.filter((c) => {
+        const n = normalizeQuestionText(c.questionText);
+        if (seen.has(n)) return false;
+        seen.add(n);
+        return true;
+      });
+
       // Audit every candidate's answer key in parallel; keep only confirmed ones.
-      const verdicts = await Promise.all(candidates.map((c) => verifyQuestionKey(c, totals)));
-      const verified = candidates
+      const verdicts = await Promise.all(fresh.map((c) => verifyQuestionKey(c, totals)));
+      const verified = fresh
         .filter((_, i) => verdicts[i])
         .slice(0, questionCount - collected.length);
       // Skill-tag audit (M3a Task 8): one verifier call per surviving question; the
@@ -727,6 +769,8 @@ export async function generateMathWorksheetQuestions(
         q.skillSlug = await verifySkillTag(q, totals);
       }));
       collected.push(...verified);
+      // Feed the kept questions back so later batches avoid re-skinning them.
+      promptAvoid.push(...verified.map((q) => q.questionText));
     } catch (error) {
       failedCalls++;
       console.error('Math worksheet generation batch failed:', error);
@@ -755,13 +799,23 @@ export async function generateMathWorksheetQuestions(
 export async function generateMathWorksheet(
   topicSlugs: string[] | undefined,
   rawQuestionCount: unknown,
+  workspaceId: number,
 ): Promise<{ title: string; topics: { id: number; name: string; slug: string }[]; questions: GeneratedMathQuestion[] }> {
   const questionCount = Math.max(5, Math.min(50, parseInt(String(rawQuestionCount), 10) || 35));
   const topics = await resolveMathTopicsForGeneration(topicSlugs);
   if (topics.length === 0) {
     throw new Error('No topics found for the requested selection');
   }
-  const questions = await generateMathWorksheetQuestions(topics, questionCount);
+  // W-87: no repeats from previous worksheets — feed this workspace's saved questions to the
+  // generator so it avoids reproducing (or re-skinning) any of them.
+  const previous = await prisma.mathQuestion.findMany({
+    where: { worksheet: { workspaceId } },
+    select: { questionText: true },
+    orderBy: { id: 'desc' },
+    take: 500,
+  });
+  const avoidTexts = previous.map((p) => p.questionText);
+  const questions = await generateMathWorksheetQuestions(topics, questionCount, avoidTexts);
   const topicSummaries = topics.map((t) => ({ id: t.id, name: t.name, slug: t.slug }));
   const title = `${topics.map((t) => t.name).join(', ')} practice`;
   return { title, topics: topicSummaries, questions };
