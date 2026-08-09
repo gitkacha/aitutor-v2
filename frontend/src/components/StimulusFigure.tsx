@@ -21,7 +21,13 @@ function polar(cx: number, cy: number, r: number, deg: number): [number, number]
 function Grid({ f }: { f: GridFigure }) {
   const filled = new Set((f.filled || []).map(([r, c]) => `${r},${c}`));
   return (
-    <table className="border-collapse">
+    <div className="inline-flex flex-col items-center gap-1">
+      {/* W-88: anchor North to the top of the grid so direction questions are unambiguous. */}
+      <div className="flex items-center gap-0.5 text-xs font-semibold text-gray-500" aria-label="North is up">
+        <span>N</span>
+        <span aria-hidden="true">↑</span>
+      </div>
+      <table className="border-collapse">
       {f.colLabels && (
         <thead>
           <tr>
@@ -50,8 +56,9 @@ function Grid({ f }: { f: GridFigure }) {
             ))}
           </tr>
         ))}
-      </tbody>
-    </table>
+        </tbody>
+      </table>
+    </div>
   );
 }
 

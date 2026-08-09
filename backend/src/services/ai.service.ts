@@ -1,4 +1,5 @@
 import prisma from '../lib/prisma';
+import { checkGridCompassDirection } from '../lib/grid-compass';
 import { validateStimulus, StimulusSpec } from '../lib/stimulus';
 import { hasDistinctOptions, explanationMatchesKey, keptByEscalation } from '../lib/question-checks';
 import { MATH_SKILLS, WRITING_SKILLS } from '../../prisma/seed-skills';
@@ -662,6 +663,17 @@ figure is ONE of:
 - {"kind":"rotation","shape":"arrow","beforeDeg":0,"afterDeg":225}
 - {"kind":"cards","values":["4/5","0.15","1/3"]}
 
+COMPASS & DIRECTION CONVENTION. On any grid, map, or figure, NORTH is toward the TOP of the figure
+(up on the screen), SOUTH the bottom, EAST the right, WEST the left. A grid renders its row labels
+from top to bottom exactly as listed, so the row shown at the TOP is the northernmost. When a
+question maps grid/map positions to a compass direction:
+- State the orientation explicitly in the questionText, e.g. "North is toward the top of the grid".
+- Describe the rows the way the figure shows them (top row first). NEVER write "bottom to top" or any
+  row ordering that contradicts the figure.
+- Work out the answer from visual position (up = North, down = South), not from row-number arithmetic.
+- Only ask for a "single compass direction" when the move is exactly North/South/East/West, or an
+  exact diagonal (the same number of steps horizontally and vertically).
+
 HARD RULE: every question must be fully answerable from its questionText plus its own
 stimulus. NEVER write "shown below", "in the diagram", "on the protractor" or similar
 unless the question includes a stimulus containing that exact figure and all data needed
@@ -747,7 +759,10 @@ export async function generateMathWorksheetQuestions(
           topicName: nameBySlug.get(q.topicSlug)!,
           skillSlug: q.skillSlug,
           ...(q.stimulus !== undefined ? { stimulus: q.stimulus } : {}),
-        }));
+        }))
+        // W-88: discard grid→compass questions whose answer key disagrees with the geometry of the
+        // rendered grid (North = top), or whose move isn't a single well-defined direction.
+        .filter((c) => checkGridCompassDirection(c) !== 'wrong');
 
       // W-87: drop any exact/normalized duplicate (of a prior worksheet or of anything already
       // collected this run) BEFORE spending verifier calls on it.
