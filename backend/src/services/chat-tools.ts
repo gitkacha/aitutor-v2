@@ -5,7 +5,7 @@
 // data (worksheet generation/assignment, interventions) — schemas only here; Task 6 wires their
 // executors and Task 7/9 wire confirmation flow. dispatchReadTool executes a READ tool by name.
 import prisma from '../lib/prisma';
-import { ChatToolSchema, generateMathWorksheetQuestions, resolveMathTopicsForGeneration } from './ai.service';
+import { ChatToolSchema, generateMathWorksheet } from './ai.service';
 import { getStudentSkillReport, getOpportunityAreas } from './analytics.service';
 import { saveAndAssignWorksheet } from './math-worksheet.service';
 import { createIntervention, listInterventions } from './intervention.service';
@@ -268,11 +268,6 @@ export async function dispatchReadTool(name: string, args: any, ctx: ToolContext
   }
 }
 
-// Clamp to the schema's declared 5–50 range (same clamp as the POST /generate route).
-function clampQuestionCount(raw: unknown): number {
-  return Math.max(5, Math.min(50, parseInt(String(raw), 10) || 35));
-}
-
 // Executes a confirmable action tool AFTER the admin has confirmed it (the confirm route,
 // Task 9, calls this then deletes the pending action). Reuses the same generation/save
 // services the HTTP routes use so behaviour and validation stay identical. Errors propagate
@@ -283,10 +278,8 @@ export async function executeActionTool(name: string, args: any, ctx: ToolContex
       if (args.subject && args.subject !== 'math') {
         throw new Error('generate_worksheet currently supports subject "math" only');
       }
-      const questionCount = clampQuestionCount(args.questionCount);
-
-      // Selection: explicit topicSlugs, plus the owning topics of any skillSlugs. Empty
-      // set → generation covers every topic (resolveMathTopicsForGeneration's default).
+      // Selection: explicit topicSlugs, plus the owning topics of any skillSlugs. Empty set →
+      // generation covers every topic (resolveMathTopicsForGeneration's default).
       const slugSet = new Set<string>(Array.isArray(args.topicSlugs) ? args.topicSlugs : []);
       if (Array.isArray(args.skillSlugs) && args.skillSlugs.length > 0) {
         const skills = await prisma.skill.findMany({
@@ -295,18 +288,12 @@ export async function executeActionTool(name: string, args: any, ctx: ToolContex
         });
         for (const s of skills) if (s.topic) slugSet.add(s.topic.slug);
       }
-      const topicSlugs = [...slugSet];
 
-      const topics = await resolveMathTopicsForGeneration(topicSlugs);
-      if (topics.length === 0) {
-        throw new Error('No topics found for the requested selection');
-      }
-
-      const questions = await generateMathWorksheetQuestions(topics, questionCount);
-      const title = `${topics.map((t) => t.name).join(', ')} practice`;
-      // W-85: save the worksheet to the workspace UNASSIGNED and return a COMPACT reference — the
-      // questions never go back through the model (that bloated the transcript and produced an empty
-      // narration). The admin reviews and assigns it from the Admin → Saved Worksheets UI.
+      // W-86: generate with the EXACT same function the Admin UI generate button uses. W-85: save
+      // UNASSIGNED and return a COMPACT reference — the questions never go back through the model
+      // (that bloated the transcript and produced an empty narration). The admin reviews and assigns
+      // it from the Admin → Saved Worksheets UI.
+      const { title, topics, questions } = await generateMathWorksheet([...slugSet], args.questionCount);
       const worksheet = await saveAndAssignWorksheet({
         workspaceId: ctx.workspaceId,
         createdById: ctx.adminId,

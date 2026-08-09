@@ -748,6 +748,25 @@ export async function generateMathWorksheetQuestions(
   return collected;
 }
 
+// W-86: THE single source of truth for generating a math worksheet — used by BOTH the Admin UI
+// generate route (POST /api/math/worksheets/generate, inside its job) and the coach-chat
+// generate_worksheet action, so the two paths can never diverge. Clamps the count (5–50), resolves
+// the topics, and generates the questions. Returns the topic summaries + a default title.
+export async function generateMathWorksheet(
+  topicSlugs: string[] | undefined,
+  rawQuestionCount: unknown,
+): Promise<{ title: string; topics: { id: number; name: string; slug: string }[]; questions: GeneratedMathQuestion[] }> {
+  const questionCount = Math.max(5, Math.min(50, parseInt(String(rawQuestionCount), 10) || 35));
+  const topics = await resolveMathTopicsForGeneration(topicSlugs);
+  if (topics.length === 0) {
+    throw new Error('No topics found for the requested selection');
+  }
+  const questions = await generateMathWorksheetQuestions(topics, questionCount);
+  const topicSummaries = topics.map((t) => ({ id: t.id, name: t.name, slug: t.slug }));
+  const title = `${topics.map((t) => t.name).join(', ')} practice`;
+  return { title, topics: topicSummaries, questions };
+}
+
 function getFallbackMathQuestions(topics: MathTopicForGen[], questionCount = 35): GeneratedMathQuestion[] {
   const fallback: GeneratedMathQuestion[] = [];
   const topicNames = topics.map(t => ({ slug: t.slug, name: t.name }));

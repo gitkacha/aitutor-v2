@@ -27,7 +27,10 @@ import {
 } from '../lib/pending-actions';
 
 const MAX_ITERATIONS = 8;
-const MAX_TOKENS = 1500;
+// gpt-5-mini is a reasoning model: this is its max_completion_tokens, and reasoning tokens count
+// against it. 1500 starved the reasoning on non-trivial turns, so the model emitted zero visible
+// tokens → the empty-response fallback fired (W-86). Give it ample room to reason AND answer.
+const MAX_TOKENS = 8000;
 const ALL_TOOLS = [...READ_TOOL_SCHEMAS, ...ACTION_TOOL_SCHEMAS];
 const EXHAUSTED_REPLY =
   "I wasn't able to finish that within a reasonable number of steps. Could you narrow the question or ask about one thing at a time?";
@@ -65,10 +68,13 @@ Hard rules:
 - Actions (generating a worksheet, creating interventions, assigning a coaching lesson, deleting a
   worksheet) require the admin's confirmation; propose them clearly and let the confirmation happen —
   do not claim an action is done until you are told it was. Propose ONE action at a time.
-- To make a worksheet, propose generate_worksheet — it generates the worksheet AND saves it to the
-  workspace UNASSIGNED. NEVER list the worksheet's questions in the chat. After it is saved, tell the
-  admin to open the Admin page → Mathematics → Saved Worksheets to review the questions and assign it
-  to one or more students.
+- To make a worksheet, CALL generate_worksheet directly (it gates for the admin's confirmation) — do
+  not just describe what you would do. Worksheets are ALWAYS multiple-choice at NSW-Selective exam
+  level, so NEVER ask the admin about difficulty, format, or worked solutions; just proceed with the
+  topics/skills and question count they gave. generate_worksheet generates AND saves the worksheet to
+  the workspace UNASSIGNED. NEVER list the worksheet's questions in the chat. After it is saved, tell
+  the admin to open the Admin page → Mathematics → Saved Worksheets to review the questions and assign
+  it to one or more students.
 - To delete a worksheet, first call list_worksheets to find its id and attempt count, then propose
   delete_worksheet. Only worksheets with 0 attempts can be deleted; never offer to delete one that
   has attempts.

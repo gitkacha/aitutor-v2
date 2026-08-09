@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma';
-import { generateMathWorksheetQuestions, resolveMathTopicsForGeneration } from '../services/ai.service';
+import { resolveMathTopicsForGeneration, generateMathWorksheet } from '../services/ai.service';
 import { validateWorksheetQuestions, saveAndAssignWorksheet } from '../services/math-worksheet.service';
 import { asyncHandler } from '../lib/async-handler';
 import { requireAdmin, requireAuth } from '../middleware/auth';
@@ -43,20 +43,19 @@ function stripWorksheetAnswersForStudents<T extends { questions: string }>(
 // POST /api/math/worksheets/generate — AI-generate 35-question worksheet
 router.post('/generate', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
   const { topicIds } = req.body; // Array of topic slugs, empty = all topics
-  const questionCount = Math.max(5, Math.min(50, parseInt(req.body.questionCount) || 35));
 
+  // Validate the selection synchronously so an empty/invalid one still 400s (unchanged contract).
   const topics = await resolveMathTopicsForGeneration(topicIds);
-
   if (topics.length === 0) {
     return res.status(400).json({ error: 'No topics found' });
   }
 
-  // Run generation as a background job (W-19) so the admin can navigate away and re-attach.
-  const topicSummaries = topics.map((t) => ({ id: t.id, name: t.name, slug: t.slug }));
-  const jobId = createJob('math', req.user!.workspaceId, async () => ({
-    topics: topicSummaries,
-    questions: await generateMathWorksheetQuestions(topics, questionCount),
-  }));
+  // Run generation as a background job (W-19) so the admin can navigate away and re-attach. The job
+  // uses the shared generateMathWorksheet — the EXACT same generation the coach chat uses (W-86).
+  const jobId = createJob('math', req.user!.workspaceId, async () => {
+    const result = await generateMathWorksheet(topicIds, req.body.questionCount);
+    return { topics: result.topics, questions: result.questions };
+  });
   res.status(202).json({ jobId });
 }));
 
