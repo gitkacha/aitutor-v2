@@ -147,4 +147,28 @@ router.delete('/:id', requireAdmin, asyncHandler(async (req: Request, res: Respo
   res.json({ deleted: true });
 }));
 
+// POST /api/math/worksheets/:id/assign { studentIds } — assign an already-saved worksheet to one or
+// more students (W-85). Idempotent (skipDuplicates on the @@unique); only workspace students count.
+router.post('/:id/assign', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid worksheet id' });
+  const ws = await prisma.mathWorksheet.findFirst({ where: { id, workspaceId: req.user!.workspaceId } });
+  if (!ws) return res.status(404).json({ error: 'Worksheet not found' });
+  const ids: number[] = Array.isArray(req.body?.studentIds) ? req.body.studentIds.map(Number).filter(Number.isInteger) : [];
+  const students = await prisma.user.findMany({
+    where: { id: { in: ids }, workspaceId: req.user!.workspaceId, role: 'student' },
+    select: { id: true },
+  });
+  // Idempotent: only create assignments that don't already exist (SQLite has no skipDuplicates).
+  const existing = await prisma.mathWorksheetAssignment.findMany({
+    where: { worksheetId: id, studentId: { in: students.map((s) => s.id) } },
+    select: { studentId: true },
+  });
+  const already = new Set(existing.map((e) => e.studentId));
+  await prisma.mathWorksheetAssignment.createMany({
+    data: students.filter((s) => !already.has(s.id)).map((s) => ({ worksheetId: id, studentId: s.id })),
+  });
+  res.json({ assigned: students.length });
+}));
+
 export default router;

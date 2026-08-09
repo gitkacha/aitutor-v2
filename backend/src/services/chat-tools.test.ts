@@ -31,7 +31,6 @@ describe('ACTION_TOOL_SCHEMAS', () => {
   it('contains exactly the expected action tool names', () => {
     expect(ACTION_TOOL_SCHEMAS.map((t) => t.name)).toEqual([
       'generate_worksheet',
-      'save_and_assign_worksheet',
       'create_intervention',
       'assign_coaching',
       'delete_worksheet',
@@ -56,7 +55,7 @@ describe('isActionTool', () => {
   it('returns true for action tools', () => {
     expect(isActionTool('create_intervention')).toBe(true);
     expect(isActionTool('generate_worksheet')).toBe(true);
-    expect(isActionTool('save_and_assign_worksheet')).toBe(true);
+    expect(isActionTool('delete_worksheet')).toBe(true);
   });
 
   it('returns false for unknown names', () => {

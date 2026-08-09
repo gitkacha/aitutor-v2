@@ -38,6 +38,17 @@ const EXHAUSTED_REPLY =
 const NO_ANSWER_REPLY =
   "I couldn't put together a response for that. I can look up how a student is doing, or set up targeted practice and lessons for them — which student would you like to focus on?";
 
+// Action results are injected into the transcript for the model to narrate. A huge result (e.g. a
+// full generated worksheet, ~12KB) would blow the token budget and yield an empty narration (W-85),
+// so cap what we feed back — the model needs a short confirmation, not the whole payload.
+const MAX_RESULT_CHARS = 1500;
+export function summarizeActionResult(result: unknown): string {
+  const json = JSON.stringify(result ?? {});
+  return json.length <= MAX_RESULT_CHARS
+    ? json
+    : `${json.slice(0, MAX_RESULT_CHARS)}… (truncated ${json.length - MAX_RESULT_CHARS} chars)`;
+}
+
 const SYSTEM_PROMPT = `You are a coaching assistant for a teacher/admin using the NSW Selective Prep Coach.
 You help them understand a student's performance and plan targeted practice.
 
@@ -51,10 +62,13 @@ Hard rules:
   not enough data yet to judge it — never call it a weakness or a strength from thin data.
 - When proposing a worksheet as an intervention, make sure at least 8 questions target each skill
   you want to be able to measure, and say so to the admin.
-- Actions (generating/saving worksheets, creating interventions, assigning a coaching lesson,
-  deleting a worksheet) require the admin's confirmation; propose them clearly and let the
-  confirmation happen — do not claim an action is done until you are told it was. Propose ONE action
-  at a time.
+- Actions (generating a worksheet, creating interventions, assigning a coaching lesson, deleting a
+  worksheet) require the admin's confirmation; propose them clearly and let the confirmation happen —
+  do not claim an action is done until you are told it was. Propose ONE action at a time.
+- To make a worksheet, propose generate_worksheet — it generates the worksheet AND saves it to the
+  workspace UNASSIGNED. NEVER list the worksheet's questions in the chat. After it is saved, tell the
+  admin to open the Admin page → Mathematics → Saved Worksheets to review the questions and assign it
+  to one or more students.
 - To delete a worksheet, first call list_worksheets to find its id and attempt count, then propose
   delete_worksheet. Only worksheets with 0 attempts can be deleted; never offer to delete one that
   has attempts.
@@ -216,7 +230,7 @@ export async function resolvePendingAction(
     let outcome: string;
     try {
       const result = await executeActionTool(action.toolName, action.args, ctx);
-      outcome = `(system) The admin approved the "${action.toolName}" action. It completed. Result: ${JSON.stringify(result)}`;
+      outcome = `(system) The admin approved the "${action.toolName}" action. It completed. Result: ${summarizeActionResult(result)}`;
     } catch (e: any) {
       outcome = `(system) The admin approved the "${action.toolName}" action but it failed: ${e?.message || 'unknown error'}.`;
     }

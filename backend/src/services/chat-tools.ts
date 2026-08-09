@@ -7,8 +7,7 @@
 import prisma from '../lib/prisma';
 import { ChatToolSchema, generateMathWorksheetQuestions, resolveMathTopicsForGeneration } from './ai.service';
 import { getStudentSkillReport, getOpportunityAreas } from './analytics.service';
-import { validateWorksheetQuestions, saveAndAssignWorksheet } from './math-worksheet.service';
-import { resolveAssigneeStudentIdsForWorkspace } from '../lib/scope';
+import { saveAndAssignWorksheet } from './math-worksheet.service';
 import { createIntervention, listInterventions } from './intervention.service';
 import { generateCoachingModuleContent } from './coaching.service';
 import { deleteWorksheetIfUnattempted } from './worksheet-delete';
@@ -101,7 +100,10 @@ export const READ_TOOL_SCHEMAS: ChatToolSchema[] = [
 export const ACTION_TOOL_SCHEMAS: ChatToolSchema[] = [
   {
     name: 'generate_worksheet',
-    description: 'Generate a new AI-authored worksheet for a subject, targeting given topics and/or skills.',
+    description:
+      'Generate a new AI-authored math worksheet targeting given topics and/or skills, and SAVE it ' +
+      'to the workspace UNASSIGNED. Returns a reference (worksheetId, title, questionCount) — NOT the ' +
+      'questions. The admin then reviews it and assigns it to students from the Admin page.',
     parameters: {
       type: 'object',
       properties: {
@@ -124,32 +126,6 @@ export const ACTION_TOOL_SCHEMAS: ChatToolSchema[] = [
         },
       },
       required: ['subject', 'questionCount'],
-    },
-  },
-  {
-    name: 'save_and_assign_worksheet',
-    description: 'Save a previously generated worksheet and assign it to one or more students.',
-    parameters: {
-      type: 'object',
-      properties: {
-        title: { type: 'string', description: 'The worksheet title.' },
-        questions: {
-          type: 'array',
-          items: { type: 'object' },
-          description: 'The worksheet questions, as generated.',
-        },
-        topicIds: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'The topic ids covered by the worksheet.',
-        },
-        studentIds: {
-          type: 'array',
-          items: { type: 'integer' },
-          description: 'The ids of the students to assign the worksheet to.',
-        },
-      },
-      required: ['title', 'questions', 'topicIds', 'studentIds'],
     },
   },
   {
@@ -326,28 +302,20 @@ export async function executeActionTool(name: string, args: any, ctx: ToolContex
         throw new Error('No topics found for the requested selection');
       }
 
-      const topicSummaries = topics.map((t) => ({ id: t.id, name: t.name, slug: t.slug }));
       const questions = await generateMathWorksheetQuestions(topics, questionCount);
       const title = `${topics.map((t) => t.name).join(', ')} practice`;
-      return { title, topics: topicSummaries, questions };
-    }
-
-    case 'save_and_assign_worksheet': {
-      if (!args.title || !validateWorksheetQuestions(args.questions)) {
-        throw new Error(
-          'save_and_assign_worksheet requires a title and a non-empty array of valid questions ' +
-          '({questionText, options[], correctIndex, explanation, topicSlug, skillSlug})'
-        );
-      }
-      const assigneeIds = await resolveAssigneeStudentIdsForWorkspace(ctx.workspaceId, args.studentIds);
-      return saveAndAssignWorksheet({
+      // W-85: save the worksheet to the workspace UNASSIGNED and return a COMPACT reference — the
+      // questions never go back through the model (that bloated the transcript and produced an empty
+      // narration). The admin reviews and assigns it from the Admin → Saved Worksheets UI.
+      const worksheet = await saveAndAssignWorksheet({
         workspaceId: ctx.workspaceId,
         createdById: ctx.adminId,
-        title: args.title,
-        topicIds: args.topicIds,
-        questions: args.questions,
-        assigneeIds,
+        title,
+        topicIds: topics.map((t) => t.slug),
+        questions,
+        assigneeIds: [],
       });
+      return { saved: true, worksheetId: worksheet.id, title, questionCount: questions.length, subject: 'math' };
     }
 
     case 'create_intervention': {

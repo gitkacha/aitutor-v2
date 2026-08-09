@@ -76,6 +76,9 @@ export default function Admin() {
   const [writingWorksheets, setWritingWorksheets] = useState<Worksheet[]>([]);
   const [mathWorksheets, setMathWorksheets] = useState<MathWorksheet[]>([]);
   const [expandedMathWs, setExpandedMathWs] = useState<number | null>(null);
+  // W-85: per-row "assign to students" panel on saved worksheets.
+  const [assignFor, setAssignFor] = useState<{ subject: 'math' | 'writing'; id: number } | null>(null);
+  const [assignSel, setAssignSel] = useState<Set<number>>(new Set());
   const [expandedWritingWs, setExpandedWritingWs] = useState<number | null>(null);
 
   useEffect(() => {
@@ -299,6 +302,29 @@ export default function Admin() {
     }
   };
 
+  // W-85: assign an already-saved worksheet to students (chat now saves worksheets unassigned).
+  const submitAssign = async (ids: number[]) => {
+    if (!assignFor || ids.length === 0) return;
+    try {
+      if (assignFor.subject === 'math') await mathApi.assignWorksheet(assignFor.id, ids);
+      else await api.assignWorksheet(assignFor.id, ids);
+      setMessage(`Assigned to ${ids.length} student${ids.length !== 1 ? 's' : ''}.`);
+      setAssignFor(null);
+      setAssignSel(new Set());
+      mathApi.getWorksheets().then(setMathWorksheets).catch(() => {});
+      api.getWorksheets().then(setWritingWorksheets).catch(() => {});
+      setWorksheetRefresh((n) => n + 1);
+    } catch (e: any) {
+      setMessage(`Error: ${e.message}`);
+    }
+  };
+  const toggleAssignPick = (sid: number) =>
+    setAssignSel((prev) => {
+      const next = new Set(prev);
+      next.has(sid) ? next.delete(sid) : next.add(sid);
+      return next;
+    });
+
   // Workspace members (C1)
   const handleAddMember = async () => {
     setMessage(null);
@@ -429,6 +455,35 @@ export default function Admin() {
             );
           })}
         </div>
+      )}
+    </div>
+  );
+
+  // W-85: the per-row "assign to students" panel, shown under a saved worksheet when its Assign
+  // control is open.
+  const assignPanel = (
+    <div className="mt-3 ml-9 p-3 bg-gray-50 rounded-lg border border-gray-100">
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Assign to students</p>
+      {students.length === 0 ? (
+        <p className="text-xs text-gray-400">No students in this workspace yet.</p>
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5 mb-3">
+            {students.map((s) => (
+              <label key={s.id} className="flex items-center gap-1.5 text-sm text-gray-700">
+                <input type="checkbox" checked={assignSel.has(s.id)} onChange={() => toggleAssignPick(s.id)} />
+                {s.name}
+              </label>
+            ))}
+          </div>
+          <button
+            onClick={() => submitAssign([...assignSel])}
+            disabled={assignSel.size === 0}
+            className="rounded-lg bg-brand-blue px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+          >
+            Assign{assignSel.size ? ` ${assignSel.size}` : ''}
+          </button>
+        </>
       )}
     </div>
   );
@@ -613,6 +668,12 @@ export default function Admin() {
                           >
                             {expandedWritingWs === ws.id ? 'Hide' : 'View'}
                           </button>
+                          <button
+                            onClick={() => { setAssignFor({ subject: 'writing', id: ws.id }); setAssignSel(new Set()); }}
+                            className="text-xs font-medium text-brand-green hover:underline"
+                          >
+                            Assign
+                          </button>
                           {atts.length === 0 && (
                             <button
                               onClick={() => handleDeleteWritingWorksheet(ws.id, ws.title)}
@@ -623,6 +684,7 @@ export default function Admin() {
                           )}
                         </div>
                       </div>
+                      {assignFor?.subject === 'writing' && assignFor.id === ws.id && assignPanel}
                       {expandedWritingWs === ws.id && (
                         <div className="mt-3 ml-9 space-y-2">
                           {prompts.map((p, i) => (
@@ -834,6 +896,12 @@ export default function Admin() {
                           >
                             {expandedMathWs === ws.id ? 'Hide' : 'View'}
                           </button>
+                          <button
+                            onClick={() => { setAssignFor({ subject: 'math', id: ws.id }); setAssignSel(new Set()); }}
+                            className="text-xs font-medium text-brand-green hover:underline"
+                          >
+                            Assign
+                          </button>
                           {atts.length === 0 && (
                             <button
                               onClick={() => handleDeleteMathWorksheet(ws.id, ws.title)}
@@ -849,6 +917,7 @@ export default function Admin() {
                           <MathWorksheetContent worksheetId={ws.id} />
                         </div>
                       )}
+                      {assignFor?.subject === 'math' && assignFor.id === ws.id && assignPanel}
                       {scored.length > 0 && (
                         <div className="mt-2 ml-9 space-y-1">
                           {scored.slice(0, 3).map((a: any) => (

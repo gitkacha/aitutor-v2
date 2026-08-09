@@ -12,9 +12,9 @@ import { ChatTranscript } from '@/components/ChatTranscript';
 function summariseArgs(toolName: string, args: any): string {
   if (toolName === 'generate_worksheet') {
     const focus = [...(args?.skillSlugs ?? []), ...(args?.topicSlugs ?? [])].join(', ');
-    return `${args?.questionCount ?? '?'} questions${focus ? ` · ${focus}` : ''}`;
+    return `Generate & save ${args?.questionCount ?? '?'} questions${focus ? ` · ${focus}` : ''} (unassigned)`;
   }
-  if (toolName === 'save_and_assign_worksheet') return `"${args?.title ?? 'worksheet'}" → ${(args?.studentIds ?? []).length} student(s)`;
+  if (toolName === 'delete_worksheet') return `delete ${args?.subject ?? ''} worksheet #${args?.worksheetId ?? '?'}`;
   if (toolName === 'create_intervention') return `targets ${(args?.skillSlugs ?? []).join(', ')} · ${args?.recommendation ?? ''}`;
   return JSON.stringify(args ?? {});
 }

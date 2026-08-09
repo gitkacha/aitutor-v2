@@ -139,6 +139,29 @@ router.delete('/:id', requireAdmin, asyncHandler(async (req: Request, res: Respo
   res.json({ deleted: true });
 }));
 
+// POST /api/worksheets/:id/assign { studentIds } — assign an already-saved writing worksheet to one
+// or more students (W-85). Idempotent; only workspace students count.
+router.post('/:id/assign', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid worksheet id' });
+  const ws = await prisma.worksheet.findFirst({ where: { id, workspaceId: req.user!.workspaceId } });
+  if (!ws) return res.status(404).json({ error: 'Worksheet not found' });
+  const ids: number[] = Array.isArray(req.body?.studentIds) ? req.body.studentIds.map(Number).filter(Number.isInteger) : [];
+  const students = await prisma.user.findMany({
+    where: { id: { in: ids }, workspaceId: req.user!.workspaceId, role: 'student' },
+    select: { id: true },
+  });
+  const existing = await prisma.worksheetAssignment.findMany({
+    where: { worksheetId: id, studentId: { in: students.map((s) => s.id) } },
+    select: { studentId: true },
+  });
+  const already = new Set(existing.map((e) => e.studentId));
+  await prisma.worksheetAssignment.createMany({
+    data: students.filter((s) => !already.has(s.id)).map((s) => ({ worksheetId: id, studentId: s.id })),
+  });
+  res.json({ assigned: students.length });
+}));
+
 // GET /api/worksheets/available/:typeId — get worksheets for a specific writing type
 router.get('/available/:typeId', requireAuth, asyncHandler(async (req: Request, res: Response) => {
   const typeId = parseInt(req.params.typeId);
