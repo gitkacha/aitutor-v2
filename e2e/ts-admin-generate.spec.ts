@@ -44,8 +44,8 @@ test.describe('W-95 — Admin Thinking Skills generate flow', () => {
     const card = page.getByTestId('ts-generate');
     await expect(card).toBeVisible();
     await card.getByRole('button', { name: 'Logical Analysis' }).click();
-    await card.getByLabel('Number of questions').fill('5'); // match the stub's batch of 5
-    await card.getByRole('button', { name: /Generate .*Question/ }).click();
+    await card.getByLabel('Thinking Skills question count').fill('5'); // match the stub's batch of 5
+    await card.getByRole('button', { name: /Generate Thinking Skills worksheet/ }).click();
 
     // Review shows the generated questions.
     await expect(card.getByRole('heading', { name: /Review Generated Questions/ })).toBeVisible({ timeout: 15000 });

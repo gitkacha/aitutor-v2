@@ -104,13 +104,13 @@ export default function ThinkingSkillsGenerate({ onSaved }: { onSaved: () => voi
           <div className="flex items-center gap-3">
             <label className="text-sm text-gray-600">Number of questions</label>
             <input
-              aria-label="Number of questions"
+              aria-label="Thinking Skills question count"
               className="w-20 rounded-lg border border-gray-200 px-2 py-1 text-sm"
               value={count}
               onChange={(e) => setCount(e.target.value)}
             />
             <Button onClick={generate} disabled={selected.length === 0 || jobId !== null}>
-              {jobId ? 'Generating…' : `Generate ${questionCount}-Question Worksheet`}
+              {jobId ? 'Generating…' : `Generate Thinking Skills worksheet (${questionCount})`}
             </Button>
           </div>
         </>
