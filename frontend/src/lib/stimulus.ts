@@ -83,6 +83,20 @@ export interface CardsFigure {
   values: string[];
 }
 
+// Thinking Skills (W-92) — mirror of backend/src/lib/stimulus.ts.
+export type CutShape = 'circle' | 'triangle' | 'diamond' | 'square';
+export interface FoldCutFigure {
+  kind: 'fold-cut';
+  foldCount: number;
+  cut: 'centre' | 'corner' | 'edge';
+  cutShape: CutShape;
+}
+export interface TargetFigure {
+  kind: 'target';
+  rings: number[];
+  darts: number[];
+}
+
 export type Figure =
   | TableFigure
   | GridFigure
@@ -93,7 +107,9 @@ export type Figure =
   | CompassFigure
   | ShapeFigure
   | RotationFigure
-  | CardsFigure;
+  | CardsFigure
+  | FoldCutFigure
+  | TargetFigure;
 
 export interface StimulusSpec {
   version: 1;
@@ -104,9 +120,11 @@ export interface StimulusSpec {
 export const FIGURE_KINDS = [
   'table', 'grid', 'line-chart', 'bar-chart', 'pie-chart',
   'protractor', 'compass', 'shape', 'rotation', 'cards',
+  'fold-cut', 'target',
 ] as const;
 
 const COMPASS_DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+const CUT_SHAPES = ['circle', 'triangle', 'diamond', 'square'];
 const ROTATION_SHAPES: RotationShape[] = ['arrow', 'L', 'F', 'T', 'flag'];
 
 function isFiniteNumber(v: unknown): v is number {
@@ -196,6 +214,18 @@ function validFigure(f: any): boolean {
     case 'cards':
       return Array.isArray(f.values) && f.values.length >= 2 &&
         f.values.every((v: unknown) => typeof v === 'string');
+    case 'fold-cut':
+      return (
+        Number.isInteger(f.foldCount) && f.foldCount >= 1 && f.foldCount <= 4 &&
+        ['centre', 'corner', 'edge'].includes(f.cut) &&
+        CUT_SHAPES.includes(f.cutShape)
+      );
+    case 'target':
+      return (
+        Array.isArray(f.rings) && f.rings.length >= 2 && f.rings.every(isFiniteNumber) &&
+        Array.isArray(f.darts) && f.darts.length >= 1 &&
+        f.darts.every((d: unknown) => Number.isInteger(d) && (d as number) >= 0 && (d as number) < f.rings.length)
+      );
     default:
       return false;
   }

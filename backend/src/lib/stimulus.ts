@@ -83,6 +83,24 @@ export interface CardsFigure {
   values: string[];
 }
 
+// Thinking Skills (W-92). Paper folded `foldCount` times with a single cut — rendered as the folded
+// square showing the cut, so "how many holes when unfolded" (= 2^foldCount) is answerable from it.
+export type CutShape = 'circle' | 'triangle' | 'diamond' | 'square';
+export interface FoldCutFigure {
+  kind: 'fold-cut';
+  foldCount: number; // 1–4
+  cut: 'centre' | 'corner' | 'edge';
+  cutShape: CutShape;
+}
+
+// Concentric-ring target. `rings` are point values from the OUTERMOST ring to the bullseye; `darts`
+// are ring indices (0 = outermost) each dart landed in, so the total score is answerable from it.
+export interface TargetFigure {
+  kind: 'target';
+  rings: number[];
+  darts: number[];
+}
+
 export type Figure =
   | TableFigure
   | GridFigure
@@ -93,7 +111,9 @@ export type Figure =
   | CompassFigure
   | ShapeFigure
   | RotationFigure
-  | CardsFigure;
+  | CardsFigure
+  | FoldCutFigure
+  | TargetFigure;
 
 export interface StimulusSpec {
   version: 1;
@@ -104,7 +124,10 @@ export interface StimulusSpec {
 export const FIGURE_KINDS = [
   'table', 'grid', 'line-chart', 'bar-chart', 'pie-chart',
   'protractor', 'compass', 'shape', 'rotation', 'cards',
+  'fold-cut', 'target',
 ] as const;
+
+const CUT_SHAPES = ['circle', 'triangle', 'diamond', 'square'];
 
 const COMPASS_DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 const ROTATION_SHAPES: RotationShape[] = ['arrow', 'L', 'F', 'T', 'flag'];
@@ -196,6 +219,18 @@ function validFigure(f: any): boolean {
     case 'cards':
       return Array.isArray(f.values) && f.values.length >= 2 &&
         f.values.every((v: unknown) => typeof v === 'string');
+    case 'fold-cut':
+      return (
+        Number.isInteger(f.foldCount) && f.foldCount >= 1 && f.foldCount <= 4 &&
+        ['centre', 'corner', 'edge'].includes(f.cut) &&
+        CUT_SHAPES.includes(f.cutShape)
+      );
+    case 'target':
+      return (
+        Array.isArray(f.rings) && f.rings.length >= 2 && f.rings.every(isFiniteNumber) &&
+        Array.isArray(f.darts) && f.darts.length >= 1 &&
+        f.darts.every((d: unknown) => Number.isInteger(d) && (d as number) >= 0 && (d as number) < f.rings.length)
+      );
     default:
       return false;
   }

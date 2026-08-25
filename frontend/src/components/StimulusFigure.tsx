@@ -4,7 +4,7 @@ import {
 } from 'recharts';
 import type {
   Figure, GridFigure, ProtractorFigure, CompassFigure, ShapeFigure,
-  RotationFigure, RotationShape,
+  RotationFigure, RotationShape, FoldCutFigure, TargetFigure,
 } from '@/lib/stimulus';
 
 // Renders one structured stimulus figure (W-8). Charts use Recharts; geometric
@@ -216,6 +216,62 @@ function Rotation({ f }: { f: RotationFigure }) {
   );
 }
 
+// W-92: a square folded `foldCount` times with a single cut — rendered as the folded square with
+// dashed fold lines and the cut mark, so the reader can reason about the unfolded holes.
+function CutMark({ cx, cy, r, shape }: { cx: number; cy: number; r: number; shape: FoldCutFigure['cutShape'] }) {
+  if (shape === 'circle') return <circle cx={cx} cy={cy} r={r} fill="#fff" stroke="#111827" strokeWidth={2} />;
+  if (shape === 'square') return <rect x={cx - r} y={cy - r} width={r * 2} height={r * 2} fill="#fff" stroke="#111827" strokeWidth={2} />;
+  const pts = shape === 'diamond'
+    ? `${cx},${cy - r} ${cx + r},${cy} ${cx},${cy + r} ${cx - r},${cy}`
+    : `${cx},${cy - r} ${cx + r},${cy + r} ${cx - r},${cy + r}`; // triangle
+  return <polygon points={pts} fill="#fff" stroke="#111827" strokeWidth={2} />;
+}
+function FoldCut({ f }: { f: FoldCutFigure }) {
+  const S = 120, pad = 8;
+  // Cut position within the folded square.
+  const pos = f.cut === 'centre' ? [S / 2, S / 2] : f.cut === 'corner' ? [S - pad - 14, pad + 14] : [S / 2, pad + 14];
+  // Fold lines: alternate vertical/horizontal as folds accumulate (visual cue only).
+  const lines = [];
+  if (f.foldCount >= 1) lines.push(<line key="v" x1={S / 2} y1={pad} x2={S / 2} y2={S - pad} stroke="#9ca3af" strokeDasharray="4 3" />);
+  if (f.foldCount >= 2) lines.push(<line key="h" x1={pad} y1={S / 2} x2={S - pad} y2={S / 2} stroke="#9ca3af" strokeDasharray="4 3" />);
+  if (f.foldCount >= 3) lines.push(<line key="v2" x1={S / 4} y1={pad} x2={S / 4} y2={S - pad} stroke="#d1d5db" strokeDasharray="3 3" />);
+  if (f.foldCount >= 4) lines.push(<line key="h2" x1={pad} y1={S / 4} x2={S - pad} y2={S / 4} stroke="#d1d5db" strokeDasharray="3 3" />);
+  return (
+    <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+      <rect x={pad} y={pad} width={S - pad * 2} height={S - pad * 2} fill="#f9fafb" stroke="#111827" strokeWidth={2} />
+      {lines}
+      <CutMark cx={pos[0]} cy={pos[1]} r={10} shape={f.cutShape} />
+    </svg>
+  );
+}
+
+// W-92: concentric-ring target with the rings' point values (outermost→bullseye) and the darts.
+function Target({ f }: { f: TargetFigure }) {
+  const cx = 90, cy = 90, maxR = 80;
+  const n = f.rings.length;
+  const ringR = (i: number) => maxR - (i * maxR) / n; // i=0 outer boundary … i=n innermost
+  const dartXY = (ringIdx: number, k: number) => {
+    const rOuter = ringR(ringIdx), rInner = ringR(ringIdx + 1);
+    const r = (rOuter + rInner) / 2;
+    const ang = (k * 2 * Math.PI) / 3 + ringIdx * 0.8; // spread darts around
+    return [cx + r * Math.cos(ang), cy + r * Math.sin(ang)];
+  };
+  return (
+    <svg width={180} height={200} viewBox="0 0 180 200">
+      {f.rings.map((val, i) => (
+        <g key={i}>
+          <circle cx={cx} cy={cy} r={ringR(i)} fill={i % 2 ? '#eef2f7' : '#fff'} stroke="#374151" strokeWidth={1.5} />
+          <text x={cx} y={cy - (ringR(i) + ringR(i + 1)) / 2 + 4} textAnchor="middle" fontSize={11} fill="#6b7280">{val}</text>
+        </g>
+      ))}
+      {f.darts.map((ringIdx, k) => {
+        const [x, y] = dartXY(ringIdx, k);
+        return <circle key={k} cx={x} cy={y} r={4} fill="#1c6dd0" />;
+      })}
+    </svg>
+  );
+}
+
 export default function StimulusFigure({ figure }: { figure: Figure }) {
   const body = (() => {
     switch (figure.kind) {
@@ -308,6 +364,10 @@ export default function StimulusFigure({ figure }: { figure: Figure }) {
             ))}
           </div>
         );
+      case 'fold-cut':
+        return <FoldCut f={figure} />;
+      case 'target':
+        return <Target f={figure} />;
     }
   })();
 
