@@ -593,6 +593,47 @@ export const WRITING_SKILLS: SkillSeed[] = [
   },
 ];
 
+// Thinking Skills (W-91): one skill per section (slug = section slug), used as the closed
+// skill-tag list for generation and (later phases) opportunity areas. examLevelNotes are written
+// for an adult tutor at NSW Selective Thinking Skills level (~40 four-option MCQ in 40 minutes).
+export const THINKING_SKILLS: Record<string, SkillSeed[]> = {
+  'finding-procedures': [{
+    slug: 'finding-procedures', name: 'Finding Procedures',
+    description: 'Working out a method or sequence of steps to reach an answer — often from a table, a stated rule, or a set of quantities and constraints.',
+    examLevelNotes: 'Questions give a small system (a fee table, a legs/heads count, a scoring rule) and ask for a value that requires choosing and executing the right procedure — reading the correct row, testing cases near a target, or working backwards. Mastery is picking an efficient method (case-testing, working from the extreme) rather than brute force, within about a minute. Distractors are the results of a plausible wrong procedure (wrong row, off-by-one, forgetting the "at least one of each" constraint).',
+  }],
+  'evaluating-reasoning-errors': [{
+    slug: 'evaluating-reasoning-errors', name: 'Evaluating Reasoning Errors',
+    description: 'Identifying the specific flaw or unstated assumption that makes an argument or conclusion unjustified.',
+    examLevelNotes: 'A short argument reaches a conclusion; the student picks the statement that names the mistake — usually an unwarranted assumption (absence of evidence treated as evidence of absence, a guarantee inferred from a tendency). Mastery is separating what the passage actually establishes from what the speaker assumed. Distractors are true-sounding facts that are irrelevant to the logical gap.',
+  }],
+  'logical-analysis': [{
+    slug: 'logical-analysis', name: 'Logical Analysis',
+    description: 'Deducing what must be true (or which option is impossible/uncertain) from a set of statements, orderings or constraints.',
+    examLevelNotes: 'Ordering and truth-teller puzzles: a few relational clues, and the student must find the forced conclusion. Mastery is testing each option against every clue and recognising when nothing is forced ("None of the above"). Distractors are statements that could be true but are not guaranteed — the classic trap of accepting a plausible-but-unforced option.',
+  }],
+  'visual-reasoning': [{
+    slug: 'visual-reasoning', name: 'Visual Reasoning',
+    description: 'Reasoning about shapes, paper folding, rotation, targets and other spatial figures to a definite numeric or categorical answer.',
+    examLevelNotes: 'Spatial questions answerable from the figure: fold-and-cut hole counts (holes = layers = 2^folds), target scores from ring values and dart positions, composition/rotation of shapes. Mastery is tracking layers/positions precisely rather than guessing. Every such question must be fully answerable from the stimulus figure the student sees.',
+  }],
+  'evaluating-evidence': [{
+    slug: 'evaluating-evidence', name: 'Evaluating Evidence',
+    description: 'Judging which statement most strengthens, most weakens, or is unsupported by the given evidence.',
+    examLevelNotes: 'A claim plus options; the student picks the one that bears on it correctly (the fact that breaks the claimed causal link, or the recognition that a sample of only "successful" cases proves nothing about the rest). Mastery is targeting the exact link the argument depends on. Distractors are on-topic but logically irrelevant.',
+  }],
+  'identifying-similarity': [{
+    slug: 'identifying-similarity', name: 'Identifying Similarity',
+    description: 'Recognising the shared relationship, rule or pattern that makes two things analogous.',
+    examLevelNotes: 'Analogy and pattern questions ("A is to B as C is to ?", or a number/shape rule applied to a new case). Mastery is naming the precise relationship (function of, worn on, cubed) and applying it, not settling for a loose association. Distractors share a weaker or different relationship with the stem.',
+  }],
+  'relevant-selection': [{
+    slug: 'relevant-selection', name: 'Relevant Selection',
+    description: 'Selecting only the information that is relevant to determining an outcome from a set of conditions, ignoring the rest.',
+    examLevelNotes: 'Eligibility/condition questions: several requirements and some facts, and the student picks what is certainly determined (the one condition definitely failed) or who qualifies. Mastery is checking each condition against the stated facts and not over-reading beyond what is given. Distractors are conditions whose status is unknown from the facts, or a plausible-but-unverified failure.',
+  }],
+};
+
 export async function seedSkills(prisma: PrismaClient) {
   console.log('Seeding skill taxonomy...');
 
@@ -613,6 +654,24 @@ export async function seedSkills(prisma: PrismaClient) {
     }
     console.log(`  ✓ Skills: ${topicSlug} (${skills.length})`);
   }
+
+  let tsCount = 0;
+  for (const [topicSlug, skills] of Object.entries(THINKING_SKILLS)) {
+    const topic = await prisma.mathTopic.findUnique({ where: { slug: topicSlug } });
+    if (!topic) {
+      console.error(`  ✗ Thinking Skills section not found for skills: ${topicSlug}`);
+      continue;
+    }
+    for (const s of skills) {
+      await prisma.skill.upsert({
+        where: { slug: s.slug },
+        update: { subject: 'thinking-skills', topicId: topic.id, name: s.name, description: s.description, examLevelNotes: s.examLevelNotes },
+        create: { subject: 'thinking-skills', topicId: topic.id, ...s },
+      });
+      tsCount++;
+    }
+  }
+  console.log(`  ✓ Skills: thinking-skills (${tsCount})`);
 
   for (const s of WRITING_SKILLS) {
     await prisma.skill.upsert({
