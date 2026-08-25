@@ -82,6 +82,7 @@ export interface Worksheet {
 
 export interface MathTopic {
   id: number;
+  subject?: string;
   name: string;
   slug: string;
   description: string;
@@ -166,7 +167,7 @@ export interface GeneratedMathQuestion {
 }
 
 export const mathApi = {
-  getTopics: () => fetchJSON<MathTopic[]>('/math/topics'),
+  getTopics: (subject?: string) => fetchJSON<MathTopic[]>(`/math/topics${subject ? `?subject=${subject}` : ''}`),
   getTopic: (slug: string) => fetchJSON<MathTopic>(`/math/topics/${slug}`),
   getQuestions: (opts?: { topicSlug?: string; worksheetId?: number }) => {
     const params = new URLSearchParams();
