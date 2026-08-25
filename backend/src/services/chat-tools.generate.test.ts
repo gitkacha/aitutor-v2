@@ -59,4 +59,20 @@ describe('generate_worksheet action (shared generation + save unassigned)', () =
     await executeActionTool('generate_worksheet', { subject: 'math', skillSlugs: ['compass-directions', 'turns-and-bearings'], questionCount: 16 }, ctx);
     expect(ai.generateMathWorksheet).toHaveBeenCalledWith(['directions'], 16, ctx.workspaceId);
   });
+
+  it('W-94: thinking-skills subject resolves thinking-skills skills to their sections and generates', async () => {
+    prismaMock.skill.findMany.mockResolvedValue([{ topic: { slug: 'logical-analysis' } }]);
+    const result: any = await executeActionTool('generate_worksheet', { subject: 'thinking-skills', skillSlugs: ['logical-analysis'], questionCount: 16 }, ctx);
+    // Skills were resolved filtered by the thinking-skills subject.
+    expect(prismaMock.skill.findMany.mock.calls[0][0].where.subject).toBe('thinking-skills');
+    // Generated via the shared engine, saved UNASSIGNED, compact result (no questions).
+    expect(ai.generateMathWorksheet).toHaveBeenCalledWith(['logical-analysis'], 16, ctx.workspaceId);
+    expect(wsService.saveAndAssignWorksheet.mock.calls[0][0].assigneeIds).toEqual([]);
+    expect(result).toMatchObject({ saved: true, worksheetId: 99 });
+    expect(result).not.toHaveProperty('questions');
+  });
+
+  it('W-94: rejects an unsupported subject', async () => {
+    await expect(executeActionTool('generate_worksheet', { subject: 'writing', questionCount: 16 }, ctx)).rejects.toThrow();
+  });
 });
