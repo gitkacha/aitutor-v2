@@ -197,8 +197,10 @@ export const mathApi = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  getHeatmap: (studentId?: number) =>
-    fetchJSON<MathHeatmapEntry[]>(`/math/heatmap${studentId ? `?studentId=${studentId}` : ''}`),
+  getHeatmap: (studentId?: number, subject?: string) => {
+    const qs = [studentId ? `studentId=${studentId}` : '', subject ? `subject=${subject}` : ''].filter(Boolean).join('&');
+    return fetchJSON<MathHeatmapEntry[]>(`/math/heatmap${qs ? `?${qs}` : ''}`);
+  },
   // Generation is a background job (W-19): start returns a jobId; poll for the result.
   startGeneration: (topicIds: string[], questionCount?: number) =>
     fetchJSON<{ jobId: string }>('/math/worksheets/generate', {
