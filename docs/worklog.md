@@ -18,6 +18,13 @@ every agent, on any model, without exception):
 
 ## Open
 
+Thinking Skills — Phase A: Practice + progress signals (plan `docs/superpowers/plans/2026-08-29-thinking-skills-phase-a.md`, approved 2026-08-29; phase-by-phase toward full Mathematics parity, sign-off each; generate-on-demand practice per user decision; branch `thinking-skills-phase-a`; inline execution). Constraints: ZERO regression to Writing/Mathematics/existing; every branch defaults to existing behaviour; answer-key hygiene intact; RED-first.
+
+- [ ] **W-100** — A1: subject-aware option-count copy in the shared practice pages (Thinking Skills → "4 answer options (A–D)", Mathematics unchanged "5 (A-E)"), driven by `topic.subject`. Proof: `e2e/tsA-practice-copy.spec.ts`.
+- [ ] **W-101** — A2: generate-on-demand self-serve Thinking Skills practice — `MathWorksheet.kind` (default `"standard"`) + `POST /api/math/practice/generate` (TS-only, persists a `kind:"self-practice"` unassigned worksheet + question rows via the shared engine, background-job + poll), admin worksheet list excludes self-practice, and the timed-practice flow plays the generated set as `source:"practice"`. Proof: `e2e/tsA-practice-generate.spec.ts` + `backend/src/__tests__/math-practice-generate.test.ts`.
+- [ ] **W-102** — A3: sidebar Thinking Skills score tiles + `ScoreBadge` (from `?subject=thinking-skills` heatmap), mirroring Mathematics; removes the Phase-1 deferral. Proof: `e2e/tsA-sidebar-scores.spec.ts` + live screenshot.
+- [ ] **W-103** — A4: Dashboard Opportunity Areas include Thinking Skills sections (path `/math/<slug>`). Proof: `e2e/tsA-opportunity-areas.spec.ts`.
+
 Thinking Skills — Worksheet Generation (Phase 1) (spec `docs/superpowers/specs/2026-08-25-thinking-skills-generation-design.md`, plan `docs/superpowers/plans/2026-08-25-thinking-skills-generation.md`, approved 2026-08-25; inline execution on branch `thinking-skills-generation`; end goal = full parity with Mathematics, this phase = generation only). Constraints: ZERO Mathematics regression, rigorous generation tests mirroring Math, answer-key hygiene (students see answers/explanations only after submit; admins always).
 
 - [x] **W-89** — Task 1: `MathTopic.subject String @default("math")` additive migration; existing topics default to math. Proof: `backend/src/__tests__/topic-subject.test.ts`. _(commit 653599a; user signed off 2026-08-29)_
