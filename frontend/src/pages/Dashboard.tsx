@@ -44,6 +44,20 @@ export default function Dashboard() {
 
   useEffect(loadMath, []);
 
+  // Thinking Skills heatmap (W-98) — its own section, separate from Mathematics.
+  const [thinkingData, setThinkingData] = useState<MathHeatmapEntry[]>([]);
+  const [thinkingLoading, setThinkingLoading] = useState(true);
+  const [thinkingError, setThinkingError] = useState<string | null>(null);
+  const loadThinking = () => {
+    setThinkingLoading(true);
+    setThinkingError(null);
+    mathApi.getHeatmap(undefined, 'thinking-skills')
+      .then(setThinkingData)
+      .catch((e) => setThinkingError(e.message))
+      .finally(() => setThinkingLoading(false));
+  };
+  useEffect(loadThinking, []);
+
   const handleWritingSelect = (entry: HeatmapEntry) => {
     if (entry.attemptCount > 0) {
       navigate(`/history/${entry.typeSlug}`);
@@ -157,6 +171,36 @@ export default function Dashboard() {
           onRetry={loadMath}
         />
       </div>
+
+      {/* Thinking Skills Section (W-98) */}
+      {(thinkingLoading || thinkingError || thinkingData.length > 0) && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Calculator size={18} className="text-brand-amber" />
+            <h2 className="text-lg font-semibold text-gray-900">Thinking Skills</h2>
+          </div>
+          <Heatmap
+            data={thinkingData.map(d => ({
+              typeId: d.topicId,
+              typeName: d.topicName,
+              typeSlug: d.topicSlug,
+              averageScore: d.averageScore,
+              attemptCount: d.attemptCount,
+            }))}
+            onSelect={(entry) => handleMathSelect({
+              topicId: entry.typeId,
+              topicName: entry.typeName,
+              topicSlug: entry.typeSlug,
+              averageScore: entry.averageScore,
+              attemptCount: entry.attemptCount,
+            })}
+            basePath="math"
+            loading={thinkingLoading}
+            error={thinkingError}
+            onRetry={loadThinking}
+          />
+        </div>
+      )}
 
       {/* Legend */}
       {(writingData.some(d => d.attemptCount > 0) || mathData.some(d => d.attemptCount > 0)) && (

@@ -82,6 +82,7 @@ export interface Worksheet {
 
 export interface MathTopic {
   id: number;
+  subject?: string;
   name: string;
   slug: string;
   description: string;
@@ -150,6 +151,7 @@ export interface MathWorksheet {
   isDemo?: boolean;
   attempts?: MathAttempt[];
   interventionId?: number | null;
+  subject?: string; // 'math' | 'thinking-skills' (derived from topics, W-99)
 }
 
 // ── Math API ──
@@ -166,7 +168,7 @@ export interface GeneratedMathQuestion {
 }
 
 export const mathApi = {
-  getTopics: () => fetchJSON<MathTopic[]>('/math/topics'),
+  getTopics: (subject?: string) => fetchJSON<MathTopic[]>(`/math/topics${subject ? `?subject=${subject}` : ''}`),
   getTopic: (slug: string) => fetchJSON<MathTopic>(`/math/topics/${slug}`),
   getQuestions: (opts?: { topicSlug?: string; worksheetId?: number }) => {
     const params = new URLSearchParams();
@@ -196,8 +198,10 @@ export const mathApi = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  getHeatmap: (studentId?: number) =>
-    fetchJSON<MathHeatmapEntry[]>(`/math/heatmap${studentId ? `?studentId=${studentId}` : ''}`),
+  getHeatmap: (studentId?: number, subject?: string) => {
+    const qs = [studentId ? `studentId=${studentId}` : '', subject ? `subject=${subject}` : ''].filter(Boolean).join('&');
+    return fetchJSON<MathHeatmapEntry[]>(`/math/heatmap${qs ? `?${qs}` : ''}`);
+  },
   // Generation is a background job (W-19): start returns a jobId; poll for the result.
   startGeneration: (topicIds: string[], questionCount?: number) =>
     fetchJSON<{ jobId: string }>('/math/worksheets/generate', {

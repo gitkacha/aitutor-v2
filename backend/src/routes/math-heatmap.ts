@@ -12,7 +12,11 @@ router.get('/', requireAuth, asyncHandler(async (req: Request, res: Response) =>
   const userIds = await resolveScopeUserIds(req, res);
   if (!userIds) return;
 
+  // Subject-aware (W-98): DEFAULTS to 'math' so the Mathematics heatmap shows only math topics;
+  // ?subject=thinking-skills powers the separate Thinking Skills heatmap.
+  const subject = (req.query.subject as string) || 'math';
   const topics = await prisma.mathTopic.findMany({
+    where: { subject },
     orderBy: { name: 'asc' },
   });
 

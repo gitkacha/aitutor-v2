@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Shield, Plus, Database, Trash2, Calculator, FileText, Users, UserPlus } from 'lucide-react';
 import StimulusFigure from '@/components/StimulusFigure';
 import MathWorksheetContent from '@/components/MathWorksheetContent';
+import ThinkingSkillsGenerate from '@/components/ThinkingSkillsGenerate';
 import { validateStimulus } from '@/lib/stimulus';
 import { parseJsonArray } from '@/lib/parse';
 import { mathWorksheetTitle } from '@/lib/math-worksheet-title';
@@ -867,8 +868,8 @@ export default function Admin() {
 
           {/* Saved Math Worksheets */}
           {mathWorksheets.length > 0 && !showMathReview && (
-            <div className="bg-white rounded-xl p-6 border border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Saved Mathematics Worksheets</h2>
+            <div data-testid="saved-worksheets" className="bg-white rounded-xl p-6 border border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">Saved Worksheets</h2>
               <div className="space-y-2">
                 {mathWorksheets.map((ws) => {
                   const questions = parseJsonArray<unknown>(ws.questions);
@@ -939,6 +940,9 @@ export default function Admin() {
           )}
         </>
       )}
+
+      {/* Thinking Skills generation (W-95) — always visible; saved worksheets land in the list above */}
+      <ThinkingSkillsGenerate onSaved={() => { mathApi.getWorksheets().then(setMathWorksheets).catch(() => {}); setWorksheetRefresh((n) => n + 1); }} />
 
       {/* Workspace Members (C1) — always visible */}
       <div className="bg-white rounded-xl p-6 border border-gray-200">

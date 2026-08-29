@@ -16,8 +16,12 @@ function stripAnswersForStudents<T extends { correctIndex?: unknown; explanation
   return questions.map(({ correctIndex, explanation, ...rest }) => rest as T);
 }
 
-router.get('/', requireAuth, asyncHandler(async (_req: Request, res: Response) => {
+// Subject-aware (Thinking Skills W-90): DEFAULTS to 'math' so every existing caller is unchanged;
+// `?subject=thinking-skills` returns that subject's sections.
+router.get('/', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+  const subject = (req.query.subject as string) || 'math';
   const topics = await prisma.mathTopic.findMany({
+    where: { subject },
     orderBy: { name: 'asc' },
   });
   res.json(topics);

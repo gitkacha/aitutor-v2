@@ -149,6 +149,10 @@ model Worksheet {
 
 model MathTopic {
   id          Int            @id @default(autoincrement())
+  // The MCQ stack (topics/questions/worksheets/attempts) is subject-agnostic; `subject` scopes a
+  // topic to a subject. Defaults to 'math' so every existing topic and query is unchanged; Thinking
+  // Skills sections are topics with subject 'thinking-skills'.
+  subject     String         @default("math")
   name        String
   slug        String         @unique
   description String

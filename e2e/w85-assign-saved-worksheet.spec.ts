@@ -71,7 +71,7 @@ test.describe('W-85 Part B — assign from the Admin page (UI)', () => {
 
     await page.goto('/admin');
     await page.getByRole('button', { name: 'Mathematics', exact: true }).click();
-    const row = page.locator('div.p-3').filter({ hasText: 'UI Assign WS' }).filter({ has: page.getByRole('button', { name: 'Assign', exact: true }) });
+    const row = page.getByTestId('saved-worksheets').locator('div.p-3').filter({ hasText: 'UI Assign WS' }).filter({ has: page.getByRole('button', { name: 'Assign', exact: true }) });
     await row.getByRole('button', { name: 'Assign', exact: true }).click();
     // The assign panel appears with a student checklist.
     await row.locator('label').filter({ hasText: 'E2E Student' }).getByRole('checkbox').check();

@@ -73,11 +73,12 @@ export async function createWorksheetQuestionRows(
     skillIdBySlug.set(slug, skill.id);
   }
 
-  // Verify each question's skill belongs to its topic and is a math skill (M3b Task 2).
+  // Verify each question's skill belongs to its topic (M3b Task 2). The topicId match ties the skill
+  // to its topic's subject, so this works for math and thinking-skills alike (W-94).
   for (const q of questions) {
     const skill = skillBySlug.get(q.skillSlug)!;
     const questionTopicId = topicBySlug.get(q.topicSlug)!;
-    if (skill.subject !== 'math' || skill.topicId !== questionTopicId) {
+    if (skill.topicId !== questionTopicId) {
       throw new Error(`Skill slug ${q.skillSlug} does not belong to topic ${q.topicSlug}`);
     }
   }

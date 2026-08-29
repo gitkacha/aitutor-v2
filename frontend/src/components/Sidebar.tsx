@@ -66,6 +66,8 @@ export default function Sidebar() {
   const [upNext, setUpNext] = useState<Pending | null>(null);
   const [writingExpanded, setWritingExpanded] = useState(true);
   const [mathExpanded, setMathExpanded] = useState(false);
+  const [thinkingTopics, setThinkingTopics] = useState<MathTopic[]>([]);
+  const [thinkingExpanded, setThinkingExpanded] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -77,6 +79,7 @@ export default function Sidebar() {
   useEffect(() => {
     api.getTypes().then(setTypes).catch(() => {});
     mathApi.getTopics().then(setMathTopics).catch(() => {});
+    mathApi.getTopics('thinking-skills').then(setThinkingTopics).catch(() => {});
   }, []);
 
   // Scores, momentum and pending worksheets change as the student works, so
@@ -334,6 +337,35 @@ export default function Sidebar() {
               </div>
             )}
           </div>
+
+          {/* Thinking Skills (W-96) — the 7 fixed sections. Score tiles/heatmap arrive in Phase 2. */}
+          {thinkingTopics.length > 0 && (
+            <div className="mt-1">
+              <button onClick={() => setThinkingExpanded(!thinkingExpanded)} className={groupHead}>
+                <span className="w-2 h-2 rounded-full bg-[#f2a71b] shrink-0" />
+                <span>Thinking Skills</span>
+                <span className="ml-auto text-[11px] font-normal text-rail-muted">{thinkingTopics.length} sections</span>
+                <ChevronRight
+                  size={13}
+                  className={cn('text-rail-muted transition-transform shrink-0', thinkingExpanded && 'rotate-90')}
+                />
+              </button>
+              {thinkingExpanded && (
+                <div className="ml-4 mt-0.5 space-y-0.5">
+                  {thinkingTopics.map((topic) => (
+                    <Link
+                      key={topic.slug}
+                      to={`/math/${topic.slug}`}
+                      onClick={() => setMobileOpen(false)}
+                      className={itemClass(isActive(topic.slug))}
+                    >
+                      <span className="truncate">{topic.name}</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Admin/staff section (W-57): hidden entirely from students. An admin sees
               Admin/Coach Chat/Skills; a super-admin additionally (or only) sees Platform. */}

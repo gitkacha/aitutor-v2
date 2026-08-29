@@ -107,11 +107,11 @@ export const ACTION_TOOL_SCHEMAS: ChatToolSchema[] = [
     parameters: {
       type: 'object',
       properties: {
-        subject: { type: 'string', enum: ['math', 'writing'], description: 'The subject to generate a worksheet for.' },
+        subject: { type: 'string', enum: ['math', 'thinking-skills'], description: 'The subject to generate a worksheet for.' },
         topicSlugs: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Optional list of topic slugs to target.',
+          description: 'Optional list of topic/section slugs to target.',
         },
         skillSlugs: {
           type: 'array',
@@ -275,18 +275,26 @@ export async function dispatchReadTool(name: string, args: any, ctx: ToolContext
 export async function executeActionTool(name: string, args: any, ctx: ToolContext): Promise<unknown> {
   switch (name) {
     case 'generate_worksheet': {
-      if (args.subject && args.subject !== 'math') {
-        throw new Error('generate_worksheet currently supports subject "math" only');
+      // W-94: math or thinking-skills (both use the same generation engine). Default 'math'.
+      const subject = args.subject ?? 'math';
+      if (subject !== 'math' && subject !== 'thinking-skills') {
+        throw new Error(`generate_worksheet supports subject "math" or "thinking-skills", not "${subject}"`);
       }
-      // Selection: explicit topicSlugs, plus the owning topics of any skillSlugs. Empty set →
-      // generation covers every topic (resolveMathTopicsForGeneration's default).
+      // Selection: explicit topicSlugs, plus the owning topics of any skillSlugs (filtered to the
+      // requested subject). Empty set → generation covers every topic of that subject.
       const slugSet = new Set<string>(Array.isArray(args.topicSlugs) ? args.topicSlugs : []);
       if (Array.isArray(args.skillSlugs) && args.skillSlugs.length > 0) {
         const skills = await prisma.skill.findMany({
-          where: { slug: { in: args.skillSlugs }, subject: 'math' },
+          where: { slug: { in: args.skillSlugs }, subject },
           select: { topic: { select: { slug: true } } },
         });
         for (const s of skills) if (s.topic) slugSet.add(s.topic.slug);
+      }
+      // No slugs given → target every section of the requested subject (so a thinking-skills request
+      // never falls through to math all-topics).
+      if (slugSet.size === 0) {
+        const all = await prisma.mathTopic.findMany({ where: { subject }, select: { slug: true } });
+        for (const t of all) slugSet.add(t.slug);
       }
 
       // W-86: generate with the EXACT same function the Admin UI generate button uses. W-85: save
@@ -302,7 +310,7 @@ export async function executeActionTool(name: string, args: any, ctx: ToolContex
         questions,
         assigneeIds: [],
       });
-      return { saved: true, worksheetId: worksheet.id, title, questionCount: questions.length, subject: 'math' };
+      return { saved: true, worksheetId: worksheet.id, title, questionCount: questions.length, subject };
     }
 
     case 'create_intervention': {

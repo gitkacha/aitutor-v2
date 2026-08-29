@@ -2,7 +2,7 @@ import prisma from '../lib/prisma';
 import { checkGridCompassDirection } from '../lib/grid-compass';
 import { validateStimulus, StimulusSpec } from '../lib/stimulus';
 import { hasDistinctOptions, explanationMatchesKey, keptByEscalation } from '../lib/question-checks';
-import { MATH_SKILLS, WRITING_SKILLS } from '../../prisma/seed-skills';
+import { MATH_SKILLS, WRITING_SKILLS, THINKING_SKILLS } from '../../prisma/seed-skills';
 
 // Per-role model providers (W-21). Each role — generation, answer-key verification, writing
 // analysis — resolves its own {model, baseUrl, apiKey} from role-specific env, falling back
@@ -457,7 +457,15 @@ interface GeneratedMathQuestion {
 // Closed skill taxonomy (M3a Task 2): per-topic skill lists the generator must tag
 // against. Static import — the seed and the prompt share one source of truth.
 function skillsForTopic(topicSlug: string) {
-  return MATH_SKILLS[topicSlug] ?? [];
+  return MATH_SKILLS[topicSlug] ?? THINKING_SKILLS[topicSlug] ?? [];
+}
+
+// W-93: all topics in one worksheet must share a subject (math OR thinking-skills), so the
+// generator can pick the right option count and figure vocabulary. Throws on a mixed selection.
+export function subjectOfTopics(topics: { subject: string }[]): string {
+  const subjects = new Set(topics.map((t) => t.subject));
+  if (subjects.size > 1) throw new Error('Cannot mix subjects in one worksheet');
+  return topics[0]?.subject ?? 'math';
 }
 
 // Question text that points at a visual ("shown below", "the graph") is unanswerable
@@ -559,17 +567,17 @@ Which single skill slug from the list fits this question best? Respond with ONLY
   }
 }
 
-function isValidGeneratedQuestion(q: any, allowedSlugs: Set<string>): boolean {
+export function isValidGeneratedQuestion(q: any, allowedSlugs: Set<string>, optionCount = 5): boolean {
   const structurallyValid =
     q &&
     typeof q.questionText === 'string' &&
     q.questionText.length > 0 &&
     Array.isArray(q.options) &&
-    q.options.length === 5 &&
+    q.options.length === optionCount &&
     q.options.every((o: unknown) => typeof o === 'string' || typeof o === 'number') &&
     Number.isInteger(q.correctIndex) &&
     q.correctIndex >= 0 &&
-    q.correctIndex < 5 &&
+    q.correctIndex < optionCount &&
     typeof q.explanation === 'string' &&
     typeof q.topicSlug === 'string' &&
     allowedSlugs.has(q.topicSlug) &&
@@ -616,19 +624,46 @@ export function buildUniquenessInstructions(avoidTexts: string[]): string {
   return lines.join('\n');
 }
 
-async function generateQuestionBatch(topics: MathTopicForGen[], count: number, avoidTexts: string[] = []): Promise<{ questions: any[]; usage: Usage | null }> {
+export interface GenerationOpts {
+  optionCount?: number; // 5 for math (default), 4 for thinking-skills
+  subject?: string;     // 'math' (default) | 'thinking-skills' — selects the figure vocabulary
+}
+
+const OPTION_WORD: Record<number, string> = { 3: 'three', 4: 'four', 5: 'five' };
+
+// W-93: the batch prompt, subject-parametrized. For subject 'math' (the default) it is unchanged
+// from before: five-option, four distractors, a 5-option example, and the base figure vocabulary.
+// Exported so the parametrization is unit-testable without calling the model.
+export function buildGenerationBatchPrompt(
+  topics: MathTopicForGen[],
+  count: number,
+  avoidTexts: string[] = [],
+  opts: GenerationOpts = {},
+): string {
+  const optionCount = opts.optionCount ?? 5;
+  const subject = opts.subject ?? 'math';
+  const optionWord = OPTION_WORD[optionCount] ?? `${optionCount}`;
+  const distractorWord = OPTION_WORD[optionCount - 1] ?? `${optionCount - 1}`;
+  const optionLabels = ['A', 'B', 'C', 'D', 'E', 'F'].slice(0, optionCount);
+  const optionsExample = `[${optionLabels.map((l) => `"${l}"`).join(', ')}]`;
+  // Thinking-skills-only figures appended after the base vocabulary; empty string for math (so the
+  // math prompt is unchanged).
+  const extraFigures = subject === 'thinking-skills'
+    ? '\n- {"kind":"target","rings":[1,3,6,10],"darts":[0,1,2]} — concentric rings; values outermost→bullseye; darts are the ring indices hit (score = sum)\n- {"kind":"fold-cut","foldCount":2,"cut":"centre","cutShape":"circle"} — paper folded foldCount times then a single cut (holes when unfolded = 2^foldCount)'
+    : '';
+
   const exemplars = topics.map(t => {
     const hardest = t.questions[0];
     if (!hardest) return null;
     return { topic: t.name, percentCorrect: hardest.percentCorrect, question: hardest.questionText };
   }).filter(Boolean);
 
-  const prompt = `You are a mathematics tutor creating a practice worksheet for a student preparing for the NSW Selective High School Placement Test (Mathematical Reasoning section).
+  return `You are a mathematics tutor creating a practice worksheet for a student preparing for the NSW Selective High School Placement Test (Mathematical Reasoning section).
 
 The worksheet should cover the following topic(s):
 ${topics.map(t => `- ${t.name} (slug: ${t.slug}): ${t.description}`).join('\n')}
 
-Generate exactly ${count} five-option multiple-choice questions distributed across these topics. Each question must have exactly one correct answer and four plausible distractors.
+Generate exactly ${count} ${optionWord}-option multiple-choice questions distributed across these topics. Each question must have exactly one correct answer and ${distractorWord} plausible distractors.
 
 SKILL TAGGING. Each topic has a closed list of skills. Every question must carry a "skillSlug" naming the single skill it most directly tests, chosen from ITS OWN topic's list below — never a slug from another topic, never a made-up slug:
 ${topics.map(t => `- ${t.name} (${t.slug}):\n${skillsForTopic(t.slug).map(s => `  - ${s.slug}: ${s.name}`).join('\n')}`).join('\n')}
@@ -661,7 +696,7 @@ figure is ONE of:
 - {"kind":"compass","facing":"N"}
 - {"kind":"shape","unit":"cm","vertices":[[0,0],[12,0],[12,12],[0,12]],"sideLabels":[{"side":0,"label":"12 cm"}]}
 - {"kind":"rotation","shape":"arrow","beforeDeg":0,"afterDeg":225}
-- {"kind":"cards","values":["4/5","0.15","1/3"]}
+- {"kind":"cards","values":["4/5","0.15","1/3"]}${extraFigures}
 
 COMPASS & DIRECTION CONVENTION. On any grid, map, or figure, NORTH is toward the TOP of the figure
 (up on the screen), SOUTH the bottom, EAST the right, WEST the left. A grid renders its row labels
@@ -683,7 +718,7 @@ Respond with ONLY a JSON array (no markdown, no code fences) in this exact forma
 [
   {
     "questionText": "full question text including any tables or data",
-    "options": ["A", "B", "C", "D", "E"],
+    "options": ${optionsExample},
     "correctIndex": 0,
     "explanation": "Step-by-step reasoning. Therefore, the answer is Option X.",
     "topicSlug": "<slug of this question's topic, one of: ${topics.map(t => t.slug).join(', ')}>",
@@ -694,7 +729,15 @@ Respond with ONLY a JSON array (no markdown, no code fences) in this exact forma
 ]
 
 Generate exactly ${count} questions. Make sure distractors are plausible — they should be answers a student might get from common mistakes.`;
+}
 
+async function generateQuestionBatch(
+  topics: MathTopicForGen[],
+  count: number,
+  avoidTexts: string[] = [],
+  opts: GenerationOpts = {},
+): Promise<{ questions: any[]; usage: Usage | null }> {
+  const prompt = buildGenerationBatchPrompt(topics, count, avoidTexts, opts);
   // Reasoning models think inside the completion budget, so leave generous headroom.
   const { content, usage } = await chatCompletion(providerFor('generation'), prompt, Math.min(count * 600 + 4000, 16000), 0.8);
   const arrayMatch = content.match(/\[[\s\S]*\]/);
@@ -711,8 +754,11 @@ Generate exactly ${count} questions. Make sure distractors are plausible — the
 // Resolve the topic rows generation runs over, each with its hardest known question for
 // difficulty calibration (W-19). Shared by the POST /generate route and the M3b chat
 // action executor. `topicSlugs` empty/omitted → every topic.
-export async function resolveMathTopicsForGeneration(topicSlugs?: string[]) {
-  const where = topicSlugs && topicSlugs.length > 0 ? { slug: { in: topicSlugs } } : {};
+// When explicit slugs are given they resolve regardless of subject (subject is derived from them);
+// when none are given ("all topics") it defaults to a single subject — 'math' — so an all-topics
+// math worksheet never pulls in thinking-skills topics (W-93 no-regression).
+export async function resolveMathTopicsForGeneration(topicSlugs?: string[], subject = 'math') {
+  const where = topicSlugs && topicSlugs.length > 0 ? { slug: { in: topicSlugs } } : { subject };
   return prisma.mathTopic.findMany({
     where,
     include: {
@@ -727,8 +773,10 @@ export async function resolveMathTopicsForGeneration(topicSlugs?: string[]) {
 export async function generateMathWorksheetQuestions(
   topics: MathTopicForGen[],
   questionCount = 35,
-  avoidTexts: string[] = []
+  avoidTexts: string[] = [],
+  opts: GenerationOpts = {}
 ): Promise<GeneratedMathQuestion[]> {
+  const optionCount = opts.optionCount ?? 5;
   const allowedSlugs = new Set(topics.map(t => t.slug));
   const nameBySlug = new Map(topics.map(t => [t.slug, t.name]));
   const collected: GeneratedMathQuestion[] = [];
@@ -746,10 +794,10 @@ export async function generateMathWorksheetQuestions(
   for (let call = 0; call < maxCalls && collected.length < questionCount; call++) {
     const need = Math.min(GENERATION_BATCH_SIZE, questionCount - collected.length);
     try {
-      const batchResult = await generateQuestionBatch(topics, need, promptAvoid);
+      const batchResult = await generateQuestionBatch(topics, need, promptAvoid, opts);
       accumulate(totals, genModel, batchResult.usage);
       const candidates: GeneratedMathQuestion[] = batchResult.questions
-        .filter(q => isValidGeneratedQuestion(q, allowedSlugs) && hasDistinctOptions(q.options.map(String)))
+        .filter(q => isValidGeneratedQuestion(q, allowedSlugs, optionCount) && hasDistinctOptions(q.options.map(String)))
         .map(q => ({
           questionText: q.questionText,
           options: q.options.map(String),
@@ -821,6 +869,9 @@ export async function generateMathWorksheet(
   if (topics.length === 0) {
     throw new Error('No topics found for the requested selection');
   }
+  // W-93: derive the subject from the resolved topics (mixed → error) and pick the option count.
+  const subject = subjectOfTopics(topics);
+  const optionCount = subject === 'thinking-skills' ? 4 : 5;
   // W-87: no repeats from previous worksheets — feed this workspace's saved questions to the
   // generator so it avoids reproducing (or re-skinning) any of them.
   const previous = await prisma.mathQuestion.findMany({
@@ -830,7 +881,7 @@ export async function generateMathWorksheet(
     take: 500,
   });
   const avoidTexts = previous.map((p) => p.questionText);
-  const questions = await generateMathWorksheetQuestions(topics, questionCount, avoidTexts);
+  const questions = await generateMathWorksheetQuestions(topics, questionCount, avoidTexts, { optionCount, subject });
   const topicSummaries = topics.map((t) => ({ id: t.id, name: t.name, slug: t.slug }));
   const title = `${topics.map((t) => t.name).join(', ')} practice`;
   return { title, topics: topicSummaries, questions };

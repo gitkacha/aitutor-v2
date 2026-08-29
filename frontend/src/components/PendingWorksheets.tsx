@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { api, mathApi, coachingApi, Worksheet, MathWorksheet, WritingType, CoachingAssignmentSummary } from '@/lib/api';
+import { api, mathApi, coachingApi, Worksheet, MathWorksheet, WritingType, CoachingAssignmentSummary, AuthUser } from '@/lib/api';
 import { worksheetStartState } from '@/lib/worksheet-start';
 import { parseJsonArray } from '@/lib/parse';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,12 @@ export default function PendingWorksheets({ mode, refreshKey = 0 }: PendingWorks
   // Which pending row (admin) is expanded to show its content — one at a time, keyed
   // `w-<id>` / `m-<id>` so writing and math ids can't clash (W-27).
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  // W-99: admin can assign a pending worksheet to students directly from this list.
+  const [students, setStudents] = useState<AuthUser[]>([]);
+  const [assignKey, setAssignKey] = useState<string | null>(null);
+  const [assignSel, setAssignSel] = useState<Set<number>>(new Set());
+
+  const reloadMath = () => mathApi.getWorksheets().then((m) => setMath(m.filter((ws) => (ws.attempts || []).length === 0))).catch(() => {});
 
   useEffect(() => {
     Promise.all([api.getWorksheets(), mathApi.getWorksheets(), api.getTypes()])
@@ -40,7 +46,23 @@ export default function PendingWorksheets({ mode, refreshKey = 0 }: PendingWorks
         .then((a) => setLessons(a.filter((x) => x.completedAt === null)))
         .catch(() => {});
     }
+    if (mode === 'admin') {
+      api.getWorkspaceUsers().then((r) => setStudents(r.users.filter((u) => u.role === 'student'))).catch(() => {});
+    }
   }, [refreshKey, mode]);
+
+  const toggleAssign = (sid: number) =>
+    setAssignSel((prev) => { const n = new Set(prev); n.has(sid) ? n.delete(sid) : n.add(sid); return n; });
+  const submitAssign = async (ws: MathWorksheet) => {
+    const ids = [...assignSel];
+    if (ids.length === 0) return;
+    try {
+      await mathApi.assignWorksheet(ws.id, ids);
+      setAssignKey(null);
+      setAssignSel(new Set());
+      reloadMath();
+    } catch { /* keep the panel open on error */ }
+  };
 
   if (writing.length === 0 && math.length === 0 && lessons.length === 0) return null;
 
@@ -67,7 +89,7 @@ export default function PendingWorksheets({ mode, refreshKey = 0 }: PendingWorks
   const typeName = (typeId: number) => types.find((t) => t.id === typeId)?.name || 'Writing';
 
   return (
-    <section className="bg-white rounded-xl p-6 border border-gray-200">
+    <section data-testid="pending-worksheets" className="bg-white rounded-xl p-6 border border-gray-200">
       <div className="flex items-center gap-2 mb-1">
         <ClipboardList size={18} className="text-brand-amber" />
         <h2 className="text-lg font-semibold text-gray-900">Pending Worksheets</h2>
@@ -158,7 +180,7 @@ export default function PendingWorksheets({ mode, refreshKey = 0 }: PendingWorks
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">{ws.title}</p>
                     <p className="text-xs text-gray-400">
-                      Mathematics · {questions.length} questions · {questions.length} min
+                      {ws.subject === 'thinking-skills' ? 'Thinking Skills' : 'Mathematics'} · {questions.length} questions · {questions.length} min
                     </p>
                     {mode === 'student' && bestAfterLesson(ws.interventionId) && (
                       <p className="text-xs font-medium text-brand-green mt-0.5">✨ best after the lesson</p>
@@ -173,6 +195,12 @@ export default function PendingWorksheets({ mode, refreshKey = 0 }: PendingWorks
                   <div className="flex items-center gap-3 shrink-0">
                     <span className="text-xs text-gray-400 whitespace-nowrap">Created {new Date(ws.createdAt).toLocaleDateString()}</span>
                     <button
+                      onClick={() => { setAssignKey((k) => (k === key ? null : key)); setAssignSel(new Set()); }}
+                      className="text-xs font-medium text-brand-green hover:underline"
+                    >
+                      Assign
+                    </button>
+                    <button
                       onClick={() => setExpandedId((id) => (id === key ? null : key))}
                       className="text-xs font-medium text-brand-blue hover:underline"
                     >
@@ -181,6 +209,32 @@ export default function PendingWorksheets({ mode, refreshKey = 0 }: PendingWorks
                   </div>
                 )}
               </div>
+              {mode === 'admin' && assignKey === key && (
+                <div className="mt-3 ml-9 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Assign to students</p>
+                  {students.length === 0 ? (
+                    <p className="text-xs text-gray-400">No students in this workspace yet.</p>
+                  ) : (
+                    <>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1.5 mb-3">
+                        {students.map((s) => (
+                          <label key={s.id} className="flex items-center gap-1.5 text-sm text-gray-700">
+                            <input type="checkbox" checked={assignSel.has(s.id)} onChange={() => toggleAssign(s.id)} />
+                            {s.name}
+                          </label>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => submitAssign(ws)}
+                        disabled={assignSel.size === 0}
+                        className="rounded-lg bg-brand-blue px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                      >
+                        Assign{assignSel.size ? ` ${assignSel.size}` : ''}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
               {mode === 'admin' && expandedId === key && (
                 <div className="mt-3 ml-9">
                   <MathWorksheetContent worksheetId={ws.id} />

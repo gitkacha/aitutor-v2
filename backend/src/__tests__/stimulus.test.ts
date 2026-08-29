@@ -3,6 +3,19 @@ import { validateStimulus, parseStimulus } from '../lib/stimulus';
 
 const wrap = (figure: unknown) => ({ version: 1, text: 'ctx', figures: [figure] });
 
+describe('validateStimulus — Thinking Skills figures (W-92)', () => {
+  it('accepts well-formed fold-cut and target figures', () => {
+    expect(validateStimulus(wrap({ kind: 'fold-cut', foldCount: 2, cut: 'centre', cutShape: 'circle' }))).toBe(true);
+    expect(validateStimulus(wrap({ kind: 'target', rings: [1, 3, 6, 10], darts: [0, 1, 2] }))).toBe(true);
+  });
+  it('rejects malformed fold-cut and target figures', () => {
+    expect(validateStimulus(wrap({ kind: 'fold-cut', foldCount: 0, cut: 'centre', cutShape: 'circle' }))).toBe(false); // needs >= 1 fold
+    expect(validateStimulus(wrap({ kind: 'fold-cut', foldCount: 2, cut: 'centre', cutShape: 'hexagon' }))).toBe(false); // bad shape
+    expect(validateStimulus(wrap({ kind: 'target', rings: [1], darts: [0] }))).toBe(false); // needs >= 2 rings
+    expect(validateStimulus(wrap({ kind: 'target', rings: [1, 3], darts: [5] }))).toBe(false); // dart index out of range
+  });
+});
+
 describe('validateStimulus', () => {
   it('accepts every supported figure kind', () => {
     const figures = [
