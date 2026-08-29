@@ -167,7 +167,7 @@ export default function MathTimedPractice() {
           <h1 className="text-2xl font-bold text-gray-900">Ready to start?</h1>
           <div className="bg-gray-50 rounded-xl p-4 inline-flex flex-col gap-1 text-gray-700">
             <span><span className="font-semibold">{questions.length}</span> question{questions.length !== 1 ? 's' : ''}</span>
-            <span><span className="font-semibold">{minutes}</span> minute limit · 5 options each</span>
+            <span><span className="font-semibold">{minutes}</span> minute limit · {questions[0]?.topic?.subject === 'thinking-skills' ? 4 : 5} options each</span>
           </div>
           <p className="text-gray-600">
             The countdown starts when you press the button. You can flag questions and come back

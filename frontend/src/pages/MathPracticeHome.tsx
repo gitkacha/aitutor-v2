@@ -137,7 +137,7 @@ export default function MathPracticeHome() {
           </li>
           <li className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-brand-blue" />
-            5 answer options per question (A-E)
+            {topic.subject === 'thinking-skills' ? '4 answer options per question (A-D)' : '5 answer options per question (A-E)'}
           </li>
           <li className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-brand-blue" />
