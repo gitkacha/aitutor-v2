@@ -132,7 +132,17 @@ router.get('/', requireAuth, asyncHandler(async (req: Request, res: Response) =>
     select: { id: true, worksheetIds: true },
   });
   const ivMap = buildWorksheetInterventionMap(interventions, 'math');
-  const enriched = worksheets.map((w) => ({ ...w, interventionId: ivMap.get(w.id) ?? null }));
+
+  // W-99: stamp each worksheet with its subject (derived from its topics) so the UI can label
+  // Thinking Skills worksheets correctly rather than calling everything "Mathematics".
+  const tsTopics = await prisma.mathTopic.findMany({ where: { subject: 'thinking-skills' }, select: { slug: true } });
+  const tsSlugs = new Set(tsTopics.map((t) => t.slug));
+  const subjectOf = (topicIdsJson: string) => {
+    let slugs: unknown = [];
+    try { slugs = JSON.parse(topicIdsJson); } catch { slugs = []; }
+    return Array.isArray(slugs) && slugs.some((s) => tsSlugs.has(String(s))) ? 'thinking-skills' : 'math';
+  };
+  const enriched = worksheets.map((w) => ({ ...w, interventionId: ivMap.get(w.id) ?? null, subject: subjectOf(w.topicIds) }));
 
   res.json(stripWorksheetAnswersForStudents(enriched, user.role));
 }));

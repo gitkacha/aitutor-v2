@@ -151,6 +151,7 @@ export interface MathWorksheet {
   isDemo?: boolean;
   attempts?: MathAttempt[];
   interventionId?: number | null;
+  subject?: string; // 'math' | 'thinking-skills' (derived from topics, W-99)
 }
 
 // ── Math API ──

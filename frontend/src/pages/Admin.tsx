@@ -868,7 +868,7 @@ export default function Admin() {
 
           {/* Saved Math Worksheets */}
           {mathWorksheets.length > 0 && !showMathReview && (
-            <div className="bg-white rounded-xl p-6 border border-gray-200">
+            <div data-testid="saved-worksheets" className="bg-white rounded-xl p-6 border border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900 mb-3">Saved Worksheets</h2>
               <div className="space-y-2">
                 {mathWorksheets.map((ws) => {
