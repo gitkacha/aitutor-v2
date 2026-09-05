@@ -217,6 +217,14 @@ export const mathApi = {
       body: JSON.stringify({ title, topicIds, questions, studentIds }),
     }),
   getWorksheets: () => fetchJSON<MathWorksheet[]>('/math/worksheets'),
+  // On-demand self-serve practice (W-101): a Thinking Skills section generates a fresh set as a
+  // background job; poll for the persisted worksheet id, then play it.
+  generatePractice: (topicSlug: string) =>
+    fetchJSON<{ jobId: string }>('/math/practice/generate', {
+      method: 'POST', body: JSON.stringify({ topicSlug }),
+    }),
+  getPracticeJob: (jobId: string) =>
+    fetchJSON<GenerationJob<{ worksheetId: number }>>(`/math/practice/jobs/${jobId}`),
   deleteWorksheet: (id: number) => fetchJSON<{ deleted: boolean }>(`/math/worksheets/${id}`, { method: 'DELETE' }),
   assignWorksheet: (id: number, studentIds: number[]) =>
     fetchJSON<{ assigned: number }>(`/math/worksheets/${id}/assign`, { method: 'POST', body: JSON.stringify({ studentIds }) }),

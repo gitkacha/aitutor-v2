@@ -112,9 +112,11 @@ router.post('/save', requireAdmin, asyncHandler(async (req: Request, res: Respon
 router.get('/', requireAuth, asyncHandler(async (req: Request, res: Response) => {
   const user = req.user!;
   const worksheets = await prisma.mathWorksheet.findMany({
+    // Self-practice worksheets (W-101) are transient student-generated sets — never surfaced in the
+    // admin list or the student's pending/assigned lists.
     where: user.role === 'admin'
-      ? { workspaceId: user.workspaceId }
-      : { assignments: { some: { studentId: user.id } } },
+      ? { workspaceId: user.workspaceId, NOT: { kind: 'self-practice' } }
+      : { assignments: { some: { studentId: user.id } }, NOT: { kind: 'self-practice' } },
     orderBy: { createdAt: 'desc' },
     include: {
       assignments: true,
