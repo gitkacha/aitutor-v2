@@ -9,9 +9,10 @@ function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-export default function SkillTrendChart({ studentId, slug, interventionDates = [] }: {
+export default function SkillTrendChart({ studentId, slug, subject = 'math', interventionDates = [] }: {
   studentId: number;
   slug: string;
+  subject?: 'math' | 'thinking-skills';
   interventionDates?: string[];
 }) {
   const [points, setPoints] = useState<SkillTrendPoint[] | null>(null);
@@ -19,11 +20,11 @@ export default function SkillTrendChart({ studentId, slug, interventionDates = [
   useEffect(() => {
     let cancelled = false;
     setPoints(null);
-    analyticsApi.skillTrend(studentId, slug)
+    analyticsApi.skillTrend(studentId, slug, subject)
       .then((p) => { if (!cancelled) setPoints(p); })
       .catch(() => { if (!cancelled) setPoints([]); });
     return () => { cancelled = true; };
-  }, [studentId, slug]);
+  }, [studentId, slug, subject]);
 
   if (!points || points.length === 0) return null;
 

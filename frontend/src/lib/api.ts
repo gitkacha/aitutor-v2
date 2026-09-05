@@ -412,9 +412,9 @@ export interface ReportSkill {
 }
 
 export const analyticsApi = {
-  skillTrend: (studentId: number, slug: string) =>
-    fetchJSON<SkillTrendPoint[]>(`/analytics/students/${studentId}/skills/${slug}/trend?subject=math`),
-  report: (studentId: number, subject: 'math' | 'writing') =>
+  skillTrend: (studentId: number, slug: string, subject: 'math' | 'thinking-skills' = 'math') =>
+    fetchJSON<SkillTrendPoint[]>(`/analytics/students/${studentId}/skills/${slug}/trend?subject=${subject}`),
+  report: (studentId: number, subject: 'math' | 'writing' | 'thinking-skills') =>
     fetchJSON<{ skills: ReportSkill[] }>(`/analytics/students/${studentId}/report?subject=${subject}`),
 };
 
@@ -436,6 +436,7 @@ export interface ImprovedTopicDTO {
 
 export const improvementsApi = {
   math: () => fetchJSON<{ topics: ImprovedTopicDTO[] }>('/analytics/me/improvements?subject=math'),
+  thinkingSkills: () => fetchJSON<{ topics: ImprovedTopicDTO[] }>('/analytics/me/improvements?subject=thinking-skills'),
 };
 
 // ── Auth (Milestone 2) ──

@@ -10,10 +10,17 @@ export default function MostImproved() {
   const [openSlug, setOpenSlug] = useState<string | null>(null);
 
   useEffect(() => {
-    improvementsApi.math()
-      .then((res) => setTopics(res.topics))
-      // Non-critical widget: on failure show nothing, but surface the error for debugging.
-      .catch((e) => console.error('Failed to load improvements:', e));
+    // Surface gains from both MCQ subjects (W-108). Each call is independent so one failing
+    // subject doesn't hide the other.
+    Promise.allSettled([improvementsApi.math(), improvementsApi.thinkingSkills()])
+      .then(([m, t]) => {
+        const combined: ImprovedTopicDTO[] = [];
+        if (m.status === 'fulfilled') combined.push(...m.value.topics);
+        else console.error('Failed to load math improvements:', m.reason);
+        if (t.status === 'fulfilled') combined.push(...t.value.topics);
+        else console.error('Failed to load thinking-skills improvements:', t.reason);
+        setTopics(combined);
+      });
   }, []);
 
   if (topics.length === 0) return null;
