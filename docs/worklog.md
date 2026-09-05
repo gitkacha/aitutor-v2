@@ -18,6 +18,13 @@ every agent, on any model, without exception):
 
 ## Open
 
+Thinking Skills — Phase B: Skill analytics parity (plan `docs/superpowers/plans/2026-09-06-thinking-skills-phase-b.md`, approved 2026-09-06; branch `thinking-skills-phase-a`; inline). Brings M3a skill analytics (per-skill report, opportunity areas, trend, most-improved) to Thinking Skills and fixes TS→math report leakage. Constraints: subject defaults to `'math'` (no math change beyond de-leaking); writing untouched; RED-first.
+
+- [ ] **W-105** — B1: subject-aware analytics adapter — `buildMathRecords`/`buildMathWindow` filter/window by subject; `getStudentSkillReport`/`getSkillTrend`/`getOpportunityAreas`/`getMathImprovements`/`getSkillSignalsSince` accept `'thinking-skills'` (default `'math'`); fixes TS skills leaking into the math report. Proof: `backend/src/__tests__/analytics-subject.test.ts`.
+- [ ] **W-106** — B2: `routes/analytics.ts` `parseSubject` + chat tools `get_student_skill_report`/`get_opportunity_areas` accept `'thinking-skills'`. Proof: `e2e/tsB-analytics-report.spec.ts`.
+- [ ] **W-107** — B3: admin Skills taxonomy page (`/skills`) shows a Thinking Skills group. Proof: `e2e/tsB-skills-taxonomy.spec.ts`.
+- [ ] **W-108** — B4: student Most Improved + `SkillTrendChart` include Thinking Skills (`improvementsApi.thinkingSkills`, `analyticsApi.skillTrend` subject). Proof: `e2e/tsB-most-improved.spec.ts`.
+
 Thinking Skills — Phase A: Practice + progress signals (plan `docs/superpowers/plans/2026-08-29-thinking-skills-phase-a.md`, approved 2026-08-29; phase-by-phase toward full Mathematics parity, sign-off each; generate-on-demand practice per user decision; branch `thinking-skills-phase-a`; inline execution). Constraints: ZERO regression to Writing/Mathematics/existing; every branch defaults to existing behaviour; answer-key hygiene intact; RED-first.
 
 - [x] **W-100** — A1: subject-aware option-count copy in the shared practice pages (Thinking Skills → "4 answer options (A–D)", Mathematics unchanged "5 (A-E)"), driven by `topic.subject`. Proof: `e2e/tsA-practice-copy.spec.ts`. _(commit 9cf78af; user signed off 2026-09-06)_
