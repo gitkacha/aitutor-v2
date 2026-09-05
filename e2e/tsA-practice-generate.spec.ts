@@ -49,13 +49,29 @@ test.describe('W-101 — generate-on-demand Thinking Skills practice', () => {
     await page.getByRole('button', { name: /Start Timed Practice/ }).click();
     await expect(page.getByRole('heading', { name: 'Ready to start?' })).toBeVisible({ timeout: 30000 });
     await expect(page.getByText(/8 question/)).toBeVisible();
+
+    // The self-practice worksheet now exists — read its keys (correct-answer positions are shuffled
+    // by W-104, so we must answer by the real key, not a fixed slot). Rows come back in display
+    // order (id asc), matching the running test.
+    const ws = await prisma.mathWorksheet.findFirst({
+      where: { title: 'Practice: Visual Reasoning', kind: 'self-practice' },
+      orderBy: { id: 'desc' },
+      include: { assignments: true, questionRows: { orderBy: { id: 'asc' } } },
+    });
+    expect(ws).not.toBeNull();
+    expect(ws!.assignments.length).toBe(0);
+    const keys = ws!.questionRows.map((r) => r.correctIndex);
+    expect(keys.length).toBe(8);
+    // W-104: the correct answers must NOT all sit at option A.
+    expect(new Set(keys).size).toBeGreaterThan(1);
+
     await startTest(page);
 
-    // Answer every question correctly (option A), then finish.
+    // Answer every question with its real key, then finish.
     await expect(page.getByText(/which shape completes the set/).first()).toBeVisible();
     for (let i = 0; i < 8; i++) {
       const optionButtons = page.locator('button', { has: page.locator('span', { hasText: /^[A-D]$/ }) });
-      await optionButtons.nth(0).click();
+      await optionButtons.nth(keys[i]).click();
       if (i < 7) {
         await page.getByRole('button', { name: 'Next' }).click();
       } else {
@@ -68,14 +84,6 @@ test.describe('W-101 — generate-on-demand Thinking Skills practice', () => {
     await expect(page).toHaveURL(/\/math-attempt\/\d+/);
     await expect(page.getByText('100%')).toBeVisible();
     await expect(page.getByText(/which shape completes the set/).first()).toBeVisible();
-
-    // The self-practice worksheet exists in the DB, unassigned and marked self-practice…
-    const ws = await prisma.mathWorksheet.findFirst({
-      where: { title: 'Practice: Visual Reasoning', kind: 'self-practice' },
-      include: { assignments: true },
-    });
-    expect(ws).not.toBeNull();
-    expect(ws!.assignments.length).toBe(0);
 
     // …but it is hidden from the student's worksheet list…
     const studentList = await (await page.request.get('/api/math/worksheets')).json();
