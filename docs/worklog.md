@@ -24,6 +24,7 @@ Thinking Skills — Phase B: Skill analytics parity (plan `docs/superpowers/plan
 - [ ] **W-106** — B2: `routes/analytics.ts` `parseSubject` + chat tools `get_student_skill_report`/`get_opportunity_areas` accept `'thinking-skills'`. Proof: `e2e/tsB-analytics-report.spec.ts`.
 - [ ] **W-107** — B3: admin Skills taxonomy page (`/skills`) shows a Thinking Skills group. Proof: `e2e/tsB-skills-taxonomy.spec.ts`.
 - [ ] **W-108** — B4: student Most Improved + `SkillTrendChart` include Thinking Skills (`improvementsApi.thinkingSkills`, `analyticsApi.skillTrend` subject). Proof: `e2e/tsB-most-improved.spec.ts`.
+- [ ] **W-109** — B follow-on: Admin subject toggle becomes three-way (Writing · Mathematics · Thinking Skills). TS tab shows TS Performance heatmap + the (moved) ThinkingSkillsGenerate card + Saved Worksheets filtered to TS; the always-visible TS card is removed and the Mathematics Saved list is filtered to math. Proof: `e2e/tsB-admin-toggle.spec.ts`.
 
 Thinking Skills — Phase A: Practice + progress signals (plan `docs/superpowers/plans/2026-08-29-thinking-skills-phase-a.md`, approved 2026-08-29; phase-by-phase toward full Mathematics parity, sign-off each; generate-on-demand practice per user decision; branch `thinking-skills-phase-a`; inline execution). Constraints: ZERO regression to Writing/Mathematics/existing; every branch defaults to existing behaviour; answer-key hygiene intact; RED-first.
 
