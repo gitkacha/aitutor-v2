@@ -61,6 +61,7 @@ export default function Sidebar() {
   const [mathTopics, setMathTopics] = useState<MathTopic[]>([]);
   const [writingScores, setWritingScores] = useState<Record<string, number | null>>({});
   const [mathScores, setMathScores] = useState<Record<string, number | null>>({});
+  const [thinkingScores, setThinkingScores] = useState<Record<string, number | null>>({});
   const [sessions, setSessions] = useState(0);
   const [streakWeeks, setStreakWeeks] = useState(0);
   const [upNext, setUpNext] = useState<Pending | null>(null);
@@ -93,6 +94,10 @@ export default function Sidebar() {
     mathApi
       .getHeatmap()
       .then((h) => setMathScores(Object.fromEntries(h.map((e) => [e.topicSlug, e.averageScore]))))
+      .catch(() => {});
+    mathApi
+      .getHeatmap(undefined, 'thinking-skills')
+      .then((h) => setThinkingScores(Object.fromEntries(h.map((e) => [e.topicSlug, e.averageScore]))))
       .catch(() => {});
     // A count endpoint, not full attempt lists (L8) — and demo attempts never inflate
     // the momentum ring.
@@ -338,7 +343,7 @@ export default function Sidebar() {
             )}
           </div>
 
-          {/* Thinking Skills (W-96) — the 7 fixed sections. Score tiles/heatmap arrive in Phase 2. */}
+          {/* Thinking Skills (W-96) — the 7 fixed sections, with per-section scores (W-102). */}
           {thinkingTopics.length > 0 && (
             <div className="mt-1">
               <button onClick={() => setThinkingExpanded(!thinkingExpanded)} className={groupHead}>
@@ -350,18 +355,29 @@ export default function Sidebar() {
                   className={cn('text-rail-muted transition-transform shrink-0', thinkingExpanded && 'rotate-90')}
                 />
               </button>
+              {!thinkingExpanded && (
+                <div className="flex flex-wrap gap-[3px] px-3 pb-2 pl-[26px]" title="Thinking Skills strength at a glance">
+                  {thinkingTopics.map((t) => (
+                    <span key={t.slug} className={cn('w-[9px] h-[9px] rounded-[2.5px]', stripFill[band(thinkingScores[t.slug])])} />
+                  ))}
+                </div>
+              )}
               {thinkingExpanded && (
                 <div className="ml-4 mt-0.5 space-y-0.5">
-                  {thinkingTopics.map((topic) => (
-                    <Link
-                      key={topic.slug}
-                      to={`/math/${topic.slug}`}
-                      onClick={() => setMobileOpen(false)}
-                      className={itemClass(isActive(topic.slug))}
-                    >
-                      <span className="truncate">{topic.name}</span>
-                    </Link>
-                  ))}
+                  {thinkingTopics.map((topic) => {
+                    const active = isActive(topic.slug);
+                    return (
+                      <Link
+                        key={topic.slug}
+                        to={`/math/${topic.slug}`}
+                        onClick={() => setMobileOpen(false)}
+                        className={itemClass(active)}
+                      >
+                        <span className="truncate">{topic.name}</span>
+                        <ScoreBadge score={thinkingScores[topic.slug]} active={active} />
+                      </Link>
+                    );
+                  })}
                 </div>
               )}
             </div>
