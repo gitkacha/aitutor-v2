@@ -186,12 +186,16 @@ async function buildMathRecords(attempts: RawMathAttemptRow[], subject: McqSubje
 // source). Windowing is subject-scoped so a Thinking Skills report reflects TS tests, not a mixed
 // set (B1, W-105).
 async function buildMathWindow(studentId: number, lastNTests: number, subject: McqSubject = 'math') {
-  const all = await prisma.mathAttempt.findMany({
+  // Bound the scan: fetch enough recent attempts to almost always contain the last N of the
+  // requested subject, without loading a student's entire history (perf — this runs per cohort
+  // student and twice per Dashboard via Most Improved).
+  const recent = await prisma.mathAttempt.findMany({
     where: { userId: studentId },
     orderBy: { finishedAt: 'desc' },
+    take: Math.max(lastNTests * 6, 60),
   });
-  const subjectByAttempt = await tagAttemptSubjects(all);
-  const attempts = all.filter((a) => subjectByAttempt.get(a.id) === subject).slice(0, lastNTests);
+  const subjectByAttempt = await tagAttemptSubjects(recent);
+  const attempts = recent.filter((a) => subjectByAttempt.get(a.id) === subject).slice(0, lastNTests);
 
   const { records, untaggedQuestions } = await buildMathRecords(attempts, subject);
   return { attempts, records, untaggedQuestions };
