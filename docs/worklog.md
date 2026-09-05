@@ -18,6 +18,13 @@ every agent, on any model, without exception):
 
 ## Open
 
+Thinking Skills — Phase C: Coaching lessons (plan `docs/superpowers/plans/2026-09-06-thinking-skills-phase-c.md`, approved 2026-09-06; branch `thinking-skills-phase-c`; inline). Brings the M3c coaching pipeline (generate → verify → approve → student sees it) to Thinking Skills — completes full Mathematics parity. Constraints: subject defaults to `'math'` (math coaching byte-for-byte unchanged); writing untouched; RED-first.
+
+- [ ] **W-110** — C1: subject-aware coaching generation — `generateCoachingModuleContent(skill, subject)` + subject-parametrized `generationPrompt` (math verbatim; TS reasoning variant); arithmetic verifier runs for math only (TS skipped, admin-reviewed). Proof: `backend/src/services/coaching.service.test.ts`.
+- [ ] **W-111** — C2: `POST /coaching/modules/generate` + chat `assign_coaching` accept thinking-skills skills (derive subject, pass through). Proof: `e2e/tsC-coaching-generate.spec.ts`.
+- [ ] **W-112** — C3: admin Skills page shows Generate lesson / View draft for Thinking Skills skills. Proof: `e2e/tsC-skills-lesson-action.spec.ts`.
+- [ ] **W-113** — C4: end-to-end — an approved TS lesson appears on its section practice page and opens in the Lesson viewer. Proof: `e2e/tsC-student-loop.spec.ts`.
+
 Thinking Skills — Phase B: Skill analytics parity (plan `docs/superpowers/plans/2026-09-06-thinking-skills-phase-b.md`, approved 2026-09-06; branch `thinking-skills-phase-a`; inline). Brings M3a skill analytics (per-skill report, opportunity areas, trend, most-improved) to Thinking Skills and fixes TS→math report leakage. Constraints: subject defaults to `'math'` (no math change beyond de-leaking); writing untouched; RED-first.
 
 - [x] **W-105** — B1: subject-aware analytics adapter — `buildMathRecords`/`buildMathWindow` filter/window by subject; `getStudentSkillReport`/`getSkillTrend`/`getOpportunityAreas`/`getMathImprovements`/`getSkillSignalsSince` accept `'thinking-skills'` (default `'math'`); fixes TS skills leaking into the math report. Proof: `backend/src/__tests__/analytics-subject.test.ts`. _(commit d43764a; user signed off 2026-09-06)_
