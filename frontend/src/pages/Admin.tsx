@@ -7,7 +7,7 @@ import ActiveInterventionsStrip from '@/components/ActiveInterventionsStrip';
 import PendingWorksheets from '@/components/PendingWorksheets';
 import { api, mathApi, skillsApi, analyticsApi, Skill, ReportSkill, MathTopic, MathHeatmapEntry, GeneratedMathQuestion, Worksheet, MathWorksheet, AuthUser } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Shield, Plus, Database, Trash2, Calculator, FileText, Users, UserPlus } from 'lucide-react';
+import { Shield, Plus, Database, Trash2, Calculator, Brain, FileText, Users, UserPlus } from 'lucide-react';
 import StimulusFigure from '@/components/StimulusFigure';
 import MathWorksheetContent from '@/components/MathWorksheetContent';
 import ThinkingSkillsGenerate from '@/components/ThinkingSkillsGenerate';
@@ -15,7 +15,7 @@ import { validateStimulus } from '@/lib/stimulus';
 import { parseJsonArray } from '@/lib/parse';
 import { mathWorksheetTitle } from '@/lib/math-worksheet-title';
 
-type AdminTab = 'writing' | 'math';
+type AdminTab = 'writing' | 'math' | 'thinking-skills';
 
 interface WritingTypeBrief {
   id: number;
@@ -46,6 +46,10 @@ export default function Admin() {
   const [mathHeatmapLoading, setMathHeatmapLoading] = useState(true);
   const [writingTypes, setWritingTypes] = useState<WritingTypeBrief[]>([]);
   const [mathHeatmap, setMathHeatmap] = useState<MathHeatmapEntry[]>([]);
+  // Thinking Skills Performance (W-109) — its own heatmap, scoped to subject=thinking-skills.
+  const [thinkingHeatmap, setThinkingHeatmap] = useState<MathHeatmapEntry[]>([]);
+  const [thinkingHeatmapLoading, setThinkingHeatmapLoading] = useState(true);
+  const [thinkingHeatmapError, setThinkingHeatmapError] = useState<string | null>(null);
   const [mathTopics, setMathTopics] = useState<MathTopic[]>([]);
   const [activeTab, setActiveTab] = useState<AdminTab>('writing');
   // Generation runs as a background job (W-19); the jobId is remembered in localStorage so
@@ -90,6 +94,9 @@ export default function Admin() {
       refreshMath();
       mathApi.getTopics().then(setMathTopics).catch(() => {});
       mathApi.getWorksheets().then(setMathWorksheets).catch(() => {});
+    } else if (activeTab === 'thinking-skills') {
+      refreshThinking();
+      mathApi.getWorksheets().then(setMathWorksheets).catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
@@ -133,6 +140,7 @@ export default function Admin() {
   // useHeatmap's own dependency).
   useEffect(() => {
     if (activeTab === 'math') refreshMath();
+    if (activeTab === 'thinking-skills') refreshThinking();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [performanceStudentId]);
 
@@ -143,6 +151,15 @@ export default function Admin() {
       .then(setMathHeatmap)
       .catch((e) => setMathHeatmapError(e.message))
       .finally(() => setMathHeatmapLoading(false));
+  };
+
+  const refreshThinking = () => {
+    setThinkingHeatmapError(null);
+    setThinkingHeatmapLoading(true);
+    mathApi.getHeatmap(performanceStudentId, 'thinking-skills')
+      .then(setThinkingHeatmap)
+      .catch((e) => setThinkingHeatmapError(e.message))
+      .finally(() => setThinkingHeatmapLoading(false));
   };
 
   // Writing worksheet generation
@@ -489,6 +506,84 @@ export default function Admin() {
     </div>
   );
 
+  // Saved MCQ worksheets, filtered to one subject (W-109) — shared by the Mathematics and Thinking
+  // Skills tabs so each shows only its own worksheets.
+  const renderSavedMcqWorksheets = (subject: 'math' | 'thinking-skills') => {
+    const rows = mathWorksheets.filter((w) => (w.subject ?? 'math') === subject);
+    if (rows.length === 0) return null;
+    return (
+      <div data-testid={subject === 'thinking-skills' ? 'ts-saved-worksheets' : 'saved-worksheets'} className="bg-white rounded-xl p-6 border border-gray-200">
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Saved Worksheets</h2>
+        <div className="space-y-2">
+          {rows.map((ws) => {
+            const questions = parseJsonArray<unknown>(ws.questions);
+            const atts = (ws.attempts || []) as any[];
+            const scored = atts.filter((a: any) => a.score != null);
+            return (
+              <div key={ws.id} className="p-3 rounded-lg border border-gray-100 hover:bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-start gap-3">
+                    <FileText size={16} className="text-brand-blue mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{ws.title}</p>
+                      <p className="text-xs text-gray-400">
+                        {questions.length} questions · Created {new Date(ws.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-xs font-medium text-gray-500 whitespace-nowrap">
+                      {atts.length} attempt{atts.length !== 1 ? 's' : ''}
+                    </span>
+                    <button
+                      onClick={() => setExpandedMathWs((id) => (id === ws.id ? null : ws.id))}
+                      className="text-xs font-medium text-brand-blue hover:underline"
+                    >
+                      {expandedMathWs === ws.id ? 'Hide' : 'View'}
+                    </button>
+                    <button
+                      onClick={() => { setAssignFor({ subject: 'math', id: ws.id }); setAssignSel(new Set()); }}
+                      className="text-xs font-medium text-brand-green hover:underline"
+                    >
+                      Assign
+                    </button>
+                    {atts.length === 0 && (
+                      <button
+                        onClick={() => handleDeleteMathWorksheet(ws.id, ws.title)}
+                        className="text-xs font-medium text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {expandedMathWs === ws.id && (
+                  <div className="mt-3 ml-9">
+                    <MathWorksheetContent worksheetId={ws.id} />
+                  </div>
+                )}
+                {assignFor?.subject === 'math' && assignFor.id === ws.id && assignPanel}
+                {scored.length > 0 && (
+                  <div className="mt-2 ml-9 space-y-1">
+                    {scored.slice(0, 3).map((a: any) => (
+                      <button
+                        key={a.id}
+                        onClick={() => navigate(`/math-attempt/${a.id}`)}
+                        className="block text-xs text-brand-blue hover:underline"
+                      >
+                        {new Date(a.finishedAt).toLocaleDateString()} — Score: {a.score}/{a.totalQuestions}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="flex items-center gap-3">
@@ -528,9 +623,18 @@ export default function Admin() {
           <Calculator className="inline mr-1" size={14} />
           Mathematics
         </button>
+        <button
+          onClick={() => setActiveTab('thinking-skills')}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            activeTab === 'thinking-skills' ? 'bg-white text-brand-blue shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <Brain className="inline mr-1" size={14} />
+          Thinking Skills
+        </button>
       </div>
 
-      {activeTab === 'writing' ? (
+      {activeTab === 'writing' && (
         <>
           {/* Writing Heatmap */}
           <div>
@@ -716,7 +820,9 @@ export default function Admin() {
             </div>
           )}
         </>
-      ) : (
+      )}
+
+      {activeTab === 'math' && (
         <>
           {/* Math Heatmap */}
           <div>
@@ -866,83 +972,37 @@ export default function Admin() {
             </div>
           )}
 
-          {/* Saved Math Worksheets */}
-          {mathWorksheets.length > 0 && !showMathReview && (
-            <div data-testid="saved-worksheets" className="bg-white rounded-xl p-6 border border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Saved Worksheets</h2>
-              <div className="space-y-2">
-                {mathWorksheets.map((ws) => {
-                  const questions = parseJsonArray<unknown>(ws.questions);
-                  const atts = (ws.attempts || []) as any[];
-                  const scored = atts.filter((a: any) => a.score != null);
-                  return (
-                    <div key={ws.id} className="p-3 rounded-lg border border-gray-100 hover:bg-gray-50">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-start gap-3">
-                          <FileText size={16} className="text-brand-blue mt-0.5 shrink-0" />
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{ws.title}</p>
-                            <p className="text-xs text-gray-400">
-                              {questions.length} questions · Created {new Date(ws.createdAt).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className="text-xs font-medium text-gray-500 whitespace-nowrap">
-                            {atts.length} attempt{atts.length !== 1 ? 's' : ''}
-                          </span>
-                          <button
-                            onClick={() => setExpandedMathWs((id) => (id === ws.id ? null : ws.id))}
-                            className="text-xs font-medium text-brand-blue hover:underline"
-                          >
-                            {expandedMathWs === ws.id ? 'Hide' : 'View'}
-                          </button>
-                          <button
-                            onClick={() => { setAssignFor({ subject: 'math', id: ws.id }); setAssignSel(new Set()); }}
-                            className="text-xs font-medium text-brand-green hover:underline"
-                          >
-                            Assign
-                          </button>
-                          {atts.length === 0 && (
-                            <button
-                              onClick={() => handleDeleteMathWorksheet(ws.id, ws.title)}
-                              className="text-xs font-medium text-red-600 hover:underline"
-                            >
-                              Delete
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      {expandedMathWs === ws.id && (
-                        <div className="mt-3 ml-9">
-                          <MathWorksheetContent worksheetId={ws.id} />
-                        </div>
-                      )}
-                      {assignFor?.subject === 'math' && assignFor.id === ws.id && assignPanel}
-                      {scored.length > 0 && (
-                        <div className="mt-2 ml-9 space-y-1">
-                          {scored.slice(0, 3).map((a: any) => (
-                            <button
-                              key={a.id}
-                              onClick={() => navigate(`/math-attempt/${a.id}`)}
-                              className="block text-xs text-brand-blue hover:underline"
-                            >
-                              {new Date(a.finishedAt).toLocaleDateString()} — Score: {a.score}/{a.totalQuestions}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          {/* Saved Mathematics Worksheets (W-109: subject-filtered) */}
+          {!showMathReview && renderSavedMcqWorksheets('math')}
         </>
       )}
 
-      {/* Thinking Skills generation (W-95) — always visible; saved worksheets land in the list above */}
-      <ThinkingSkillsGenerate onSaved={() => { mathApi.getWorksheets().then(setMathWorksheets).catch(() => {}); setWorksheetRefresh((n) => n + 1); }} />
+      {activeTab === 'thinking-skills' && (
+        <>
+          {/* Thinking Skills Performance (W-109) */}
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">Thinking Skills Performance</h2>
+            {performanceSelector}
+            <Heatmap
+              data={thinkingHeatmap.map((d) => ({
+                typeId: d.topicId, typeName: d.topicName, typeSlug: d.topicSlug,
+                averageScore: d.averageScore, attemptCount: d.attemptCount,
+              }))}
+              onSelect={(entry) => navigate(`/math-history/${entry.typeSlug}${performanceStudentId ? `?studentId=${performanceStudentId}` : ''}`)}
+              basePath="math"
+              loading={thinkingHeatmapLoading}
+              error={thinkingHeatmapError}
+              onRetry={refreshThinking}
+            />
+          </div>
+
+          {/* Thinking Skills Worksheet Generation (W-95, moved into the toggle by W-109) */}
+          <ThinkingSkillsGenerate onSaved={() => { mathApi.getWorksheets().then(setMathWorksheets).catch(() => {}); setWorksheetRefresh((n) => n + 1); }} />
+
+          {/* Saved Thinking Skills Worksheets */}
+          {renderSavedMcqWorksheets('thinking-skills')}
+        </>
+      )}
 
       {/* Workspace Members (C1) — always visible */}
       <div className="bg-white rounded-xl p-6 border border-gray-200">

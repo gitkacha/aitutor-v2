@@ -41,6 +41,8 @@ test.describe('W-95 — Admin Thinking Skills generate flow', () => {
 
   test('generate → review → save unassigned → assign to a student', async ({ page, baseURL }) => {
     await page.goto('/admin');
+    // W-109: the Thinking Skills generate card now lives under its own subject tab.
+    await page.getByRole('button', { name: 'Thinking Skills' }).click();
     const card = page.getByTestId('ts-generate');
     await expect(card).toBeVisible();
     await card.getByRole('button', { name: 'Logical Analysis' }).click();
