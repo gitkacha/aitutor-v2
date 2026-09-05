@@ -99,7 +99,8 @@ export default function Skills() {
   }
 
   const lessonAction = (skill: Skill): ReactNode => {
-    if (skill.subject !== 'math') return null;
+    // Coaching lessons exist for the MCQ subjects (math + thinking-skills), not writing (W-112).
+    if (skill.subject !== 'math' && skill.subject !== 'thinking-skills') return null;
     const mod = modules.get(skill.id);
     if (mod) {
       return (
@@ -212,7 +213,13 @@ export default function Skills() {
           <h2 className="text-lg font-semibold text-gray-900 mb-3">Thinking Skills</h2>
           <div className="space-y-2">
             {thinkingSkills.map((s) => (
-              <SkillRow key={s.id} skill={s} expanded={expanded.has(s.id)} onToggle={() => toggle(s.id)} />
+              <SkillRow
+                key={s.id}
+                skill={s}
+                expanded={expanded.has(s.id)}
+                onToggle={() => toggle(s.id)}
+                action={lessonAction(s)}
+              />
             ))}
           </div>
         </section>
