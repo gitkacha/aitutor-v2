@@ -60,10 +60,11 @@ export default function Skills() {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
   useEffect(() => {
-    Promise.all([skillsApi.list(), mathApi.getTopics(), coachingApi.listAll()])
-      .then(([s, t, mods]) => {
+    Promise.all([skillsApi.list(), mathApi.getTopics(), mathApi.getTopics('thinking-skills'), coachingApi.listAll()])
+      .then(([s, t, tt, mods]) => {
         setSkills(s);
-        setTopics(t);
+        // Merge math + Thinking Skills topics so topicName resolves both subjects' section names.
+        setTopics([...t, ...tt]);
         // Keep the most recent module per skill (list is newest-first).
         const bySkill = new Map<number, CoachingModule>();
         for (const m of mods) if (!bySkill.has(m.skillId)) bySkill.set(m.skillId, m);
@@ -133,6 +134,7 @@ export default function Skills() {
 
   const mathSkills = skills.filter((s) => s.subject === 'math');
   const writingSkills = skills.filter((s) => s.subject === 'writing');
+  const thinkingSkills = skills.filter((s) => s.subject === 'thinking-skills');
 
   const mathGroups = Array.from(new Set(mathSkills.map((s) => s.topicSlug)))
     .sort((a, b) => topicName(a).localeCompare(topicName(b)))
@@ -204,6 +206,17 @@ export default function Skills() {
           </div>
         </section>
       ))}
+
+      {thinkingSkills.length > 0 && (
+        <section className="bg-white rounded-xl p-6 border border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Thinking Skills</h2>
+          <div className="space-y-2">
+            {thinkingSkills.map((s) => (
+              <SkillRow key={s.id} skill={s} expanded={expanded.has(s.id)} onToggle={() => toggle(s.id)} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {writingSkills.length > 0 && (
         <section className="bg-white rounded-xl p-6 border border-gray-200">

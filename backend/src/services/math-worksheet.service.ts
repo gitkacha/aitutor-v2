@@ -118,8 +118,11 @@ export async function saveAndAssignWorksheet(params: {
   topicIds: unknown;
   questions: WorksheetQuestionJson[];
   assigneeIds: number[];
+  // "standard" (default) for admin-authored worksheets; "self-practice" for a student's on-demand
+  // practice set (W-101), which is hidden from the admin list and never assigned.
+  kind?: string;
 }) {
-  const { workspaceId, createdById, title, topicIds, questions, assigneeIds } = params;
+  const { workspaceId, createdById, title, topicIds, questions, assigneeIds, kind = 'standard' } = params;
   return prisma.$transaction(async (tx) => {
     const created = await tx.mathWorksheet.create({
       data: {
@@ -128,6 +131,7 @@ export async function saveAndAssignWorksheet(params: {
         title,
         topicIds: JSON.stringify(topicIds || []),
         questions: JSON.stringify(questions),
+        kind,
       },
     });
     await createWorksheetQuestionRows(created.id, questions, tx);

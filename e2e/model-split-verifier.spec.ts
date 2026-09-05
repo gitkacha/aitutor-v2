@@ -143,7 +143,11 @@ test.describe('model split + verifier pass', () => {
       expect(texts, 'wrong-key questions must be dropped by the verifier').not.toContain('[BADKEY]');
       expect(texts, 'duplicate-option questions must be rejected').not.toContain('[DUP]');
       for (const q of body.questions) {
-        expect(q.correctIndex, 'every surviving key was independently confirmed').toBe(1);
+        // W-104 spreads the correct-answer POSITION, so the key is no longer always index 1 — but
+        // the independently-confirmed correct option (2k for "What is k + k?") must stay the key.
+        const m = q.questionText.match(/What is (\d+) \+ (\d+)\?/);
+        expect(m, 'surviving questions are the sound generated ones').not.toBeNull();
+        expect(q.options[q.correctIndex], 'the independently confirmed option is the key').toBe(String(2 * Number(m![1])));
       }
     } finally {
       await new Promise((r) => stub.close(r));

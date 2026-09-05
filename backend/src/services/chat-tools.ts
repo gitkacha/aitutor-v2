@@ -40,7 +40,7 @@ export const READ_TOOL_SCHEMAS: ChatToolSchema[] = [
       type: 'object',
       properties: {
         studentId: { type: 'integer', description: 'The id of the student to report on.' },
-        subject: { type: 'string', enum: ['math', 'writing'], description: 'The subject to report on.' },
+        subject: { type: 'string', enum: ['math', 'writing', 'thinking-skills'], description: 'The subject to report on.' },
         lastNTests: {
           type: 'integer',
           description: 'How many of the student\'s most recent tests to include (defaults to the standard analysis window).',
@@ -57,7 +57,7 @@ export const READ_TOOL_SCHEMAS: ChatToolSchema[] = [
     parameters: {
       type: 'object',
       properties: {
-        subject: { type: 'string', enum: ['math', 'writing'], description: 'The subject to analyse.' },
+        subject: { type: 'string', enum: ['math', 'writing', 'thinking-skills'], description: 'The subject to analyse.' },
         studentId: {
           type: 'integer',
           description: 'Optional student id to scope the analysis to. Omit for a workspace-wide cohort ranking.',

@@ -234,6 +234,10 @@ model MathWorksheet {
   questions    String
   createdAt    DateTime       @default(now())
   isDemo       Boolean        @default(false)
+  // "standard" = an admin-authored/assigned worksheet (shown in the admin list); "self-practice"
+  // = an on-demand set a student generated for their own practice (W-101), hidden from the admin
+  // list and never assigned.
+  kind         String         @default("standard")
   workspace    Workspace      @relation(fields: [workspaceId], references: [id])
   createdBy    User           @relation("MathWorksheetCreator", fields: [createdById], references: [id])
   attempts     MathAttempt[]

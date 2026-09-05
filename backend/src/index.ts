@@ -20,6 +20,7 @@ import mathQuestionsRouter from './routes/math-questions';
 import mathAttemptsRouter from './routes/math-attempts';
 import mathHeatmapRouter from './routes/math-heatmap';
 import mathWorksheetsRouter from './routes/math-worksheets';
+import mathPracticeRouter from './routes/math-practice';
 import skillsRouter from './routes/skills';
 import analyticsRouter from './routes/analytics';
 import chatRouter from './routes/chat';
@@ -62,6 +63,7 @@ app.use('/api/math/questions', mathQuestionsRouter);
 app.use('/api/math/attempts', mathAttemptsRouter);
 app.use('/api/math/heatmap', mathHeatmapRouter);
 app.use('/api/math/worksheets', mathWorksheetsRouter);
+app.use('/api/math/practice', mathPracticeRouter);
 
 app.use('/api/skills', skillsRouter);
 app.use('/api/analytics', analyticsRouter);

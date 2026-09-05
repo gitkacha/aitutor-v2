@@ -29,6 +29,32 @@ const WRITING_TIME_LIMIT_SEC = 1800;
 
 const DEFAULT_WINDOW = 10;
 
+// The subjects that live in the shared MCQ (MathAttempt/MathQuestion) tables. Writing has its own
+// analysis-based path. B1 (W-105).
+export type McqSubject = 'math' | 'thinking-skills';
+
+// Tag each attempt with its subject via its questions' topic.subject (attempts are
+// subject-homogeneous: single-topic, all-topics=math, worksheets reject mixed subjects). Attempts
+// whose subject can't be resolved default to 'math'.
+async function tagAttemptSubjects(attempts: { id: number; questions: string }[]): Promise<Map<number, McqSubject>> {
+  const ids = [...new Set(attempts.flatMap((a) => safeParse<number[]>(a.questions) ?? []))];
+  const questions = ids.length
+    ? await prisma.mathQuestion.findMany({ where: { id: { in: ids } }, select: { id: true, topic: { select: { subject: true } } } })
+    : [];
+  const subjectByQuestion = new Map(questions.map((q) => [q.id, (q.topic?.subject as McqSubject) ?? 'math']));
+  const map = new Map<number, McqSubject>();
+  for (const a of attempts) {
+    const qids = safeParse<number[]>(a.questions) ?? [];
+    let subject: McqSubject = 'math';
+    for (const qid of qids) {
+      const s = subjectByQuestion.get(qid);
+      if (s) { subject = s; break; }
+    }
+    map.set(a.id, subject);
+  }
+  return map;
+}
+
 export interface ReportWindow {
   tests: number;
   from: string | null;
@@ -110,7 +136,7 @@ interface RawMathAttemptRow {
 // Task 6 adapter rules. Questions without a skillId are counted into untaggedQuestions rather
 // than turned into a record — the core never sees skill-less questions. Shared by
 // buildMathWindow (last-N window) and getSkillSignalsSince (date-range window, M3b Task 8).
-async function buildMathRecords(attempts: RawMathAttemptRow[]) {
+async function buildMathRecords(attempts: RawMathAttemptRow[], subject: McqSubject = 'math') {
   const parsed = attempts.map(parseMathAttempt);
   const allQuestionIds = [...new Set(parsed.flatMap((p) => p.questionIds))];
   const questions = allQuestionIds.length
@@ -130,6 +156,9 @@ async function buildMathRecords(attempts: RawMathAttemptRow[]) {
         untaggedQuestions++;
         continue;
       }
+      // B1 (W-105): scope to the requested subject — Thinking Skills shares this table, so a
+      // math report must skip TS-skilled questions and vice versa.
+      if (question.skill.subject !== subject) continue;
       const rawAnswer: number | undefined = p.answers[i];
       const chosenIndex = rawAnswer == null || rawAnswer === -1 ? null : rawAnswer;
       const options = safeParse<string[]>(question.options) ?? [];
@@ -153,15 +182,22 @@ async function buildMathRecords(attempts: RawMathAttemptRow[]) {
   return { records, untaggedQuestions };
 }
 
-// Builds AnswerRecords for a student's last `lastNTests` MathAttempts (any source).
-async function buildMathWindow(studentId: number, lastNTests: number) {
-  const attempts = await prisma.mathAttempt.findMany({
+// Builds AnswerRecords for a student's last `lastNTests` MathAttempts OF THE GIVEN SUBJECT (any
+// source). Windowing is subject-scoped so a Thinking Skills report reflects TS tests, not a mixed
+// set (B1, W-105).
+async function buildMathWindow(studentId: number, lastNTests: number, subject: McqSubject = 'math') {
+  // Bound the scan: fetch enough recent attempts to almost always contain the last N of the
+  // requested subject, without loading a student's entire history (perf — this runs per cohort
+  // student and twice per Dashboard via Most Improved).
+  const recent = await prisma.mathAttempt.findMany({
     where: { userId: studentId },
     orderBy: { finishedAt: 'desc' },
-    take: lastNTests,
+    take: Math.max(lastNTests * 6, 60),
   });
+  const subjectByAttempt = await tagAttemptSubjects(recent);
+  const attempts = recent.filter((a) => subjectByAttempt.get(a.id) === subject).slice(0, lastNTests);
 
-  const { records, untaggedQuestions } = await buildMathRecords(attempts);
+  const { records, untaggedQuestions } = await buildMathRecords(attempts, subject);
   return { attempts, records, untaggedQuestions };
 }
 
@@ -183,8 +219,8 @@ async function computeStudentMedianMs(studentId: number): Promise<number | null>
   return median(values);
 }
 
-async function computeMathSignalsForStudent(studentId: number, lastNTests: number): Promise<SkillSignal[]> {
-  const { records } = await buildMathWindow(studentId, lastNTests);
+async function computeMathSignalsForStudent(studentId: number, lastNTests: number, subject: McqSubject = 'math'): Promise<SkillSignal[]> {
+  const { records } = await buildMathWindow(studentId, lastNTests, subject);
   const medianMs = await computeStudentMedianMs(studentId);
   return computeSkillSignals(records, medianMs);
 }
@@ -194,12 +230,12 @@ async function computeMathSignalsForStudent(studentId: number, lastNTests: numbe
 // the same AnswerRecord adapter (buildMathRecords) and the same own-median-time M (computed over
 // all of the student's timed questions, per §4's "own median time" definition — unwindowed) as
 // getStudentSkillReport, so this stays a thin adapter with no statistics of its own.
-export async function getSkillSignalsSince(studentId: number, sinceISO: string): Promise<SkillSignal[]> {
+export async function getSkillSignalsSince(studentId: number, sinceISO: string, subject: McqSubject = 'math'): Promise<SkillSignal[]> {
   const attempts = await prisma.mathAttempt.findMany({
     where: { userId: studentId, finishedAt: { gt: new Date(sinceISO) } },
     orderBy: { finishedAt: 'desc' },
   });
-  const { records } = await buildMathRecords(attempts);
+  const { records } = await buildMathRecords(attempts, subject);
   const medianMs = await computeStudentMedianMs(studentId);
   return computeSkillSignals(records, medianMs);
 }
@@ -207,17 +243,17 @@ export async function getSkillSignalsSince(studentId: number, sinceISO: string):
 // M3b-2: the per-skill accuracy series for the chart. Reuses buildMathRecords (same adapter as
 // the report) over all of the student's math attempts, then computeSkillTrendSeries in the core —
 // no statistics here.
-export async function getSkillTrend(studentId: number, slug: string): Promise<SkillTrendPoint[]> {
+export async function getSkillTrend(studentId: number, slug: string, subject: McqSubject = 'math'): Promise<SkillTrendPoint[]> {
   const attempts = await prisma.mathAttempt.findMany({
     where: { userId: studentId },
     orderBy: { finishedAt: 'asc' },
   });
-  const { records } = await buildMathRecords(attempts);
+  const { records } = await buildMathRecords(attempts, subject);
   return computeSkillTrendSeries(records, slug);
 }
 
-async function getMathReport(studentId: number, lastNTests: number): Promise<StudentSkillReport> {
-  const { attempts, records, untaggedQuestions } = await buildMathWindow(studentId, lastNTests);
+async function getMathReport(studentId: number, lastNTests: number, subject: McqSubject = 'math'): Promise<StudentSkillReport> {
+  const { attempts, records, untaggedQuestions } = await buildMathWindow(studentId, lastNTests, subject);
   const medianTimeMs = await computeStudentMedianMs(studentId);
   const skills = computeSkillSignals(records, medianTimeMs);
   const pacing = computePacingCurve(records);
@@ -233,7 +269,7 @@ async function getMathReport(studentId: number, lastNTests: number): Promise<Stu
     });
     const perStudent = new Map<number, SkillSignal[]>();
     for (const s of workspaceStudents) {
-      perStudent.set(s.id, s.id === studentId ? skills : await computeMathSignalsForStudent(s.id, lastNTests));
+      perStudent.set(s.id, s.id === studentId ? skills : await computeMathSignalsForStudent(s.id, lastNTests, subject));
     }
     const cohort = computeCohortAccuracy(perStudent);
     for (const sig of skills) {
@@ -294,10 +330,11 @@ async function getWritingReport(studentId: number, lastNTests: number): Promise<
 
 export async function getStudentSkillReport(
   studentId: number,
-  subject: 'math' | 'writing',
+  subject: 'math' | 'writing' | 'thinking-skills',
   lastNTests: number = DEFAULT_WINDOW
 ): Promise<StudentSkillReport> {
-  return subject === 'math' ? getMathReport(studentId, lastNTests) : getWritingReport(studentId, lastNTests);
+  if (subject === 'writing') return getWritingReport(studentId, lastNTests);
+  return getMathReport(studentId, lastNTests, subject);
 }
 
 // Workspace-wide cohort ranking (no studentId): one row per skill with the cohort's mean
@@ -319,23 +356,23 @@ export type OpportunityArea = SkillSignal | WritingSkillSignal | CohortOpportuni
 //    no cohort baseline exists for writing yet, see the adapter rules note below)
 export async function getOpportunityAreas(
   workspaceId: number,
-  subject: 'math' | 'writing',
+  subject: 'math' | 'writing' | 'thinking-skills',
   studentId?: number
 ): Promise<OpportunityArea[]> {
   if (studentId != null) {
     const report = await getStudentSkillReport(studentId, subject);
-    if (subject === 'math') return rankOpportunityAreas(report.skills as SkillSignal[]);
-    return rankWritingOpportunityAreas(report.skills as WritingSkillSignal[]);
+    if (subject === 'writing') return rankWritingOpportunityAreas(report.skills as WritingSkillSignal[]);
+    return rankOpportunityAreas(report.skills as SkillSignal[]);
   }
 
-  // Workspace-wide: cohort computation is math-only per the adapter rules — writing has no
+  // Workspace-wide: cohort computation is MCQ-only (math + thinking-skills) — writing has no
   // workspace-wide ranking until a cohort baseline exists for it.
-  if (subject !== 'math') return [];
+  if (subject === 'writing') return [];
 
   const students = await prisma.user.findMany({ where: { workspaceId, role: 'student' }, select: { id: true } });
   const perStudent = new Map<number, SkillSignal[]>();
   for (const s of students) {
-    perStudent.set(s.id, await computeMathSignalsForStudent(s.id, DEFAULT_WINDOW));
+    perStudent.set(s.id, await computeMathSignalsForStudent(s.id, DEFAULT_WINDOW, subject));
   }
   const cohort = computeCohortAccuracy(perStudent);
 
@@ -372,8 +409,8 @@ export interface ImprovedTopic {
   skills: ImprovedSkill[];
 }
 
-export async function getMathImprovements(studentId: number): Promise<{ topics: ImprovedTopic[] }> {
-  const { records } = await buildMathWindow(studentId, DEFAULT_WINDOW);
+export async function getMathImprovements(studentId: number, subject: McqSubject = 'math'): Promise<{ topics: ImprovedTopic[] }> {
+  const { records } = await buildMathWindow(studentId, DEFAULT_WINDOW, subject);
   const improvements = computeSkillImprovements(records);
   if (improvements.length === 0) return { topics: [] };
 

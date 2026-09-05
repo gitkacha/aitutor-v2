@@ -37,12 +37,18 @@ test.describe('L4 — ScoreHistory distinguishes error from empty', () => {
 
 test.describe('L6 — empty heatmap data is not "loading"', () => {
   test('an empty writing heatmap shows the no-data message', async ({ page }) => {
+    // Empty out every heatmap on the dashboard (Writing + the MCQ heatmaps Math/Thinking Skills)
+    // so the page is deterministic — otherwise the unstubbed heatmaps can still be loading real
+    // data when we assert, and the unscoped "Loading" locator would match those.
     await page.route('**/api/heatmap', (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
     );
+    await page.route('**/api/math/heatmap**', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+    );
     await page.goto('/dashboard');
-    await expect(page.getByText('No heatmap data available.')).toBeVisible();
-    await expect(page.getByText('Loading heatmap data...')).not.toBeVisible();
+    await expect(page.getByText('No heatmap data available.').first()).toBeVisible();
+    await expect(page.getByText('Loading heatmap data...')).toHaveCount(0);
   });
 });
 

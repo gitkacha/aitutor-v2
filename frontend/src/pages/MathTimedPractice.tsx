@@ -11,7 +11,7 @@ export default function MathTimedPractice() {
   const { topicSlug } = useParams<{ topicSlug: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const { worksheetId } = location.state || {};
+  const { worksheetId, generatedPractice } = location.state || {};
 
   const [questions, setQuestions] = useState<MathQuestionFull[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -54,9 +54,9 @@ export default function MathTimedPractice() {
       .finally(() => setLoading(false));
   }, [topicSlug, navigate, isWorksheet, worksheetId]);
 
-  // Worksheets allot 1 minute per question; regular practice keeps the exam
-  // formula of ~69s per question capped at 40 minutes.
-  const totalTime = isWorksheet
+  // Worksheets allot 1 minute per question; regular practice — including generate-on-demand
+  // Thinking Skills practice (W-101) — keeps the exam formula of ~69s per question capped at 40 min.
+  const totalTime = isWorksheet && !generatedPractice
     ? questions.length * 60
     : Math.min(questions.length * 69, 2400);
   // Fixed end timestamp (L2), anchored to the moment the student presses Start test
@@ -89,15 +89,19 @@ export default function MathTimedPractice() {
       const answerArray = questions.map(q => answers[q.id] ?? -1);
       const topicId = questions[0]?.topicId ?? null;
 
+      // Generate-on-demand Thinking Skills practice (W-101) is recorded as a normal practice
+      // attempt on its section — not an assigned-worksheet attempt — so it credits the section in
+      // the heatmap and never references the transient self-practice worksheet.
+      const asWorksheet = isWorksheet && !generatedPractice;
       const attempt = await mathApi.createAttempt({
-        topicId: isWorksheet || topicSlug === 'all-topics' ? null : topicId,
+        topicId: asWorksheet || topicSlug === 'all-topics' ? null : topicId,
         questions: JSON.stringify(qIds),
         answers: JSON.stringify(answerArray),
         startedAt: new Date(startTimeRef.current).toISOString(),
         finishedAt: new Date().toISOString(),
         timeTaken: Math.min(elapsed, totalTime - timeLeft),
-        source: isWorksheet ? 'worksheet' : 'practice',
-        worksheetId: isWorksheet ? worksheetId : undefined,
+        source: asWorksheet ? 'worksheet' : 'practice',
+        worksheetId: asWorksheet ? worksheetId : undefined,
         questionTimings: JSON.stringify(dwellRef.current),
         questionFlags: JSON.stringify([...flagged]),
         answerChanges: JSON.stringify(changesRef.current),
@@ -111,7 +115,7 @@ export default function MathTimedPractice() {
       submittedRef.current = false;
       setSaveError(true);
     }
-  }, [questions, answers, topicSlug, totalTime, timeLeft, navigate, isWorksheet, worksheetId, currentIndex, flagged]);
+  }, [questions, answers, topicSlug, totalTime, timeLeft, navigate, isWorksheet, generatedPractice, worksheetId, currentIndex, flagged]);
 
   const handleTimeUp = useCallback(() => submitAttempt(), [submitAttempt]);
 
@@ -167,7 +171,7 @@ export default function MathTimedPractice() {
           <h1 className="text-2xl font-bold text-gray-900">Ready to start?</h1>
           <div className="bg-gray-50 rounded-xl p-4 inline-flex flex-col gap-1 text-gray-700">
             <span><span className="font-semibold">{questions.length}</span> question{questions.length !== 1 ? 's' : ''}</span>
-            <span><span className="font-semibold">{minutes}</span> minute limit · 5 options each</span>
+            <span><span className="font-semibold">{minutes}</span> minute limit · {questions[0]?.topic?.subject === 'thinking-skills' ? 4 : 5} options each</span>
           </div>
           <p className="text-gray-600">
             The countdown starts when you press the button. You can flag questions and come back

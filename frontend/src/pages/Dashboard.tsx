@@ -6,25 +6,7 @@ import Heatmap from '@/components/Heatmap';
 import PendingWorksheets from '@/components/PendingWorksheets';
 import MostImproved from '@/components/MostImproved';
 import { BarChart3, Calculator, Target, ArrowRight } from 'lucide-react';
-
-interface Opportunity {
-  key: string;
-  label: string;
-  score: number;
-  path: string;
-}
-
-// The student's weakest scored areas across both subjects (C2) — where a bit of practice
-// moves the needle most. Only areas with attempts and a score qualify.
-function opportunityAreas(writing: HeatmapEntry[], math: MathHeatmapEntry[]): Opportunity[] {
-  const w: Opportunity[] = writing
-    .filter((d) => d.attemptCount > 0 && d.averageScore != null)
-    .map((d) => ({ key: `w-${d.typeSlug}`, label: d.typeName, score: d.averageScore!, path: `/practice/${d.typeSlug}` }));
-  const m: Opportunity[] = math
-    .filter((d) => d.attemptCount > 0 && d.averageScore != null)
-    .map((d) => ({ key: `m-${d.topicSlug}`, label: d.topicName, score: d.averageScore!, path: `/math/${d.topicSlug}` }));
-  return [...w, ...m].sort((a, b) => a.score - b.score).slice(0, 4);
-}
+import { opportunityAreas } from '@/lib/opportunity';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -97,7 +79,7 @@ export default function Dashboard() {
 
       {/* Opportunity areas — the student's weakest scored areas (C2) */}
       {(() => {
-        const areas = opportunityAreas(writingData, mathData);
+        const areas = opportunityAreas(writingData, mathData, thinkingData);
         if (areas.length === 0) return null;
         return (
           <section className="bg-white rounded-xl p-6 border border-gray-200">

@@ -36,10 +36,16 @@ router.get('/', requireAuth, asyncHandler(async (req: Request, res: Response) =>
       where: { id: worksheetId },
       include: { assignments: { select: { studentId: true } } },
     });
+    // A student reaches a worksheet's questions if they're assigned to it, or if it's a
+    // self-practice set they generated themselves (W-101, unassigned by design).
+    const isCreatorSelfPractice =
+      worksheet?.kind === 'self-practice' && worksheet.createdById === user.id;
     if (
       !worksheet ||
       worksheet.workspaceId !== user.workspaceId ||
-      (user.role !== 'admin' && !worksheet.assignments.some((a) => a.studentId === user.id))
+      (user.role !== 'admin' &&
+        !worksheet.assignments.some((a) => a.studentId === user.id) &&
+        !isCreatorSelfPractice)
     ) {
       return res.status(404).json({ error: 'Worksheet not found' });
     }

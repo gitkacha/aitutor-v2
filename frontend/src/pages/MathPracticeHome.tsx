@@ -14,6 +14,9 @@ export default function MathPracticeHome() {
   const [worksheets, setWorksheets] = useState<MathWorksheet[]>([]);
   const [lessons, setLessons] = useState<CoachingModule[]>([]);
   const [loading, setLoading] = useState(true);
+  // Thinking Skills practice is generated on demand (W-101); Mathematics uses its seeded bank.
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState(false);
   const isAllTopics = topicSlug === 'all-topics';
 
   useEffect(() => {
@@ -71,6 +74,37 @@ export default function MathPracticeHome() {
     navigate(`/math/${topic.slug}/start`, {
       state: { worksheetId: worksheet.id },
     });
+  };
+
+  // Start a timed practice. Mathematics draws from its seeded bank (navigate straight in); a
+  // Thinking Skills section generates a fresh set on demand (W-101), then plays it.
+  const handleStartPractice = async () => {
+    if (!topic) return;
+    if (topic.subject !== 'thinking-skills') {
+      navigate(`/math/${topic.slug}/start`);
+      return;
+    }
+    setGenerating(true);
+    setGenError(false);
+    try {
+      const { jobId } = await mathApi.generatePractice(topic.slug);
+      const deadline = Date.now() + 60_000;
+      for (;;) {
+        const job = await mathApi.getPracticeJob(jobId);
+        if (job.status === 'done' && job.result) {
+          navigate(`/math/${topic.slug}/start`, {
+            state: { worksheetId: job.result.worksheetId, generatedPractice: true },
+          });
+          return;
+        }
+        if (job.status === 'error') throw new Error(job.error || 'Generation failed');
+        if (Date.now() > deadline) throw new Error('Generation timed out');
+        await new Promise((r) => setTimeout(r, 400));
+      }
+    } catch {
+      setGenError(true);
+      setGenerating(false);
+    }
   };
 
   if (loading) {
@@ -137,7 +171,7 @@ export default function MathPracticeHome() {
           </li>
           <li className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-brand-blue" />
-            5 answer options per question (A-E)
+            {topic.subject === 'thinking-skills' ? '4 answer options per question (A-D)' : '5 answer options per question (A-E)'}
           </li>
           <li className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-brand-blue" />
@@ -218,14 +252,22 @@ export default function MathPracticeHome() {
       )}
 
       {/* Start button */}
-      <Button
-        size="lg"
-        className="w-full"
-        onClick={() => navigate(`/math/${topic.slug}/start`)}
-      >
-        <Clock className="mr-2" size={20} />
-        Start Timed Practice
-      </Button>
+      <div>
+        <Button
+          size="lg"
+          className="w-full"
+          onClick={handleStartPractice}
+          disabled={generating}
+        >
+          <Clock className="mr-2" size={20} />
+          {generating ? 'Generating your practice…' : 'Start Timed Practice'}
+        </Button>
+        {genError && (
+          <p className="text-sm text-red-600 mt-2 text-center">
+            We couldn't build your practice just now. Please try again.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

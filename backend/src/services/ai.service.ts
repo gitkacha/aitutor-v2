@@ -2,6 +2,7 @@ import prisma from '../lib/prisma';
 import { checkGridCompassDirection } from '../lib/grid-compass';
 import { validateStimulus, StimulusSpec } from '../lib/stimulus';
 import { hasDistinctOptions, explanationMatchesKey, keptByEscalation } from '../lib/question-checks';
+import { balanceAnswerPositions } from '../lib/answer-balance';
 import { MATH_SKILLS, WRITING_SKILLS, THINKING_SKILLS } from '../../prisma/seed-skills';
 
 // Per-role model providers (W-21). Each role — generation, answer-key verification, writing
@@ -882,6 +883,9 @@ export async function generateMathWorksheet(
   });
   const avoidTexts = previous.map((p) => p.questionText);
   const questions = await generateMathWorksheetQuestions(topics, questionCount, avoidTexts, { optionCount, subject });
+  // W-104: the model favours putting the correct answer first — spread the correct-answer positions
+  // evenly so a worksheet shows no discernible A,A,A… pattern.
+  balanceAnswerPositions(questions, optionCount);
   const topicSummaries = topics.map((t) => ({ id: t.id, name: t.name, slug: t.slug }));
   const title = `${topics.map((t) => t.name).join(', ')} practice`;
   return { title, topics: topicSummaries, questions };
