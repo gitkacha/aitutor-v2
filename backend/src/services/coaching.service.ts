@@ -24,16 +24,30 @@ export interface GeneratedModule {
 const SECTION_GUIDE =
   '## The idea\n## Step by step\n## Speed technique (omit this heading entirely if there is no genuine shortcut)\n## Worked examples\n## Traps to avoid';
 
-function generationPrompt(skill: CoachingSkillInput, feedback?: string[]): string {
+type CoachingSubject = 'math' | 'thinking-skills';
+
+function generationPrompt(skill: CoachingSkillInput, subject: CoachingSubject, feedback?: string[]): string {
+  const ts = subject === 'thinking-skills';
   const misconceptions =
     skill.misconceptions && skill.misconceptions.length > 0
       ? `\nCommon mistakes students make on this skill (turn these into the "Traps to avoid"):\n- ${skill.misconceptions.join('\n- ')}\n`
       : '';
   const retry =
     feedback && feedback.length > 0
-      ? `\nA maths checker found errors in your previous attempt. FIX these — recompute every worked example so the arithmetic is correct:\n- ${feedback.join('\n- ')}\n`
+      ? ts
+        ? `\nA reviewer found problems in your previous attempt. FIX these — rework every worked example so the reasoning is sound:\n- ${feedback.join('\n- ')}\n`
+        : `\nA maths checker found errors in your previous attempt. FIX these — recompute every worked example so the arithmetic is correct:\n- ${feedback.join('\n- ')}\n`
       : '';
-  return `You are writing a short coaching lesson for an 11-year-old preparing for the NSW Selective High School Placement Test. The lesson teaches ONE maths skill.
+  // The skill kind + the two subject-specific bullet lines are the only differences; the math path
+  // reproduces the original prompt verbatim (W-110).
+  const skillKind = ts ? 'Thinking Skills reasoning skill' : 'maths skill';
+  const concreteLine = ts
+    ? 'Keep it under a 5-minute read. Use a concrete, relatable example every time.'
+    : 'Keep it under a 5-minute read. Use concrete, relatable numbers in every example.';
+  const correctnessLine = ts
+    ? 'Every worked example must be logically sound — double-check the reasoning in each before you finish.'
+    : 'Every worked example must be arithmetically correct — double-check each calculation before you finish.';
+  return `You are writing a short coaching lesson for an 11-year-old preparing for the NSW Selective High School Placement Test. The lesson teaches ONE ${skillKind}.
 
 Skill: ${skill.name}
 What exam-level mastery looks like (tutor notes — do NOT copy verbatim, translate into kid-friendly teaching): ${skill.examLevelNotes}
@@ -41,8 +55,8 @@ ${misconceptions}${retry}
 Write it FOR the student, not the tutor:
 - Talk straight to them ("you"), short sentences, a warm and encouraging tone. Never babyish, never a wall of text.
 - Make the speed technique feel like a trick worth showing off. Frame the traps as "gotchas the test setters hope you fall for".
-- Keep it under a 5-minute read. Use concrete, relatable numbers in every example.
-- Every worked example must be arithmetically correct — double-check each calculation before you finish.
+- ${concreteLine}
+- ${correctnessLine}
 
 Output ONLY GitHub-flavoured markdown with these sections, in this exact order (no preamble, no code fences):
 ${SECTION_GUIDE}
@@ -81,17 +95,26 @@ export async function verifyWorkedExamples(content: string): Promise<string[]> {
   }
 }
 
-async function generateOnce(skill: CoachingSkillInput, feedback?: string[]): Promise<string> {
-  const { content } = await chatCompletion(providerFor('generation'), generationPrompt(skill, feedback), 3000, 0.7);
+async function generateOnce(skill: CoachingSkillInput, subject: CoachingSubject, feedback?: string[]): Promise<string> {
+  const { content } = await chatCompletion(providerFor('generation'), generationPrompt(skill, subject, feedback), 3000, 0.7);
   return content.trim();
 }
 
-export async function generateCoachingModuleContent(skill: CoachingSkillInput): Promise<GeneratedModule> {
-  let content = await generateOnce(skill);
+export async function generateCoachingModuleContent(
+  skill: CoachingSkillInput,
+  subject: CoachingSubject = 'math'
+): Promise<GeneratedModule> {
+  let content = await generateOnce(skill, subject);
+  // The arithmetic verifier is meaningful only for maths worked examples. Thinking Skills lessons
+  // teach reasoning (no arithmetic to check) — they rely on admin review, matching the fails-open
+  // design (W-110).
+  if (subject !== 'math') {
+    return { title: skill.name, content, verifierWarnings: [] };
+  }
   let warnings = await verifyWorkedExamples(content);
   if (warnings.length > 0) {
     // Exactly one retry, feeding the verifier's findings back into generation.
-    content = await generateOnce(skill, warnings);
+    content = await generateOnce(skill, subject, warnings);
     warnings = await verifyWorkedExamples(content);
   }
   return { title: skill.name, content, verifierWarnings: warnings };

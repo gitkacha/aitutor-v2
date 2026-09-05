@@ -13,15 +13,16 @@ const router = Router();
 // POST /api/coaching/modules/generate { skillId } — generate → verify (one retry) → save draft.
 router.post('/modules/generate', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
   const skillId = Number(req.body?.skillId);
-  const skill = await prisma.skill.findFirst({ where: { id: skillId, subject: 'math' } });
-  if (!skill) return res.status(400).json({ error: 'Math skill not found' });
+  // Coaching lessons exist for the MCQ subjects (math + thinking-skills), not writing (W-111).
+  const skill = await prisma.skill.findFirst({ where: { id: skillId, subject: { in: ['math', 'thinking-skills'] } } });
+  if (!skill) return res.status(400).json({ error: 'Skill not found' });
 
   const jobId = createJob('math', req.user!.workspaceId, async () => {
     const gen = await generateCoachingModuleContent({
       name: skill.name,
       slug: skill.slug,
       examLevelNotes: skill.examLevelNotes,
-    });
+    }, skill.subject === 'thinking-skills' ? 'thinking-skills' : 'math');
     const mod = await prisma.coachingModule.create({
       data: {
         workspaceId: req.user!.workspaceId,

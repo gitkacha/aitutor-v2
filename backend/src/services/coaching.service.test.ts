@@ -62,6 +62,33 @@ describe('generateCoachingModuleContent', () => {
   });
 });
 
+describe('generateCoachingModuleContent subject-awareness (W-110)', () => {
+  it('math (default) runs the arithmetic verifier and uses maths-skill prompt wording', async () => {
+    chatCompletion
+      .mockResolvedValueOnce({ content: '## The idea\nall good', usage: null })
+      .mockResolvedValueOnce({ content: '{"ok":true,"warnings":[]}', usage: null });
+
+    await generateCoachingModuleContent(skill, 'math');
+
+    expect(chatCompletion).toHaveBeenCalledTimes(2); // gen + verify
+    const genPrompt = chatCompletion.mock.calls[0][1] as string;
+    expect(genPrompt).toContain('ONE maths skill');
+  });
+
+  it('thinking-skills generates WITHOUT the arithmetic verifier and uses reasoning wording', async () => {
+    chatCompletion.mockResolvedValueOnce({ content: '## The idea\nreasoning lesson', usage: null });
+
+    const result = await generateCoachingModuleContent(skill, 'thinking-skills');
+
+    // Only the generation call — the arithmetic verifier is math-only (TS is admin-reviewed).
+    expect(chatCompletion).toHaveBeenCalledTimes(1);
+    expect(result.verifierWarnings).toEqual([]);
+    const genPrompt = chatCompletion.mock.calls[0][1] as string;
+    expect(genPrompt).not.toContain('maths skill');
+    expect(genPrompt.toLowerCase()).toContain('reasoning');
+  });
+});
+
 describe('verifyWorkedExamples', () => {
   it('returns warnings when the verifier reports not-ok', async () => {
     chatCompletion.mockResolvedValueOnce({ content: '{"ok":false,"warnings":["3+4 is 7, not 8"]}', usage: null });

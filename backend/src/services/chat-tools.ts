@@ -154,14 +154,14 @@ export const ACTION_TOOL_SCHEMAS: ChatToolSchema[] = [
   {
     name: 'assign_coaching',
     description:
-      'Assign a coaching lesson for a math skill to a student. If no approved lesson exists for ' +
-      'that skill yet, this generates a draft lesson for the admin to review and approve first — ' +
-      'it is NOT assigned to the student until an approved lesson exists.',
+      'Assign a coaching lesson for a math or thinking-skills skill to a student. If no approved ' +
+      'lesson exists for that skill yet, this generates a draft lesson for the admin to review and ' +
+      'approve first — it is NOT assigned to the student until an approved lesson exists.',
     parameters: {
       type: 'object',
       properties: {
         studentId: { type: 'integer', description: 'The id of the student to assign the lesson to.' },
-        skillSlug: { type: 'string', description: 'The slug of the math skill the lesson teaches.' },
+        skillSlug: { type: 'string', description: 'The slug of the math or thinking-skills skill the lesson teaches.' },
         interventionId: { type: 'integer', description: 'Optional id of the intervention this lesson supports.' },
       },
       required: ['studentId', 'skillSlug'],
@@ -328,8 +328,8 @@ export async function executeActionTool(name: string, args: any, ctx: ToolContex
     }
 
     case 'assign_coaching': {
-      const skill = await prisma.skill.findFirst({ where: { slug: args.skillSlug, subject: 'math' } });
-      if (!skill) throw new Error(`Math skill not found: ${args.skillSlug}`);
+      const skill = await prisma.skill.findFirst({ where: { slug: args.skillSlug, subject: { in: ['math', 'thinking-skills'] } } });
+      if (!skill) throw new Error(`Skill not found: ${args.skillSlug}`);
       await assertStudentInWorkspace(args.studentId, ctx);
 
       // Only an approved lesson is assignable. If none exists, generate a draft for review —
@@ -343,7 +343,7 @@ export async function executeActionTool(name: string, args: any, ctx: ToolContex
           name: skill.name,
           slug: skill.slug,
           examLevelNotes: skill.examLevelNotes,
-        });
+        }, skill.subject === 'thinking-skills' ? 'thinking-skills' : 'math');
         const draft = await prisma.coachingModule.create({
           data: { workspaceId: ctx.workspaceId, skillId: skill.id, title: gen.title, content: gen.content, status: 'draft' },
         });
