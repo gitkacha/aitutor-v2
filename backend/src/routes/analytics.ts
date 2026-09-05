@@ -6,8 +6,8 @@ import { getStudentSkillReport, getOpportunityAreas, getSkillTrend, getMathImpro
 
 const router = Router();
 
-function parseSubject(raw: unknown): 'math' | 'writing' | null {
-  return raw === 'math' || raw === 'writing' ? raw : null;
+function parseSubject(raw: unknown): 'math' | 'writing' | 'thinking-skills' | null {
+  return raw === 'math' || raw === 'writing' || raw === 'thinking-skills' ? raw : null;
 }
 
 // GET /api/analytics/students/:id/report?subject=math|writing&lastNTests= — admin-only skill
@@ -25,7 +25,7 @@ router.get('/students/:id/report', requireAdmin, asyncHandler(async (req: Reques
 
   const subject = parseSubject(req.query.subject);
   if (!subject) {
-    return res.status(400).json({ error: 'subject must be "math" or "writing"' });
+    return res.status(400).json({ error: 'subject must be "math", "writing" or "thinking-skills"' });
   }
 
   let lastNTests: number | undefined;
@@ -52,10 +52,10 @@ router.get('/students/:id/skills/:slug/trend', requireAdmin, asyncHandler(async 
     return res.status(404).json({ error: 'Student not found' });
   }
   const subject = parseSubject(req.query.subject);
-  if (subject !== 'math') {
-    return res.status(400).json({ error: 'subject must be "math"' });
+  if (subject !== 'math' && subject !== 'thinking-skills') {
+    return res.status(400).json({ error: 'subject must be "math" or "thinking-skills"' });
   }
-  const series = await getSkillTrend(id, req.params.slug);
+  const series = await getSkillTrend(id, req.params.slug, subject);
   res.json(series);
 }));
 
@@ -64,7 +64,7 @@ router.get('/students/:id/skills/:slug/trend', requireAdmin, asyncHandler(async 
 router.get('/opportunity-areas', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
   const subject = parseSubject(req.query.subject);
   if (!subject) {
-    return res.status(400).json({ error: 'subject must be "math" or "writing"' });
+    return res.status(400).json({ error: 'subject must be "math", "writing" or "thinking-skills"' });
   }
 
   let studentId: number | undefined;
@@ -89,8 +89,8 @@ router.get('/opportunity-areas', requireAdmin, asyncHandler(async (req: Request,
 // routes). math-only for now — computeSkillImprovements has no writing equivalent yet.
 router.get('/me/improvements', requireAuth, asyncHandler(async (req: Request, res: Response) => {
   const subject = req.query.subject;
-  if (subject !== 'math') {
-    return res.status(400).json({ error: 'subject must be "math"' });
+  if (subject !== 'math' && subject !== 'thinking-skills') {
+    return res.status(400).json({ error: 'subject must be "math" or "thinking-skills"' });
   }
 
   let targetId = req.user!.id;
@@ -105,7 +105,7 @@ router.get('/me/improvements', requireAuth, asyncHandler(async (req: Request, re
     targetId = id;
   }
 
-  res.json(await getMathImprovements(targetId));
+  res.json(await getMathImprovements(targetId, subject));
 }));
 
 export default router;
