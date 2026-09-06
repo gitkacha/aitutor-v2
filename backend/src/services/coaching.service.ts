@@ -24,6 +24,35 @@ export interface GeneratedModule {
 const SECTION_GUIDE =
   '## The idea\n## Step by step\n## Speed technique (omit this heading entirely if there is no genuine shortcut)\n## Worked examples\n## Traps to avoid';
 
+// Lessons may embed a REAL figure the app renders (charts via a chart library, geometry via SVG) by
+// writing a fenced ```figure block containing ONE figure JSON object. This vocabulary is a
+// deliberately SEPARATE copy of the MCQ generator's figure list (ai.service.ts) — the MCQ prompt
+// must stay byte-for-byte unchanged (W-115), so the two are not shared.
+const LESSON_FIGURE_VOCAB = `SHOW, DON'T JUST TELL. When the skill is visual or quantitative, EMBED the actual picture the
+student would see, then teach on top of it. Write a figure as a fenced code block whose language is
+"figure" containing ONE figure JSON object, e.g.:
+
+\`\`\`figure
+{"kind":"pie-chart","title":"Where Sam's money goes","sectors":[{"label":"Rent","percent":50,"showPercent":true},{"label":"Food","percent":30},{"label":"Fun","percent":20}]}
+\`\`\`
+
+A figure is ONE of:
+- {"kind":"pie-chart","title":"...","sectors":[{"label":"Rent","percent":50,"showPercent":true},...]} — percents sum to 100
+- {"kind":"bar-chart","title":"...","xLabel":"...","yLabel":"...","points":[{"x":"Mon","y":4},...]} (same shape for "line-chart")
+- {"kind":"table","columns":["Size","Price"],"rows":[["Small",6],...]}
+- {"kind":"grid","rows":4,"cols":4,"filled":[[0,2],[1,1]],"rowLabels":["1","2","3","4"],"colLabels":["A","B","C","D"]}
+- {"kind":"shape","unit":"cm","vertices":[[0,0],[12,0],[12,12],[0,12]],"sideLabels":[{"side":0,"label":"12 cm"}]}
+- {"kind":"cards","values":["4/5","0.15","1/3"]}
+
+Rules for figures:
+- Put a figure in "The idea" to show what these questions look like, and REUSE the same figure inside
+  a worked example so the student watches the trick land on the real picture.
+- Right after each figure, point at exactly what to notice ("look at the biggest slice — that's over
+  half already").
+- Use "showPercent":true only on the one or two sectors the trick depends on, so the key numbers pop.
+- Only embed a figure when it genuinely helps. A pure-reasoning skill (logic, deduction, spotting a
+  flaw in an argument) needs no chart — do NOT invent one.`;
+
 type CoachingSubject = 'math' | 'thinking-skills';
 
 function generationPrompt(skill: CoachingSkillInput, subject: CoachingSubject, feedback?: string[]): string {
@@ -58,7 +87,24 @@ Write it FOR the student, not the tutor:
 - ${concreteLine}
 - ${correctnessLine}
 
-Output ONLY GitHub-flavoured markdown with these sections, in this exact order (no preamble, no code fences):
+TEACH IT SO IT STICKS. Build the whole lesson around three moves, in this order:
+1. WHAT TO LOOK FOR — the tell-tale signs that a question is "one of these", so the student recognises
+   the type instantly.
+2. WHAT IT MEANS HERE — take a real example and read it out loud: what each number/clue/figure is
+   actually saying.
+3. HOW TO APPLY THE TRICK FAST — walk through solving it quickly using the shortcut.
+Map these onto the sections: "The idea" = what to look for; "Step by step" = what it means here; "Speed
+technique" + "Worked examples" = applying the trick fast.
+
+MAKE THE MATHS INTUITIVE. Prefer shortcuts a human brain finds natural over grinding calculation:
+estimate and round, lean on friendly benchmarks (10%, 25%, 50%, doubling/halving), compare instead of
+compute, eliminate impossible options, and use symmetry or patterns. If a slow calculation can be
+skipped, show the student how to skip it — that is the trick worth showing off.
+
+${LESSON_FIGURE_VOCAB}
+
+Output ONLY GitHub-flavoured markdown with these sections, in this exact order (no preamble, and no
+code fences EXCEPT the \`\`\`figure blocks described above):
 ${SECTION_GUIDE}
 
 Include 2–3 worked examples under "## Worked examples".`;

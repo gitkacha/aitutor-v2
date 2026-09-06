@@ -89,6 +89,39 @@ describe('generateCoachingModuleContent subject-awareness (W-110)', () => {
   });
 });
 
+describe('generation prompt teaches figures + the teaching framework (W-115)', () => {
+  async function promptFor(subject: 'math' | 'thinking-skills'): Promise<string> {
+    // One generation call is enough to capture the prompt; give the verifier an ok reply for math.
+    chatCompletion
+      .mockResolvedValueOnce({ content: '## The idea\nlesson', usage: null })
+      .mockResolvedValueOnce({ content: '{"ok":true,"warnings":[]}', usage: null });
+    await generateCoachingModuleContent(skill, subject);
+    return chatCompletion.mock.calls[0][1] as string;
+  }
+
+  it('math: prompt embeds the ```figure vocabulary and the what-to-look-for → fast-shortcut framework', async () => {
+    const p = await promptFor('math');
+    expect(p).toContain('```figure');
+    expect(p).toContain('pie-chart');
+    expect(p.toLowerCase()).toContain('what to look for');
+    expect(p.toLowerCase()).toContain('shortcut');
+    // math wording preserved (W-110 regression)
+    expect(p).toContain('ONE maths skill');
+  });
+
+  it('thinking-skills: prompt embeds the ```figure vocabulary and the same framework, reasoning wording', async () => {
+    chatCompletion.mockReset();
+    chatCompletion.mockResolvedValueOnce({ content: '## The idea\nlesson', usage: null });
+    await generateCoachingModuleContent(skill, 'thinking-skills');
+    const p = chatCompletion.mock.calls[0][1] as string;
+    expect(p).toContain('```figure');
+    expect(p.toLowerCase()).toContain('what to look for');
+    expect(p.toLowerCase()).toContain('shortcut');
+    expect(p).not.toContain('maths skill');
+    expect(p.toLowerCase()).toContain('reasoning');
+  });
+});
+
 describe('verifyWorkedExamples', () => {
   it('returns warnings when the verifier reports not-ok', async () => {
     chatCompletion.mockResolvedValueOnce({ content: '{"ok":false,"warnings":["3+4 is 7, not 8"]}', usage: null });
