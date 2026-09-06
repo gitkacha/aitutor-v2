@@ -77,6 +77,45 @@ test.describe('W-118 — tactical A/B lesson generation', () => {
     await ctx.close();
   });
 
+  test('the editor can regenerate the same skill as Tactical — a new draft, original kept (W-119)', async ({ browser, baseURL }) => {
+    const ctx = await browser.newContext({ storageState: 'e2e/.auth/admin.json' });
+    const admin = await pwRequest.newContext({ baseURL, storageState: 'e2e/.auth/admin.json' });
+    const skill = await prisma.skill.findFirstOrThrow({ where: { subject: 'math' } });
+
+    // Seed a STANDARD lesson via API and open its editor.
+    const start = await admin.post('/api/coaching/modules/generate', { data: { skillId: skill.id, approach: 'standard' } });
+    const { jobId } = await start.json();
+    let standardId = 0;
+    for (let i = 0; i < 100; i++) {
+      const job = await (await admin.get(`/api/coaching/jobs/${jobId}`)).json();
+      if (job.status === 'done') { standardId = job.result.moduleId; break; }
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    expect(standardId).toBeGreaterThan(0);
+    const before = await prisma.coachingModule.count({ where: { skillId: skill.id } });
+
+    const page = await ctx.newPage();
+    await page.goto(`/admin/modules/${standardId}`);
+    await expect(page.getByRole('button', { name: 'Regenerate as Tactical' })).toBeVisible();
+    await page.screenshot({ path: 'docs/screenshots/w119-editor-regenerate.png' });
+    await page.getByRole('button', { name: 'Regenerate as Tactical' }).click();
+
+    // Lands on a NEW module editor (different id).
+    await expect(page).toHaveURL(new RegExp(`/admin/modules/(?!${standardId})\\d+`), { timeout: 20000 });
+    await expect(page.getByText('Tactical').first()).toBeVisible();
+
+    // A new draft was created; the original standard module still exists.
+    const after = await prisma.coachingModule.count({ where: { skillId: skill.id } });
+    expect(after).toBe(before + 1);
+    const original = await prisma.coachingModule.findUnique({ where: { id: standardId } });
+    expect(original?.approach).toBe('standard');
+    const newId = Number(page.url().split('/admin/modules/')[1]);
+    expect((await prisma.coachingModule.findUnique({ where: { id: newId } }))?.approach).toBe('tactical');
+
+    await admin.dispose();
+    await ctx.close();
+  });
+
   test('an approved tactical lesson renders for the student with its embedded figure', async ({ browser, baseURL }) => {
     const admin = await pwRequest.newContext({ baseURL, storageState: 'e2e/.auth/admin.json' });
     const skill = await prisma.skill.findFirstOrThrow({ where: { subject: 'math' } });
