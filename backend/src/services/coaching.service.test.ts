@@ -122,6 +122,19 @@ describe('generation prompt teaches figures + the teaching framework (W-115)', (
   });
 });
 
+describe('generation completion budget (W-115 fix)', () => {
+  it('requests a generous completion budget so the reasoning model does not truncate to empty', async () => {
+    chatCompletion
+      .mockResolvedValueOnce({ content: '## The idea\nlesson', usage: null })
+      .mockResolvedValueOnce({ content: '{"ok":true,"warnings":[]}', usage: null });
+    await generateCoachingModuleContent(skill, 'math');
+    // Arg 3 (index 2) is maxTokens for the generation call. On gpt-5-mini this budget covers
+    // reasoning + output; 3000 sat right at the edge and intermittently returned empty content.
+    const genMaxTokens = chatCompletion.mock.calls[0][2] as number;
+    expect(genMaxTokens).toBeGreaterThanOrEqual(8000);
+  });
+});
+
 describe('verifyWorkedExamples', () => {
   it('returns warnings when the verifier reports not-ok', async () => {
     chatCompletion.mockResolvedValueOnce({ content: '{"ok":false,"warnings":["3+4 is 7, not 8"]}', usage: null });

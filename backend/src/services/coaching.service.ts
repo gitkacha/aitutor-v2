@@ -141,8 +141,14 @@ export async function verifyWorkedExamples(content: string): Promise<string[]> {
   }
 }
 
+// On a reasoning model (gpt-5-mini) the completion budget is spent on reasoning AND output. The
+// richer visual lessons (figures + the what-to-look-for → shortcut framework) pushed the old 3000
+// budget to its edge (~2.5k used per run), so a slightly longer run truncated and returned empty
+// content. 8000 gives comfortable headroom for reasoning + a full lesson (W-115 fix).
+const GENERATION_MAX_TOKENS = 8000;
+
 async function generateOnce(skill: CoachingSkillInput, subject: CoachingSubject, feedback?: string[]): Promise<string> {
-  const { content } = await chatCompletion(providerFor('generation'), generationPrompt(skill, subject, feedback), 3000, 0.7);
+  const { content } = await chatCompletion(providerFor('generation'), generationPrompt(skill, subject, feedback), GENERATION_MAX_TOKENS, 0.7);
   return content.trim();
 }
 
