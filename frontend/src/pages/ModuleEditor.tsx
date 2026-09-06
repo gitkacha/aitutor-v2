@@ -3,6 +3,7 @@ import { useParams, useLocation, Link } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft, Check } from 'lucide-react';
 import { coachingApi, CoachingModule } from '@/lib/api';
 import MarkdownView from '@/components/MarkdownView';
+import { withFigures } from '@/components/lessonFigureComponents';
 
 // M3c Phase 2a (W-68): admin module editor. Loads a draft/approved module, shows a live markdown
 // preview beside the raw text, surfaces any unresolved verifier warnings (passed via router state
@@ -155,7 +156,7 @@ export default function ModuleEditor() {
         <div>
           <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Preview</label>
           <div className="h-[65vh] overflow-y-auto rounded-xl border border-gray-200 bg-white p-5">
-            <MarkdownView content={content} />
+            <MarkdownView content={content} components={withFigures()} />
           </div>
         </div>
       </div>

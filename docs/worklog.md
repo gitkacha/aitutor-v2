@@ -18,6 +18,12 @@ every agent, on any model, without exception):
 
 ## Open
 
+Visual coaching lessons — real figures + intuitive-shortcut pedagogy (plan `~/.claude/plans/tingly-tumbling-shore.md`, approved 2026-09-06; branch `visual-lessons`; inline). Lessons (math + Thinking Skills) embed REAL figures via the existing `StimulusFigure` engine, and are generated around the teaching framework "what to look for → what it means here → apply the trick fast" with intuitive shortcuts over grinding calculation. Constraints: ZERO regression — `StimulusFigure`/`stimulus.ts` reused unchanged, `MarkdownView` defaults untouched (figure support opt-in per render site), MCQ prompt `buildGenerationBatchPrompt` NOT touched; RED-first.
+
+- [ ] **W-114** — Lesson figure embedding: a ` ```figure ` fenced block (one figure JSON object) renders as a real `<StimulusFigure>` in the student Lesson page and the admin ModuleEditor preview; new `frontend/src/components/lessonFigureComponents.tsx` reuses `validateStimulus`; malformed blocks fall back to a code block. Proof: `frontend/src/components/lessonFigureComponents.test.tsx`.
+- [ ] **W-115** — Generation pedagogy rewrite: `generationPrompt` teaches the ` ```figure ` vocabulary (lesson-local constant; MCQ prompt unchanged) + the "what to look for → what it means → intuitive fast trick" framework, for math & TS, figures optional for pure-reasoning skills. Proof: `backend/src/services/coaching.service.test.ts` (incl. MCQ-prompt-unchanged guard).
+- [ ] **W-116** — e2e visual-lesson loop: admin generates + approves a lesson whose markdown carries a ` ```figure ` pie block → student opens it → a real chart `svg` shows (raw JSON not visible). Proof: `e2e/visual-lessons.spec.ts` + live screenshot.
+
 Thinking Skills — Phase C: Coaching lessons (plan `docs/superpowers/plans/2026-09-06-thinking-skills-phase-c.md`, approved 2026-09-06; branch `thinking-skills-phase-c`; inline). Brings the M3c coaching pipeline (generate → verify → approve → student sees it) to Thinking Skills — completes full Mathematics parity. Constraints: subject defaults to `'math'` (math coaching byte-for-byte unchanged); writing untouched; RED-first.
 
 - [x] **W-110** — C1: subject-aware coaching generation — `generateCoachingModuleContent(skill, subject)` + subject-parametrized `generationPrompt` (math verbatim; TS reasoning variant); arithmetic verifier runs for math only (TS skipped, admin-reviewed). Proof: `backend/src/services/coaching.service.test.ts`. _(commit e590c02; user signed off 2026-09-06)_
