@@ -17,6 +17,8 @@ describe('buildGenerationBatchPrompt', () => {
     expect(p).toContain('["A", "B", "C", "D", "E"]');
     expect(p).not.toContain('fold-cut');
     expect(p).not.toContain('"kind":"target"');
+    // The lesson-only figure-embedding directive must never leak into the MCQ prompt (W-115).
+    expect(p).not.toContain('```figure');
   });
 
   it('thinking-skills: four-option, three distractors, 4-option example, fold-cut + target figures, exemplar anchored', () => {

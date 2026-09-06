@@ -125,8 +125,8 @@ test.describe('M3c Phase 2a — generate from Skills → editor → approve (UI)
 
   test('admin generates a lesson, sees the verifier warning, and approves it', async ({ page }) => {
     await page.goto('/skills');
-    // Any math skill without a lesson yet shows "Generate lesson".
-    const generate = page.getByRole('button', { name: 'Generate lesson' }).first();
+    // Any math skill without a lesson yet shows the A/B generate options; "Standard" is approach A (W-118).
+    const generate = page.getByRole('button', { name: 'Standard' }).first();
     await expect(generate).toBeVisible();
     await generate.click();
 

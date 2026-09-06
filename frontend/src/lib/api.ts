@@ -276,6 +276,7 @@ export interface CoachingModule {
   title: string;
   content: string;
   status: 'draft' | 'approved';
+  approach?: 'standard' | 'tactical';
   reviewedById: number | null;
   version: number;
   createdAt: string;
@@ -294,10 +295,10 @@ export interface CoachingAssignmentSummary {
 
 export const coachingApi = {
   // Admin authoring
-  startGeneration: (skillId: number) =>
+  startGeneration: (skillId: number, approach: 'standard' | 'tactical' = 'standard') =>
     fetchJSON<{ jobId: string }>('/coaching/modules/generate', {
       method: 'POST',
-      body: JSON.stringify({ skillId }),
+      body: JSON.stringify({ skillId, approach }),
     }),
   getGenerationJob: (jobId: string) =>
     fetchJSON<GenerationJob<{ moduleId: number; verifierWarnings: string[] }>>(`/coaching/jobs/${jobId}`),

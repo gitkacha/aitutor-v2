@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useParams, useLocation, Link } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft, Check } from 'lucide-react';
+import { useParams, useLocation, useNavigate, Link } from 'react-router-dom';
+import { AlertTriangle, ArrowLeft, Check, RefreshCw } from 'lucide-react';
 import { coachingApi, CoachingModule } from '@/lib/api';
 import MarkdownView from '@/components/MarkdownView';
+import { withFigures } from '@/components/lessonFigureComponents';
+import ApproachBadge from '@/components/ApproachBadge';
 
 // M3c Phase 2a (W-68): admin module editor. Loads a draft/approved module, shows a live markdown
 // preview beside the raw text, surfaces any unresolved verifier warnings (passed via router state
@@ -11,6 +13,7 @@ import MarkdownView from '@/components/MarkdownView';
 export default function ModuleEditor() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
   const initialWarnings = (location.state as { verifierWarnings?: string[] } | null)?.verifierWarnings ?? [];
 
   const [module, setModule] = useState<CoachingModule | null>(null);
@@ -22,6 +25,7 @@ export default function ModuleEditor() {
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [regenerating, setRegenerating] = useState<'standard' | 'tactical' | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -66,6 +70,33 @@ export default function ModuleEditor() {
     }
   }
 
+  // W-119: regenerate this skill with either approach. Non-destructive — it creates a NEW draft and
+  // opens it, so the current lesson is kept and both A/B versions can be compared.
+  async function regenerate(approach: 'standard' | 'tactical') {
+    if (!module) return;
+    setRegenerating(approach);
+    setError(null);
+    try {
+      const { jobId } = await coachingApi.startGeneration(module.skillId, approach);
+      const deadline = Date.now() + 90_000;
+      for (;;) {
+        const job = await coachingApi.getGenerationJob(jobId);
+        if (job.status === 'done' && job.result) {
+          navigate(`/admin/modules/${job.result.moduleId}`, {
+            state: { verifierWarnings: job.result.verifierWarnings },
+          });
+          return;
+        }
+        if (job.status === 'error') throw new Error(job.error || 'Generation failed');
+        if (Date.now() > deadline) throw new Error('Generation timed out');
+        await new Promise((r) => setTimeout(r, 400));
+      }
+    } catch (e) {
+      setError((e as Error).message);
+      setRegenerating(null);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -107,11 +138,29 @@ export default function ModuleEditor() {
             >
               {isApproved ? 'Approved' : 'Draft'}
             </span>
+            <ApproachBadge approach={module.approach} />
             {module.skill && <span className="text-gray-500">{module.skill.name}</span>}
             {savedAt && <span className="text-gray-400">Saved</span>}
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {/* W-119: regenerate the same skill with either approach → a new draft, for same-skill A/B. */}
+          <button
+            onClick={() => regenerate('standard')}
+            disabled={regenerating !== null}
+            title="Create a new Standard-approach draft for this skill"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            <RefreshCw size={14} /> {regenerating === 'standard' ? 'Regenerating…' : 'Regenerate as Standard'}
+          </button>
+          <button
+            onClick={() => regenerate('tactical')}
+            disabled={regenerating !== null}
+            title="Create a new Tactical-approach draft for this skill"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-brand-blue px-3 py-2 text-sm font-medium text-brand-blue hover:bg-blue-50 disabled:opacity-50"
+          >
+            <RefreshCw size={14} /> {regenerating === 'tactical' ? 'Regenerating…' : 'Regenerate as Tactical'}
+          </button>
           <button
             onClick={save}
             disabled={saving}
@@ -155,7 +204,7 @@ export default function ModuleEditor() {
         <div>
           <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Preview</label>
           <div className="h-[65vh] overflow-y-auto rounded-xl border border-gray-200 bg-white p-5">
-            <MarkdownView content={content} />
+            <MarkdownView content={content} components={withFigures()} />
           </div>
         </div>
       </div>

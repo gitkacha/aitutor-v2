@@ -4,6 +4,7 @@ import { ArrowLeft, Check, GraduationCap, Sparkles, ListOrdered, Zap, CheckCircl
 import type { Components } from 'react-markdown';
 import { coachingApi, CoachingModule } from '@/lib/api';
 import MarkdownView from '@/components/MarkdownView';
+import { withFigures } from '@/components/lessonFigureComponents';
 
 // M3c Phase 2b (W-73/W-81): the student Lesson page in the "Playbook" style (Direction A). The
 // lesson markdown (§8.1 sections) is split on `##` headings and each section is rendered on a
@@ -13,8 +14,15 @@ import MarkdownView from '@/components/MarkdownView';
 type Kind = 'idea' | 'steps' | 'trick' | 'examples' | 'traps' | 'other';
 interface Section { kind: Kind; heading: string; body: string }
 
-function classify(heading: string): Kind {
+export function classify(heading: string): Kind {
   const h = heading.toLowerCase();
+  // Tactical (approach B, W-118) headings, mapped to sensible treatments. "The Selective Trap" is the
+  // hook (an idea), NOT a "traps to avoid" section — so it must be checked before the generic 'trap'
+  // rule below or it would wrongly render as amber gotcha cards.
+  if (h.includes('selective trap')) return 'idea';
+  if (h.includes('building block') || h.includes('mental model')) return 'steps';
+  if (h.includes('drill') || h.includes('guided')) return 'examples';
+  // Standard (approach A) headings — unchanged.
   if (h.includes('idea')) return 'idea';
   if (h.includes('step')) return 'steps';
   if (h.includes('trick') || h.includes('speed') || h.includes('faster') || h.includes('shortcut')) return 'trick';
@@ -72,13 +80,13 @@ function SectionBlock({ section, headingLabel }: { section: Section; headingLabe
             <Zap size={13} /> Show-off move
           </div>
           <div className="text-green-900">
-            <MarkdownView content={section.body} />
+            <MarkdownView content={section.body} components={withFigures()} />
           </div>
         </div>
       ) : section.kind === 'traps' ? (
-        <MarkdownView content={section.body} components={trapComponents} />
+        <MarkdownView content={section.body} components={withFigures(trapComponents)} />
       ) : (
-        <MarkdownView content={section.body} />
+        <MarkdownView content={section.body} components={withFigures()} />
       )}
     </section>
   );
@@ -151,7 +159,7 @@ export default function Lesson() {
 
       {intro && (
         <div className="mb-6">
-          <MarkdownView content={intro} />
+          <MarkdownView content={intro} components={withFigures()} />
         </div>
       )}
 
