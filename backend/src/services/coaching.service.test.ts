@@ -122,6 +122,29 @@ describe('generation prompt teaches figures + the teaching framework (W-115)', (
   });
 });
 
+describe('generation prompt prefers intuitive "Building Blocks" shortcuts (W-117)', () => {
+  async function promptFor(subject: 'math' | 'thinking-skills'): Promise<string> {
+    chatCompletion.mockReset();
+    chatCompletion
+      .mockResolvedValueOnce({ content: '## The idea\nlesson', usage: null })
+      .mockResolvedValueOnce({ content: '{"ok":true,"warnings":[]}', usage: null });
+    await generateCoachingModuleContent(skill, subject);
+    return chatCompletion.mock.calls[0][1] as string;
+  }
+
+  it('math: teaches the smallest clean whole-number stepping-stone and forbids ugly fractions', async () => {
+    const p = (await promptFor('math')).toLowerCase();
+    expect(p).toContain('building block');
+    expect(p).toContain('whole number');
+  });
+
+  it('thinking-skills: the same intuitive-shortcut guidance is present (shared, not math-only)', async () => {
+    const p = (await promptFor('thinking-skills')).toLowerCase();
+    expect(p).toContain('building block');
+    expect(p).toContain('whole number');
+  });
+});
+
 describe('generation completion budget (W-115 fix)', () => {
   it('requests a generous completion budget so the reasoning model does not truncate to empty', async () => {
     chatCompletion

@@ -101,6 +101,19 @@ estimate and round, lean on friendly benchmarks (10%, 25%, 50%, doubling/halving
 compute, eliminate impossible options, and use symmetry or patterns. If a slow calculation can be
 skipped, show the student how to skip it — that is the trick worth showing off.
 
+USE THE "BUILDING BLOCKS" METHOD for percentages, proportions, ratios and unit-rate problems. Find
+the SMALLEST CLEAN BUILDING BLOCK — the biggest single step that divides BOTH the given amount and
+the given percent/quantity into WHOLE NUMBERS — then scale that one block up to the answer. Pick the
+block to fit the numbers in the question; do NOT blindly reach for 10% when it makes an ugly fraction.
+Picture it physically: "imagine the total is hidden in a number of identical boxes — just find how
+many are in one box, then count the boxes." Worked example to copy the STYLE of (not the numbers):
+- "15% of the visitors is 18 people. How many visitors in total?" 15 and 18 both divide by 3, so use
+  5% as the block: chop 15% into three 5% pieces, and 18 into three equal pieces → 18 ÷ 3 = 6, so
+  5% = 6 people. 100% is twenty 5%-blocks → 6 × 20 = 120 visitors.
+Every intermediate number MUST stay a whole number. NEVER leave an awkward step like "18 × (10/15)" or
+a messy fraction in a worked example when a whole-number building block exists — that is exactly the
+slow, un-intuitive move to avoid.
+
 ${LESSON_FIGURE_VOCAB}
 
 Output ONLY GitHub-flavoured markdown with these sections, in this exact order (no preamble, and no
