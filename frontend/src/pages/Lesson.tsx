@@ -14,8 +14,15 @@ import { withFigures } from '@/components/lessonFigureComponents';
 type Kind = 'idea' | 'steps' | 'trick' | 'examples' | 'traps' | 'other';
 interface Section { kind: Kind; heading: string; body: string }
 
-function classify(heading: string): Kind {
+export function classify(heading: string): Kind {
   const h = heading.toLowerCase();
+  // Tactical (approach B, W-118) headings, mapped to sensible treatments. "The Selective Trap" is the
+  // hook (an idea), NOT a "traps to avoid" section — so it must be checked before the generic 'trap'
+  // rule below or it would wrongly render as amber gotcha cards.
+  if (h.includes('selective trap')) return 'idea';
+  if (h.includes('building block') || h.includes('mental model')) return 'steps';
+  if (h.includes('drill') || h.includes('guided')) return 'examples';
+  // Standard (approach A) headings — unchanged.
   if (h.includes('idea')) return 'idea';
   if (h.includes('step')) return 'steps';
   if (h.includes('trick') || h.includes('speed') || h.includes('faster') || h.includes('shortcut')) return 'trick';

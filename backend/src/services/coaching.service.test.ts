@@ -145,6 +145,55 @@ describe('generation prompt prefers intuitive "Building Blocks" shortcuts (W-117
   });
 });
 
+describe('A/B: tactical approach (W-118)', () => {
+  async function tacticalPrompt(subject: 'math' | 'thinking-skills'): Promise<string> {
+    chatCompletion.mockReset();
+    chatCompletion
+      .mockResolvedValueOnce({ content: '# The Selective Trap\nlesson', usage: null })
+      .mockResolvedValueOnce({ content: '{"ok":true,"warnings":[]}', usage: null });
+    await generateCoachingModuleContent(skill, subject, 'tactical');
+    return chatCompletion.mock.calls[0][1] as string;
+  }
+
+  it('tactical prompt (math) uses the 4-part structure, the figure engine, and the mental-model library', async () => {
+    const p = await tacticalPrompt('math');
+    expect(p).toContain('Selective Trap');
+    expect(p).toContain('Building Block');
+    expect(p).toContain('Speed Shortcut');
+    expect(p).toContain('Guided Drills');
+    expect(p).toContain('```figure');
+    // Draws on the named concrete mental models the user asked for.
+    expect(p).toContain('Bar Model');
+    expect(p).toContain('Clock Face');
+  });
+
+  it('tactical prompt works for thinking-skills too (reasoning wording, no "maths skill")', async () => {
+    const p = await tacticalPrompt('thinking-skills');
+    expect(p).toContain('Selective Trap');
+    expect(p).not.toContain('maths skill');
+  });
+
+  it('tactical generation requests a larger completion budget than standard', async () => {
+    chatCompletion.mockReset();
+    chatCompletion
+      .mockResolvedValueOnce({ content: '# The Selective Trap\nlesson', usage: null })
+      .mockResolvedValueOnce({ content: '{"ok":true,"warnings":[]}', usage: null });
+    await generateCoachingModuleContent(skill, 'math', 'tactical');
+    expect(chatCompletion.mock.calls[0][2] as number).toBeGreaterThanOrEqual(12000);
+  });
+
+  it('standard (default) is unchanged — A prompt still used when approach omitted', async () => {
+    chatCompletion.mockReset();
+    chatCompletion
+      .mockResolvedValueOnce({ content: '## The idea\nlesson', usage: null })
+      .mockResolvedValueOnce({ content: '{"ok":true,"warnings":[]}', usage: null });
+    await generateCoachingModuleContent(skill, 'math');
+    const p = chatCompletion.mock.calls[0][1] as string;
+    expect(p).toContain('ONE maths skill');
+    expect(p).not.toContain('Selective Trap');
+  });
+});
+
 describe('generation completion budget (W-115 fix)', () => {
   it('requests a generous completion budget so the reasoning model does not truncate to empty', async () => {
     chatCompletion

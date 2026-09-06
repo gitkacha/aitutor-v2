@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowLeft, Check } from 'lucide-react';
 import { coachingApi, CoachingModule } from '@/lib/api';
 import MarkdownView from '@/components/MarkdownView';
 import { withFigures } from '@/components/lessonFigureComponents';
+import ApproachBadge from '@/components/ApproachBadge';
 
 // M3c Phase 2a (W-68): admin module editor. Loads a draft/approved module, shows a live markdown
 // preview beside the raw text, surfaces any unresolved verifier warnings (passed via router state
@@ -108,6 +109,7 @@ export default function ModuleEditor() {
             >
               {isApproved ? 'Approved' : 'Draft'}
             </span>
+            <ApproachBadge approach={module.approach} />
             {module.skill && <span className="text-gray-500">{module.skill.name}</span>}
             {savedAt && <span className="text-gray-400">Saved</span>}
           </div>

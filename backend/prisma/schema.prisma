@@ -298,6 +298,7 @@ model CoachingModule {
   title        String
   content      String   // markdown, structure in §8.1
   status       String   @default("draft") // 'draft' | 'approved'
+  approach     String   @default("standard") // 'standard' (A) | 'tactical' (B) — which generation prompt made it (W-118)
   reviewedById Int?
   version      Int      @default(1)
   createdAt    DateTime @default(now())

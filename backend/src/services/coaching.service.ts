@@ -123,6 +123,74 @@ ${SECTION_GUIDE}
 Include 2–3 worked examples under "## Worked examples".`;
 }
 
+// ── Approach B: "Tactical" prompt (W-118) ─────────────────────────────────────
+// An opt-in alternative lesson style for A/B testing. Restructures the lesson as a Selective-exam
+// tactics plan and draws on a library of named, concrete mental models. Approach A (generationPrompt
+// above) is untouched and remains the default.
+export type CoachingApproach = 'standard' | 'tactical';
+
+// Named concrete mental models the tactical author should reach for (user-curated). The AI picks the
+// one that fits the skill, or invents an equally concrete model in the same spirit.
+const MENTAL_MODEL_LIBRARY = `MENTAL MODEL LIBRARY — reach for the concrete model that fits this skill (or invent one just as
+physical and visual, never an abstract formula):
+- Patterns / Magic Squares → the "Balance Scale" or "Averages as the Anchor" method (find the centre/
+  average and balance around it), NOT guess-and-check.
+- Angles / Protractor / Directions → the "Clock Face Analogy": 90° = 3 hours, 30° = 1 hour, so a turn
+  is read off the clock instantly without a physical protractor.
+- Time / Time Zones → a "Number Line Timeline": put a zero-anchor down and physically step left/right,
+  instead of adding and subtracting raw times (which causes carrying errors).
+- Algebra / unknowns → the "Box and Apple" or Singapore-style "Bar Model": draw the unknown as a box
+  or bar before any letters like x or y.
+- Fractions / Percentages / Ratios → "Building Blocks": find the smallest CLEAN block that divides
+  both numbers into whole numbers, then scale one block up.
+- Money / sharing → coin and note analogies; comparisons → line the amounts up and compare, don't compute.`;
+
+function tacticalPrompt(skill: CoachingSkillInput, subject: CoachingSubject, feedback?: string[]): string {
+  const ts = subject === 'thinking-skills';
+  const skillKind = ts ? 'Thinking Skills reasoning skill' : 'maths skill';
+  const misconceptions =
+    skill.misconceptions && skill.misconceptions.length > 0
+      ? `\nCommon mistakes to turn into traps/hints:\n- ${skill.misconceptions.join('\n- ')}\n`
+      : '';
+  const retry =
+    feedback && feedback.length > 0
+      ? ts
+        ? `\nA reviewer found problems in your previous attempt. FIX these — rework every drill so the reasoning is sound:\n- ${feedback.join('\n- ')}\n`
+        : `\nA maths checker found errors in your previous attempt. FIX these — recompute every drill so the arithmetic is correct:\n- ${feedback.join('\n- ')}\n`
+      : '';
+  const correctnessLine = ts
+    ? 'Every drill must be logically sound — double-check the reasoning in each.'
+    : 'Every drill must be arithmetically correct — double-check each calculation, and prefer clean ratios and multipliers over decimals or heavy division.';
+  return `You are an expert primary mathematics tutor specialising in preparing Year 5/6 students for the NSW Selective High School Placement Test. Your teaching philosophy rejects abstract formulas, rote memorisation and slow algorithms. Instead you teach using "Mental Models", "Building Blocks" and "Intuitive Visual Shortcuts" that let a student solve a hard reasoning question mentally in under 45 seconds.
+
+Write a step-by-step lesson and practice set for this ONE ${skillKind}.
+
+Skill / topic: ${skill.name}
+What exam-level mastery looks like (tutor notes — translate into kid-friendly teaching, do NOT copy verbatim): ${skill.examLevelNotes}
+${misconceptions}${retry}
+${MENTAL_MODEL_LIBRARY}
+
+Structure the lesson EXACTLY as these four sections, in this order, each as a \`##\` heading:
+
+## 1. The Selective Trap
+Show a typical NSW Selective-style question for this skill. Explain why the "traditional school method" is too slow or sets a trap under exam pressure.
+
+## 2. The Intuitive Building Block
+Explain the concept with a concrete, non-abstract mental model from the library above (money, block-chopping, visual grids, balancing scales, bar models, clock faces…). Do NOT use algebraic formulas yet.
+
+## 3. The Speed Shortcut
+Turn that mental model into a rapid mental-maths strategy. Walk through the example step by step, showing exactly what the student should "see" in their head. End with a one-line "Mental Map:" of the chain.
+
+## 4. Guided Drills
+Give 3 progressive practice questions. For EACH: a **Scripted Hint** (what a tutor would say to nudge them visually) and a **Speed Solution** broken down conceptually.
+
+Talk straight to the student ("you"), short sentences, warm, encouraging, highly tactical. ${correctnessLine}
+
+${LESSON_FIGURE_VOCAB}
+
+Output ONLY GitHub-flavoured markdown with those four \`##\` sections (no preamble, and no code fences EXCEPT the \`\`\`figure blocks described above).`;
+}
+
 function verifierPrompt(content: string): string {
   return `You are a careful maths checker. Below is a coaching lesson in markdown. Check ONLY the arithmetic of every worked example (each computation, each intermediate step, each final answer). Ignore tone, wording, spelling, and teaching style.
 
@@ -159,27 +227,39 @@ export async function verifyWorkedExamples(content: string): Promise<string[]> {
 // budget to its edge (~2.5k used per run), so a slightly longer run truncated and returned empty
 // content. 8000 gives comfortable headroom for reasoning + a full lesson (W-115 fix).
 const GENERATION_MAX_TOKENS = 8000;
+// The tactical lesson (4 sections + 3 fully-worked drills) is longer, so it needs a bigger budget to
+// avoid truncation on the reasoning model (W-118).
+const TACTICAL_MAX_TOKENS = 12000;
 
-async function generateOnce(skill: CoachingSkillInput, subject: CoachingSubject, feedback?: string[]): Promise<string> {
-  const { content } = await chatCompletion(providerFor('generation'), generationPrompt(skill, subject, feedback), GENERATION_MAX_TOKENS, 0.7);
+async function generateOnce(
+  skill: CoachingSkillInput,
+  subject: CoachingSubject,
+  approach: CoachingApproach,
+  feedback?: string[],
+): Promise<string> {
+  const prompt =
+    approach === 'tactical' ? tacticalPrompt(skill, subject, feedback) : generationPrompt(skill, subject, feedback);
+  const maxTokens = approach === 'tactical' ? TACTICAL_MAX_TOKENS : GENERATION_MAX_TOKENS;
+  const { content } = await chatCompletion(providerFor('generation'), prompt, maxTokens, 0.7);
   return content.trim();
 }
 
 export async function generateCoachingModuleContent(
   skill: CoachingSkillInput,
-  subject: CoachingSubject = 'math'
+  subject: CoachingSubject = 'math',
+  approach: CoachingApproach = 'standard',
 ): Promise<GeneratedModule> {
-  let content = await generateOnce(skill, subject);
+  let content = await generateOnce(skill, subject, approach);
   // The arithmetic verifier is meaningful only for maths worked examples. Thinking Skills lessons
   // teach reasoning (no arithmetic to check) — they rely on admin review, matching the fails-open
-  // design (W-110).
+  // design (W-110). Both approaches share this flow.
   if (subject !== 'math') {
     return { title: skill.name, content, verifierWarnings: [] };
   }
   let warnings = await verifyWorkedExamples(content);
   if (warnings.length > 0) {
     // Exactly one retry, feeding the verifier's findings back into generation.
-    content = await generateOnce(skill, subject, warnings);
+    content = await generateOnce(skill, subject, approach, warnings);
     warnings = await verifyWorkedExamples(content);
   }
   return { title: skill.name, content, verifierWarnings: warnings };

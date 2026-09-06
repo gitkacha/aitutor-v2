@@ -37,7 +37,8 @@ test.describe('W-112 — Skills page generates Thinking Skills lessons', () => {
   test('a Thinking Skills skill offers Generate lesson and opens the editor', async ({ page }) => {
     await page.goto('/skills');
     const group = page.locator('section', { has: page.getByRole('heading', { name: 'Thinking Skills' }) });
-    const genBtn = group.getByRole('button', { name: 'Generate lesson' }).first();
+    // Generation is now an A/B choice; "Standard" is approach A (W-118).
+    const genBtn = group.getByRole('button', { name: 'Standard' }).first();
     await expect(genBtn).toBeVisible();
 
     await genBtn.click();
