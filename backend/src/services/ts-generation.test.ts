@@ -19,6 +19,9 @@ describe('buildGenerationBatchPrompt', () => {
     expect(p).not.toContain('"kind":"target"');
     // The lesson-only figure-embedding directive must never leak into the MCQ prompt (W-115).
     expect(p).not.toContain('```figure');
+    // Explanations use the lessons' intuitive speed-tricks + clean numbers, not decimal grinding (W-122).
+    expect(p).toContain('Building Blocks');
+    expect(p).toMatch(/fractions[\s\S]*decimals/i);
   });
 
   it('thinking-skills: four-option, three distractors, 4-option example, fold-cut + target figures, exemplar anchored', () => {

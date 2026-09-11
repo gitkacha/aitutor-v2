@@ -684,6 +684,19 @@ secondary-school tools to explain a primary-level problem (no formal algebra wit
 like x/y, no simultaneous equations, no exponents/roots beyond squares, no trigonometry),
 even when they would be shorter. Keep the language plain and the steps small.
 
+INTUITIVE METHOD & CLEAN NUMBERS. Explain each answer using the same intuitive speed-tricks a good
+tutor teaches — not a calculator dump:
+- Reach for a concrete mental model: "Building Blocks" (find the smallest CLEAN stepping-stone that
+  keeps whole numbers, then scale up), friendly benchmarks (10%, 25%, 50%, doubling/halving), the
+  clock-face for time and angles (60 min = 1 whole, so 50 min = 5/6 h; 90° = 1/4 turn), bar models,
+  estimation, and eliminating impossible options.
+- PREFER clean fractions and multipliers over unwieldy or repeating decimals. Keep EVERY intermediate
+  value clean: write "50 min = 5/6 h", keep a total as "17/6 h", and finish "130 × 6/17 ≈ 45.88 km/h"
+  — never a running "0.8333…" decimal division, and never long decimal division shown step by step.
+- Only turn the final answer into a decimal at the very END, and only if the question asks for one,
+  rounded to exactly the places requested.
+Aim for an explanation a Year 6 student could redo in their head, the way the coaching lessons teach.
+
 VISUAL STIMULI. A question may include an optional "stimulus" field carrying structured
 figure data that the app renders as a real image (charts via a chart library, geometry via
 SVG). Use one when the topic naturally needs a visual (protractor readings, graphs, grids,
