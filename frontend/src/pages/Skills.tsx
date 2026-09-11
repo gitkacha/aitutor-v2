@@ -1,7 +1,7 @@
 import { useState, useEffect, ReactNode } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { skillsApi, mathApi, coachingApi, Skill, MathTopic, CoachingModule } from '@/lib/api';
+import { skillsApi, mathApi, coachingApi, Skill, MathTopic, CoachingModule, GENERATION_POLL_TIMEOUT_MS } from '@/lib/api';
 import { BookOpen, ChevronRight } from 'lucide-react';
 
 // M3a Task 10: read-only browser over the skill taxonomy (Task 2's 89-skill seed) — math
@@ -79,7 +79,7 @@ export default function Skills() {
     setError(null);
     try {
       const { jobId } = await coachingApi.startGeneration(skillId, approach);
-      const deadline = Date.now() + 90_000;
+      const deadline = Date.now() + GENERATION_POLL_TIMEOUT_MS;
       for (;;) {
         const job = await coachingApi.getGenerationJob(jobId);
         if (job.status === 'done' && job.result) {

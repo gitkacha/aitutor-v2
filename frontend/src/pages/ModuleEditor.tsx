@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate, Link } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft, Check, RefreshCw } from 'lucide-react';
-import { coachingApi, CoachingModule } from '@/lib/api';
+import { coachingApi, CoachingModule, GENERATION_POLL_TIMEOUT_MS } from '@/lib/api';
 import MarkdownView from '@/components/MarkdownView';
 import { withFigures } from '@/components/lessonFigureComponents';
 import ApproachBadge from '@/components/ApproachBadge';
@@ -78,7 +78,7 @@ export default function ModuleEditor() {
     setError(null);
     try {
       const { jobId } = await coachingApi.startGeneration(module.skillId, approach);
-      const deadline = Date.now() + 90_000;
+      const deadline = Date.now() + GENERATION_POLL_TIMEOUT_MS;
       for (;;) {
         const job = await coachingApi.getGenerationJob(jobId);
         if (job.status === 'done' && job.result) {

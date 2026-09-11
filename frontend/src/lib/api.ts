@@ -293,6 +293,11 @@ export interface CoachingAssignmentSummary {
   interventionId: number | null;
 }
 
+// How long the client polls a lesson-generation job before giving up. Generation on gpt-5-mini runs
+// ~85–95s (reasoning + a full lesson + the verifier round-trip; a verifier retry can add one more),
+// so this sits well above that to avoid a false "Generation timed out" (W-121).
+export const GENERATION_POLL_TIMEOUT_MS = 210_000;
+
 export const coachingApi = {
   // Admin authoring
   startGeneration: (skillId: number, approach: 'standard' | 'tactical' = 'standard') =>
