@@ -276,7 +276,6 @@ export interface CoachingModule {
   title: string;
   content: string;
   status: 'draft' | 'approved';
-  approach?: 'standard' | 'tactical';
   reviewedById: number | null;
   version: number;
   createdAt: string;
@@ -300,10 +299,10 @@ export const GENERATION_POLL_TIMEOUT_MS = 210_000;
 
 export const coachingApi = {
   // Admin authoring
-  startGeneration: (skillId: number, approach: 'standard' | 'tactical' = 'standard') =>
+  startGeneration: (skillId: number) =>
     fetchJSON<{ jobId: string }>('/coaching/modules/generate', {
       method: 'POST',
-      body: JSON.stringify({ skillId, approach }),
+      body: JSON.stringify({ skillId }),
     }),
   getGenerationJob: (jobId: string) =>
     fetchJSON<GenerationJob<{ moduleId: number; verifierWarnings: string[] }>>(`/coaching/jobs/${jobId}`),

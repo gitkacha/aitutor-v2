@@ -74,11 +74,11 @@ export default function Skills() {
       .finally(() => setLoading(false));
   }, []);
 
-  async function generateLesson(skillId: number, approach: 'standard' | 'tactical' = 'standard') {
+  async function generateLesson(skillId: number) {
     setGeneratingSkillId(skillId);
     setError(null);
     try {
-      const { jobId } = await coachingApi.startGeneration(skillId, approach);
+      const { jobId } = await coachingApi.startGeneration(skillId);
       const deadline = Date.now() + GENERATION_POLL_TIMEOUT_MS;
       for (;;) {
         const job = await coachingApi.getGenerationJob(jobId);
@@ -112,32 +112,14 @@ export default function Skills() {
         </button>
       );
     }
-    // A/B (W-118): generate with the Standard prompt or the opt-in Tactical prompt.
-    const busy = generatingSkillId !== null;
     return (
-      <div className="flex items-center gap-1.5">
-        {generatingSkillId === skill.id ? (
-          <span className="px-3 py-1.5 text-xs font-semibold text-gray-500">Generating…</span>
-        ) : (
-          <>
-            <button
-              onClick={() => generateLesson(skill.id, 'standard')}
-              disabled={busy}
-              className="rounded-lg bg-brand-blue px-3 py-1.5 text-xs font-semibold text-white hover:brightness-95 disabled:opacity-50"
-            >
-              Standard
-            </button>
-            <button
-              onClick={() => generateLesson(skill.id, 'tactical')}
-              disabled={busy}
-              title="Tactical A/B approach: Selective Trap → Building Block → Speed Shortcut → Guided Drills"
-              className="rounded-lg border border-brand-blue px-3 py-1.5 text-xs font-semibold text-brand-blue hover:bg-blue-50 disabled:opacity-50"
-            >
-              Tactical
-            </button>
-          </>
-        )}
-      </div>
+      <button
+        onClick={() => generateLesson(skill.id)}
+        disabled={generatingSkillId !== null}
+        className="rounded-lg bg-brand-blue px-3 py-1.5 text-xs font-semibold text-white hover:brightness-95 disabled:opacity-50"
+      >
+        {generatingSkillId === skill.id ? 'Generating…' : 'Generate lesson'}
+      </button>
     );
   };
 

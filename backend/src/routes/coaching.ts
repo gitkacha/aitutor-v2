@@ -3,7 +3,7 @@ import prisma from '../lib/prisma';
 import { asyncHandler } from '../lib/async-handler';
 import { requireAdmin, requireAuth } from '../middleware/auth';
 import { createJob, getJobForWorkspace } from '../lib/generation-jobs';
-import { generateCoachingModuleContent, CoachingApproach } from '../services/coaching.service';
+import { generateCoachingModuleContent } from '../services/coaching.service';
 
 // M3c Phase 2 (W-64): coaching modules. Generation runs as a background job (like worksheet
 // generation) so the admin can navigate away and re-attach. Approved-only visibility is enforced
@@ -16,15 +16,13 @@ router.post('/modules/generate', requireAdmin, asyncHandler(async (req: Request,
   // Coaching lessons exist for the MCQ subjects (math + thinking-skills), not writing (W-111).
   const skill = await prisma.skill.findFirst({ where: { id: skillId, subject: { in: ['math', 'thinking-skills'] } } });
   if (!skill) return res.status(400).json({ error: 'Skill not found' });
-  // A/B approach: 'standard' (default) or 'tactical' (W-118); anything else falls back to standard.
-  const approach: CoachingApproach = req.body?.approach === 'tactical' ? 'tactical' : 'standard';
 
   const jobId = createJob('math', req.user!.workspaceId, async () => {
     const gen = await generateCoachingModuleContent({
       name: skill.name,
       slug: skill.slug,
       examLevelNotes: skill.examLevelNotes,
-    }, skill.subject === 'thinking-skills' ? 'thinking-skills' : 'math', approach);
+    }, skill.subject === 'thinking-skills' ? 'thinking-skills' : 'math');
     const mod = await prisma.coachingModule.create({
       data: {
         workspaceId: req.user!.workspaceId,
@@ -32,7 +30,8 @@ router.post('/modules/generate', requireAdmin, asyncHandler(async (req: Request,
         title: gen.title,
         content: gen.content,
         status: 'draft',
-        approach,
+        // The Standard/Tactical A/B was collapsed to one style; the column is retained (W-123).
+        approach: 'tactical',
       },
     });
     return { moduleId: mod.id, verifierWarnings: gen.verifierWarnings };

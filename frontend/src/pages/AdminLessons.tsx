@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { GraduationCap, ChevronRight } from 'lucide-react';
 import { coachingApi, mathApi, CoachingModule, MathTopic } from '@/lib/api';
-import ApproachBadge from '@/components/ApproachBadge';
 
 // W-79: admin index of every coaching lesson (draft + approved), grouped by topic, so a generated
 // lesson is easy to find after generation — including ones generated from chat. Admin-only via the
@@ -86,7 +85,6 @@ export default function AdminLessons() {
                   <p className="text-sm font-medium text-gray-900">{m.title}</p>
                   {m.skill && <p className="text-xs text-gray-500 mt-0.5">{m.skill.name}</p>}
                 </div>
-                <ApproachBadge approach={m.approach} />
                 <StatusPill status={m.status} />
                 <ChevronRight size={16} className="text-gray-400 shrink-0" />
               </Link>

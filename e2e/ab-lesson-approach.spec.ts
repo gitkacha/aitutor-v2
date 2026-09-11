@@ -43,8 +43,8 @@ function startStub(): Promise<http.Server> {
   return new Promise((r) => server.listen(STUB_PORT, '127.0.0.1', () => r(server)));
 }
 
-async function generateTactical(admin: APIRequestContext, skillId: number): Promise<number> {
-  const start = await admin.post('/api/coaching/modules/generate', { data: { skillId, approach: 'tactical' } });
+async function generateLesson(admin: APIRequestContext, skillId: number): Promise<number> {
+  const start = await admin.post('/api/coaching/modules/generate', { data: { skillId } });
   expect(start.status()).toBe(202);
   const { jobId } = await start.json();
   for (let i = 0; i < 100; i++) {
@@ -56,73 +56,63 @@ async function generateTactical(admin: APIRequestContext, skillId: number): Prom
   throw new Error('generation timed out');
 }
 
-test.describe('W-118 — tactical A/B lesson generation', () => {
+test.describe('lesson generation (tactical, single approach — W-123)', () => {
   let stub: http.Server;
   test.beforeAll(async () => { stub = await startStub(); });
   test.afterAll(async () => { await new Promise((r) => stub.close(r)); await prisma.$disconnect(); });
 
-  test('generating tactical tags the module and badges it in the admin lessons list', async ({ browser, baseURL }) => {
+  test('the Skills page offers a single "Generate lesson" action (no Standard/Tactical choice)', async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/admin.json' });
-    const admin = await pwRequest.newContext({ baseURL, storageState: 'e2e/.auth/admin.json' });
-    const skill = await prisma.skill.findFirstOrThrow({ where: { subject: 'math' } });
-
-    const moduleId = await generateTactical(admin, skill.id);
-    const mod = await prisma.coachingModule.findUniqueOrThrow({ where: { id: moduleId } });
-    expect(mod.approach).toBe('tactical');
-
     const page = await ctx.newPage();
-    await page.goto('/admin/lessons');
-    // The freshly generated tactical lesson shows a Tactical badge in its row.
-    await expect(page.getByText('Tactical').first()).toBeVisible();
-
-    await admin.dispose();
+    await page.goto('/skills');
+    await expect(page.getByRole('button', { name: 'Generate lesson' }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Standard', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Tactical', exact: true })).toHaveCount(0);
     await ctx.close();
   });
 
-  test('the editor can regenerate the same skill as Tactical — a new draft, original kept (W-119)', async ({ browser, baseURL }) => {
+  test('generating tags the module tactical (approach column retained)', async ({ baseURL }) => {
+    const admin = await pwRequest.newContext({ baseURL, storageState: 'e2e/.auth/admin.json' });
+    const skill = await prisma.skill.findFirstOrThrow({ where: { subject: 'math' } });
+    const moduleId = await generateLesson(admin, skill.id);
+    const mod = await prisma.coachingModule.findUniqueOrThrow({ where: { id: moduleId } });
+    expect(mod.approach).toBe('tactical');
+    await admin.dispose();
+  });
+
+  test('the editor Regenerate creates a new draft and keeps the original (W-119)', async ({ browser, baseURL }) => {
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/admin.json' });
     const admin = await pwRequest.newContext({ baseURL, storageState: 'e2e/.auth/admin.json' });
     const skill = await prisma.skill.findFirstOrThrow({ where: { subject: 'math' } });
 
-    // Seed a STANDARD lesson via API and open its editor.
-    const start = await admin.post('/api/coaching/modules/generate', { data: { skillId: skill.id, approach: 'standard' } });
-    const { jobId } = await start.json();
-    let standardId = 0;
-    for (let i = 0; i < 100; i++) {
-      const job = await (await admin.get(`/api/coaching/jobs/${jobId}`)).json();
-      if (job.status === 'done') { standardId = job.result.moduleId; break; }
-      await new Promise((r) => setTimeout(r, 200));
-    }
-    expect(standardId).toBeGreaterThan(0);
+    const firstId = await generateLesson(admin, skill.id);
     const before = await prisma.coachingModule.count({ where: { skillId: skill.id } });
 
     const page = await ctx.newPage();
-    await page.goto(`/admin/modules/${standardId}`);
-    await expect(page.getByRole('button', { name: 'Regenerate as Tactical' })).toBeVisible();
-    await page.screenshot({ path: 'docs/screenshots/w119-editor-regenerate.png' });
-    await page.getByRole('button', { name: 'Regenerate as Tactical' }).click();
+    await page.goto(`/admin/modules/${firstId}`);
+    // Single "Regenerate" button — no "Regenerate as Standard/Tactical".
+    await expect(page.getByRole('button', { name: 'Regenerate as Standard' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Regenerate as Tactical' })).toHaveCount(0);
+    const regen = page.getByRole('button', { name: 'Regenerate', exact: true });
+    await expect(regen).toBeVisible();
+    await page.screenshot({ path: 'docs/screenshots/w123-editor-regenerate.png' });
+    await regen.click();
 
-    // Lands on a NEW module editor (different id).
-    await expect(page).toHaveURL(new RegExp(`/admin/modules/(?!${standardId})\\d+`), { timeout: 20000 });
-    await expect(page.getByText('Tactical').first()).toBeVisible();
-
-    // A new draft was created; the original standard module still exists.
+    // Lands on a NEW module editor (different id); the original still exists.
+    await expect(page).toHaveURL(new RegExp(`/admin/modules/(?!${firstId})\\d+`), { timeout: 20000 });
     const after = await prisma.coachingModule.count({ where: { skillId: skill.id } });
     expect(after).toBe(before + 1);
-    const original = await prisma.coachingModule.findUnique({ where: { id: standardId } });
-    expect(original?.approach).toBe('standard');
-    const newId = Number(page.url().split('/admin/modules/')[1]);
-    expect((await prisma.coachingModule.findUnique({ where: { id: newId } }))?.approach).toBe('tactical');
+    expect(await prisma.coachingModule.findUnique({ where: { id: firstId } })).not.toBeNull();
 
     await admin.dispose();
     await ctx.close();
   });
 
-  test('an approved tactical lesson renders for the student with its embedded figure', async ({ browser, baseURL }) => {
+  test('an approved lesson renders for the student with its embedded figure', async ({ browser, baseURL }) => {
     const admin = await pwRequest.newContext({ baseURL, storageState: 'e2e/.auth/admin.json' });
     const skill = await prisma.skill.findFirstOrThrow({ where: { subject: 'math' } });
 
-    const moduleId = await generateTactical(admin, skill.id);
+    const moduleId = await generateLesson(admin, skill.id);
     const approve = await admin.post(`/api/coaching/modules/${moduleId}/approve`, { data: {} });
     expect(approve.status()).toBe(200);
     await admin.dispose();
