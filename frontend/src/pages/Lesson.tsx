@@ -21,7 +21,7 @@ export function classify(heading: string): Kind {
   // rule below or it would wrongly render as amber gotcha cards.
   if (h.includes('selective trap')) return 'idea';
   if (h.includes('building block') || h.includes('mental model')) return 'steps';
-  if (h.includes('drill') || h.includes('guided')) return 'examples';
+  if (h.includes('drill') || h.includes('guided') || h.includes('quiz')) return 'examples';
   // Standard (approach A) headings — unchanged.
   if (h.includes('idea')) return 'idea';
   if (h.includes('step')) return 'steps';

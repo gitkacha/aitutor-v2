@@ -25,8 +25,10 @@ const LESSON = [
   '## 3. The Speed Shortcut',
   '300 m/min → 100 m per 20s → 200 m in 40s. Mental Map: 18 km/h → 300 m/min → 200 m.',
   '',
-  '## 4. Guided Drills',
-  '**Scripted Hint:** picture one 20-second block. **Speed Solution:** 100 m × 2 = 200 m.',
+  '## 4. Guided Quiz',
+  '```quiz',
+  '{"question":"How many metres in 40 seconds?","hint":"Find the 1-minute block first: [___] m per minute, then take [___] of it.","answer":"200","acceptable":["200 m"],"solution":"One 20s block is 100 m, so REVEALSOLUTION 100 times 2 = 200 m."}',
+  '```',
 ].join('\n');
 
 function startStub(): Promise<http.Server> {
@@ -132,7 +134,19 @@ test.describe('W-118 — tactical A/B lesson generation', () => {
     const pie = page.getByTestId('stimulus-pie-chart');
     await expect(pie).toBeVisible();
     await expect(pie.locator('svg')).toBeVisible();
-    await page.screenshot({ path: 'docs/screenshots/w118-tactical-lesson.png', fullPage: true });
+
+    // W-120: the Guided Quiz is interactive — the worked solution is hidden until answered.
+    const quiz = page.locator('div', { has: page.getByText('How many metres in 40 seconds?') }).last();
+    await expect(page.getByText('How many metres in 40 seconds?')).toBeVisible();
+    await expect(page.getByText(/REVEALSOLUTION/)).toHaveCount(0);
+    await quiz.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: 'docs/screenshots/w120-quiz-before.png' });
+    await page.getByLabel('Your answer').first().fill('200');
+    await page.getByRole('button', { name: 'Check' }).first().click();
+    await expect(page.getByText(/Nice — that's it/)).toBeVisible();
+    await expect(page.getByText(/REVEALSOLUTION/)).toBeVisible();
+    await quiz.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: 'docs/screenshots/w120-quiz-after.png' });
     await ctx.close();
   });
 });

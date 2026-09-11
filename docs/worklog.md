@@ -18,6 +18,10 @@ every agent, on any model, without exception):
 
 ## Open
 
+Interactive Guided Quiz (plan `~/.claude/plans/tingly-tumbling-shore.md`, approved 2026-09-11; branch `guided-quiz`; inline). Follow-on to the visual/A-B lessons work.
+
+- [ ] **W-120** — Replace Tactical (approach B) section 4 "Guided Drills" with an interactive **"Guided Quiz"**: new ` ```quiz ` embedded block (one question JSON) + `LessonQuiz` component + `checkAnswer` tolerant matcher. The hint uses blanks (`[___]`) to prompt the speed trick, the student types an answer and gets feedback, and the worked solution is hidden until they solve it or click "Show me". `tacticalPrompt` §4 updated. Tactical-only; Standard prompt + `MarkdownView` defaults + MCQ prompt untouched; no backend/DB change. Proof: `frontend/src/lib/quizAnswer.test.ts`, `frontend/src/components/LessonQuiz.test.tsx`, `backend/src/services/coaching.service.test.ts`, `e2e/ab-lesson-approach.spec.ts` + live screenshot.
+
 Visual coaching lessons — real figures + intuitive-shortcut pedagogy (plan `~/.claude/plans/tingly-tumbling-shore.md`, approved 2026-09-06; branch `visual-lessons`; inline). Lessons (math + Thinking Skills) embed REAL figures via the existing `StimulusFigure` engine, and are generated around the teaching framework "what to look for → what it means here → apply the trick fast" with intuitive shortcuts over grinding calculation. Constraints: ZERO regression — `StimulusFigure`/`stimulus.ts` reused unchanged, `MarkdownView` defaults untouched (figure support opt-in per render site), MCQ prompt `buildGenerationBatchPrompt` NOT touched; RED-first.
 
 - [x] **W-114** — Lesson figure embedding: a ` ```figure ` fenced block (one figure JSON object) renders as a real `<StimulusFigure>` in the student Lesson page and the admin ModuleEditor preview; new `frontend/src/components/lessonFigureComponents.tsx` reuses `validateStimulus`; malformed blocks fall back to a code block. Proof: `frontend/src/components/lessonFigureComponents.test.tsx` (3 tests). _(commit 1c62019; user signed off 2026-09-06)_

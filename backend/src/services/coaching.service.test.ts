@@ -160,7 +160,10 @@ describe('A/B: tactical approach (W-118)', () => {
     expect(p).toContain('Selective Trap');
     expect(p).toContain('Building Block');
     expect(p).toContain('Speed Shortcut');
-    expect(p).toContain('Guided Drills');
+    // Section 4 is now an interactive quiz, not a solution-revealing drill (W-120).
+    expect(p).toContain('Guided Quiz');
+    expect(p).not.toContain('Guided Drills');
+    expect(p).toContain('```quiz');
     expect(p).toContain('```figure');
     // Draws on the named concrete mental models the user asked for.
     expect(p).toContain('Bar Model');

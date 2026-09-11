@@ -181,14 +181,23 @@ Explain the concept with a concrete, non-abstract mental model from the library 
 ## 3. The Speed Shortcut
 Turn that mental model into a rapid mental-maths strategy. Walk through the example step by step, showing exactly what the student should "see" in their head. End with a one-line "Mental Map:" of the chain.
 
-## 4. Guided Drills
-Give 3 progressive practice questions. For EACH: a **Scripted Hint** (what a tutor would say to nudge them visually) and a **Speed Solution** broken down conceptually.
+## 4. Guided Quiz
+An INTERACTIVE quiz that makes the student DO the trick — it must not hand them the answer. Give 3 progressive questions. Output EACH question as a fenced code block whose language is "quiz" containing ONE JSON object:
+
+\`\`\`quiz
+{"question":"<the question>","hint":"<a tutor nudge that walks them toward the speed trick, using BLANKS like [___] [___] where the key numbers or the answer would go — NEVER fill the numbers in, NEVER reveal the answer>","answer":"<the short final answer, e.g. 20 or 23/40 or 200 m>","acceptable":["<0-2 tolerant variants of the answer>"],"solution":"<the full step-by-step speed solution — this is hidden until the student answers, so it is the ONLY place the working may appear>"}
+\`\`\`
+
+Rules for the quiz:
+- The "hint" prompts the METHOD with blanks; it must never contain the answer or the filled-in numbers (write "[___] [___]", not "[Feb 60] [Jan 40]").
+- Put ALL the worked steps in "solution" only. Nothing outside the quiz blocks may reveal an answer.
+- Keep "answer" short and clean (a number, a fraction, or a number with a unit).
 
 Talk straight to the student ("you"), short sentences, warm, encouraging, highly tactical. ${correctnessLine}
 
 ${LESSON_FIGURE_VOCAB}
 
-Output ONLY GitHub-flavoured markdown with those four \`##\` sections (no preamble, and no code fences EXCEPT the \`\`\`figure blocks described above).`;
+Output ONLY GitHub-flavoured markdown with those four \`##\` sections (no preamble, and no code fences EXCEPT the \`\`\`figure and \`\`\`quiz blocks described above).`;
 }
 
 function verifierPrompt(content: string): string {
