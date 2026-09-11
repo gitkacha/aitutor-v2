@@ -1,15 +1,18 @@
 import { useState, useEffect, ReactNode } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, GraduationCap, Sparkles, ListOrdered, Zap, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, GraduationCap, Sparkles, ListOrdered, Zap, CheckCircle2, AlertTriangle } from 'lucide-react';
 import type { Components } from 'react-markdown';
 import { coachingApi, CoachingModule } from '@/lib/api';
 import MarkdownView from '@/components/MarkdownView';
 import { withFigures } from '@/components/lessonFigureComponents';
+import LessonQuiz, { parseQuiz, type QuizQuestion } from '@/components/LessonQuiz';
 
-// M3c Phase 2b (W-73/W-81): the student Lesson page in the "Playbook" style (Direction A). The
-// lesson markdown (§8.1 sections) is split on `##` headings and each section is rendered on a
-// guided step-spine with its own treatment: the speed technique becomes a green "Your trick"
-// callout, the traps become amber "Gotcha" cards, and the rest read as clean steps/examples.
+// M3c Phase 2b + W-124/W-125: the student Lesson page is a segment-by-segment "player" — the lesson
+// markdown (§8.1 sections) is split on `##` headings and ONE section is shown per card, with a quiet
+// progress/step header (content is the hero) and Back/Next. The final Guided Quiz card gates
+// completion: "Mark complete" stays locked until every embedded quiz is answered correctly.
+// Each section keeps its treatment: the speed technique is a green "Show-off move" callout, traps are
+// amber "gotcha" cards, figures/quizzes render via the shared block engine.
 
 type Kind = 'idea' | 'steps' | 'trick' | 'examples' | 'traps' | 'other';
 interface Section { kind: Kind; heading: string; body: string }
@@ -66,30 +69,44 @@ const trapComponents: Components = {
   p: ({ children }) => <>{children}</>,
 };
 
-function SectionBlock({ section, headingLabel }: { section: Section; headingLabel: string }) {
-  const node = NODE[section.kind];
-  return (
-    <section className="relative pl-12">
-      <div className={`absolute left-0 top-0 grid h-8 w-8 place-items-center rounded-full border-2 bg-white ${node.ring}`}>
-        {node.icon}
-      </div>
-      <h2 className="text-lg font-bold text-gray-900 mb-2">{headingLabel}</h2>
-      {section.kind === 'trick' ? (
-        <div className="rounded-2xl bg-green-50 p-4">
-          <div className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-green-800">
-            <Zap size={13} /> Show-off move
-          </div>
-          <div className="text-green-900">
-            <MarkdownView content={section.body} components={withFigures()} />
-          </div>
+// Per-kind accent used by the quiet progress + step header.
+const ACCENT: Record<Kind, string> = {
+  idea: '#1c6dd0', steps: '#1c6dd0', trick: '#2e9e5b', examples: '#1c6dd0', traps: '#f2a71b', other: '#1c6dd0',
+};
+
+// Pull the ```quiz specs out of a section body, returning the remaining prose separately so the
+// player can render the quizzes interactively (with completion gating) instead of inline.
+function extractQuizzes(body: string): { prose: string; quizzes: QuizQuestion[] } {
+  const quizzes: QuizQuestion[] = [];
+  const prose = body
+    .replace(/```quiz\s*([\s\S]*?)```/g, (whole, inner: string) => {
+      const q = parseQuiz(inner);
+      if (q) { quizzes.push(q); return ''; }
+      return whole;
+    })
+    .trim();
+  return { prose, quizzes };
+}
+
+// The body of one section, keeping each kind's treatment but WITHOUT the heading (the player's header
+// already shows the segment title).
+function SegmentBody({ section }: { section: Section }) {
+  if (section.kind === 'trick') {
+    return (
+      <div className="rounded-2xl bg-green-50 p-4">
+        <div className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-green-800">
+          <Zap size={13} /> Show-off move
         </div>
-      ) : section.kind === 'traps' ? (
-        <MarkdownView content={section.body} components={withFigures(trapComponents)} />
-      ) : (
-        <MarkdownView content={section.body} components={withFigures()} />
-      )}
-    </section>
-  );
+        <div className="text-green-900">
+          <MarkdownView content={section.body} components={withFigures()} />
+        </div>
+      </div>
+    );
+  }
+  if (section.kind === 'traps') {
+    return <MarkdownView content={section.body} components={withFigures(trapComponents)} />;
+  }
+  return <MarkdownView content={section.body} components={withFigures()} />;
 }
 
 export default function Lesson() {
@@ -100,6 +117,8 @@ export default function Lesson() {
   const [notFound, setNotFound] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [current, setCurrent] = useState(0);
+  const [solved, setSolved] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (!id) return;
@@ -140,51 +159,122 @@ export default function Lesson() {
   }
 
   const { intro, sections } = parseSections(module.content);
-  const readMin = Math.max(1, Math.round(module.content.split(/\s+/).length / 200));
+  // A lesson with no `##` sections (shouldn't happen, but guard) falls back to a single card.
+  const cards: Section[] = sections.length > 0 ? sections : [{ kind: 'other', heading: module.title, body: module.content }];
+  const idx = Math.min(current, cards.length - 1);
+  const section = cards[idx];
+  const total = cards.length;
+  const isLast = idx === total - 1;
+  const accent = ACCENT[section.kind];
+
+  const { prose, quizzes } = extractQuizzes(section.body);
+  const hasQuiz = quizzes.length > 0;
+  const allSolved = quizzes.length === 0 || solved.size >= quizzes.length;
+  const node = NODE[section.kind];
 
   return (
     <div className="max-w-2xl mx-auto">
       <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1 text-sm text-brand-blue mb-4">
-        <ArrowLeft size={15} /> Back
+        <ArrowLeft size={15} /> Back to lessons
       </button>
 
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-brand-green mb-2">
-        <GraduationCap size={15} /> Lesson
-      </div>
-      <h1 className="text-3xl font-bold text-gray-900">{module.title}</h1>
-      <div className="mt-1.5 flex items-center gap-4 text-sm text-gray-500 mb-8">
-        <span className="inline-flex items-center gap-1.5">⏱ {readMin} min read</span>
-        {module.skill && <span>◆ {module.skill.name}</span>}
-      </div>
-
-      {intro && (
-        <div className="mb-6">
-          <MarkdownView content={intro} components={withFigures()} />
+      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+        {/* Quiet header — progress + steps recede so the content is the hero. */}
+        <div className="h-[3px] bg-gray-100">
+          <div className="h-full transition-all duration-500" style={{ width: `${((idx + 1) / total) * 100}%`, background: accent }} />
         </div>
-      )}
+        <div className="px-6 pt-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+              <GraduationCap size={13} /> {module.skill?.name ?? module.title}
+            </div>
+            <div className="flex items-center gap-2.5">
+              <span className="text-[11.5px] font-semibold text-gray-400 tabular-nums">{idx + 1} / {total}</span>
+              <div className="flex items-center gap-1">
+                {cards.map((_, i) => (
+                  <button
+                    key={i}
+                    aria-label={`Go to step ${i + 1}`}
+                    onClick={() => setCurrent(i)}
+                    className="h-[5px] rounded-full transition-all"
+                    style={{ width: i === idx ? 22 : 14, background: i === idx ? accent : i < idx ? '#c3ccd8' : '#e8eef5' }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 flex items-center gap-2.5">
+            <span className="grid h-7 w-7 place-items-center rounded-lg" style={{ color: accent, background: `${accent}22` }}>
+              {node.icon}
+            </span>
+            <h1 className="text-lg font-bold text-gray-900 leading-tight">{section.heading}</h1>
+          </div>
+        </div>
 
-      {/* The step-spine: a vertical line the section nodes sit on. */}
-      <div className="relative space-y-7">
-        <div className="absolute left-4 top-2 bottom-2 w-px bg-gray-200" aria-hidden />
-        {sections.map((s, i) => (
-          <SectionBlock key={i} section={s} headingLabel={s.heading} />
-        ))}
-      </div>
+        {/* Stage — one segment at a time. */}
+        <div className="px-6 py-5 min-h-[240px]">
+          {completed ? (
+            <div className="py-8 text-center">
+              <div className="mx-auto mb-3 grid h-16 w-16 place-items-center rounded-2xl bg-green-50 text-brand-green">
+                <Check size={30} />
+              </div>
+              <p className="text-lg font-bold text-gray-900">Lesson complete</p>
+              <p className="mt-1 text-sm text-gray-500">Nice work — you got every question right.</p>
+            </div>
+          ) : idx === 0 && intro ? (
+            <div className="space-y-3">
+              <MarkdownView content={intro} components={withFigures()} />
+              {hasQuiz ? null : <SegmentBody section={section} />}
+            </div>
+          ) : hasQuiz ? (
+            <div>
+              {prose && <MarkdownView content={prose} components={withFigures()} />}
+              <div className="mt-3 space-y-3">
+                {quizzes.map((q, i) => (
+                  <LessonQuiz key={i} quiz={q} onSolved={() => setSolved((prev) => new Set(prev).add(i))} />
+                ))}
+              </div>
+              {!allSolved && (
+                <p className="mt-3 text-sm text-gray-500">
+                  Answer every question correctly to finish — use <strong>Back</strong> to review a step.
+                </p>
+              )}
+            </div>
+          ) : (
+            <SegmentBody section={section} />
+          )}
+        </div>
 
-      <div className="mt-8 flex items-center gap-3">
-        {completed ? (
-          <span className="inline-flex items-center gap-2 rounded-xl bg-green-50 px-4 py-2.5 text-sm font-semibold text-green-800">
-            <Check size={16} /> Completed — nice work!
-          </span>
-        ) : (
+        {/* Footer nav */}
+        <div className="flex items-center justify-between gap-3 border-t border-gray-100 bg-gray-50 px-5 py-3.5">
           <button
-            onClick={markComplete}
-            disabled={completing}
-            className="inline-flex items-center gap-2 rounded-xl bg-brand-green px-5 py-2.5 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50"
+            onClick={() => setCurrent((c) => Math.max(0, c - 1))}
+            disabled={idx === 0}
+            className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3.5 py-2 text-sm font-medium text-gray-600 hover:bg-white disabled:invisible"
           >
-            <Check size={16} /> {completing ? 'Saving…' : 'Mark as complete'}
+            <ChevronLeft size={15} /> Back
           </button>
-        )}
+          {completed ? (
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-green-50 px-4 py-2 text-sm font-semibold text-green-800">
+              <Check size={15} /> Completed
+            </span>
+          ) : isLast ? (
+            <button
+              onClick={markComplete}
+              disabled={completing || !allSolved}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-green px-5 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50"
+            >
+              <Check size={15} /> {completing ? 'Saving…' : 'Mark complete'}
+            </button>
+          ) : (
+            <button
+              onClick={() => setCurrent((c) => Math.min(total - 1, c + 1))}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-blue px-5 py-2 text-sm font-semibold text-white hover:brightness-95"
+            >
+              Next <ChevronRight size={15} />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

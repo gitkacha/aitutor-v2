@@ -18,6 +18,11 @@ every agent, on any model, without exception):
 
 ## Open
 
+Lesson experience redesign — Phase 1: segmented player + gated quiz (plan `~/.claude/plans/tingly-tumbling-shore.md`, approved 2026-09-12; branch `guided-quiz`; inline). Frontend-only; reuses the existing parsing + figure/quiz engines; admin editor + backend untouched. Absolute constraint: ZERO regression.
+
+- [ ] **W-124** — Segmented student lesson player: `Lesson.tsx` shows one `##` section per card with a quiet progress/step header and Back/Next (content is the hero); reuses `parseSections`/`classify`/`SectionBlock` body treatments + `withFigures` (figures unchanged, W-114). Admin `ModuleEditor` preview + backend untouched. Proof: `frontend/src/pages/Lesson.player.test.tsx` + updated `e2e/ab-lesson-approach.spec.ts` + live screenshot.
+- [ ] **W-125** — Gated Guided Quiz on the final card: collect the section's ` ```quiz ` specs (`parseQuiz`), render via `<LessonQuiz onSolved>` (additive callback — admin preview unchanged), lock "Mark complete" until every quiz is answered correctly, and offer a "review the steps" jump on a wrong answer. Proof: `Lesson.player.test.tsx` (gate) + `e2e/ab-lesson-approach.spec.ts` (navigate → answer → complete).
+
 Interactive Guided Quiz (plan `~/.claude/plans/tingly-tumbling-shore.md`, approved 2026-09-11; branch `guided-quiz`; inline). Follow-on to the visual/A-B lessons work.
 
 - [ ] **W-123** — Tactical becomes the ONLY lesson-generation approach: remove the Standard prompt + `approach` parameter + Standard/Regenerate-as-Standard UI + `ApproachBadge`; single "Generate lesson" / "Regenerate" buttons; `generateCoachingModuleContent(skill, subject)` always builds the (renamed) single `generationPrompt`; one 12000-token budget. `CoachingModule.approach` column kept (always `'tactical'`) to avoid a destructive migration. No regression to figures (W-114) / quiz (W-120) / timeout (W-121) / worksheets. Proof: updated `backend/src/services/coaching.service.test.ts` + `e2e/ab-lesson-approach.spec.ts` (single-button + full generate→quiz→figure loop) + live screenshot.

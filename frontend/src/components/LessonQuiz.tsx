@@ -36,7 +36,7 @@ export function parseQuiz(raw: string): QuizQuestion | null {
   }
 }
 
-export default function LessonQuiz({ quiz }: { quiz: QuizQuestion }) {
+export default function LessonQuiz({ quiz, onSolved }: { quiz: QuizQuestion; onSolved?: () => void }) {
   const [value, setValue] = useState('');
   const [status, setStatus] = useState<'idle' | 'correct' | 'wrong'>('idle');
   const [revealed, setRevealed] = useState(false);
@@ -46,6 +46,7 @@ export default function LessonQuiz({ quiz }: { quiz: QuizQuestion }) {
     if (checkAnswer(value, quiz.answer, quiz.acceptable)) {
       setStatus('correct');
       setRevealed(true);
+      onSolved?.(); // W-125: lets the gated quiz card track how many are solved correctly.
     } else {
       setStatus('wrong');
     }

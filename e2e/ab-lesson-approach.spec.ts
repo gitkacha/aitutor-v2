@@ -120,23 +120,35 @@ test.describe('lesson generation (tactical, single approach — W-123)', () => {
     const ctx = await browser.newContext({ storageState: 'e2e/.auth/student.json' });
     const page = await ctx.newPage();
     await page.goto(`/lesson/${moduleId}`);
-    await expect(page.getByText('The Selective Trap')).toBeVisible();
+
+    // W-124: segmented player — the first card is "The Selective Trap" with its embedded figure.
+    await expect(page.getByRole('heading', { name: /The Selective Trap/ })).toBeVisible();
     const pie = page.getByTestId('stimulus-pie-chart');
     await expect(pie).toBeVisible();
     await expect(pie.locator('svg')).toBeVisible();
-
-    // W-120: the Guided Quiz is interactive — the worked solution is hidden until answered.
-    const quiz = page.locator('div', { has: page.getByText('How many metres in 40 seconds?') }).last();
-    await expect(page.getByText('How many metres in 40 seconds?')).toBeVisible();
+    // Later cards' content (incl. the quiz solution) is NOT on the page yet.
     await expect(page.getByText(/REVEALSOLUTION/)).toHaveCount(0);
-    await quiz.scrollIntoViewIfNeeded();
-    await page.screenshot({ path: 'docs/screenshots/w120-quiz-before.png' });
+    await expect(page.getByText('How many metres in 40 seconds?')).toHaveCount(0);
+    await page.screenshot({ path: 'docs/screenshots/w124-player-card1.png' });
+
+    // Advance to the final Guided Quiz card.
+    for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Next' }).click();
+    await expect(page.getByText('How many metres in 40 seconds?')).toBeVisible();
+
+    // W-125: completion is gated — "Mark complete" is locked until the quiz is answered correctly.
+    const complete = page.getByRole('button', { name: 'Mark complete' });
+    await expect(complete).toBeDisabled();
+    await expect(page.getByText(/REVEALSOLUTION/)).toHaveCount(0);
+    await page.screenshot({ path: 'docs/screenshots/w124-quiz-gated.png' });
+
     await page.getByLabel('Your answer').first().fill('200');
     await page.getByRole('button', { name: 'Check' }).first().click();
     await expect(page.getByText(/Nice — that's it/)).toBeVisible();
     await expect(page.getByText(/REVEALSOLUTION/)).toBeVisible();
-    await quiz.scrollIntoViewIfNeeded();
-    await page.screenshot({ path: 'docs/screenshots/w120-quiz-after.png' });
+    await expect(complete).toBeEnabled();
+
+    await complete.click();
+    await expect(page.getByText(/Lesson complete/)).toBeVisible();
     await ctx.close();
   });
 });
