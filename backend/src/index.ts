@@ -4,6 +4,7 @@ import cors from 'cors';
 import cookieSession from 'cookie-session';
 import { errorHandler } from './middleware/error';
 import { attachUser } from './middleware/auth';
+import { MEDIA_DIR, ensureMediaDir } from './lib/media-storage';
 import authRouter from './routes/auth';
 import setupRouter from './routes/setup';
 import workspaceUsersRouter from './routes/workspace-users';
@@ -70,6 +71,10 @@ app.use('/api/analytics', analyticsRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/interventions', interventionsRouter);
 app.use('/api/coaching', coachingRouter);
+
+// Uploaded lesson media, served under the /api prefix so the Vite dev proxy reaches it (W-126).
+ensureMediaDir();
+app.use('/api/media', express.static(MEDIA_DIR));
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });

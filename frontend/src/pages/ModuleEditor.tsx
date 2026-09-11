@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate, Link } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft, Check, RefreshCw } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Check, RefreshCw, Film, Upload, X } from 'lucide-react';
 import { coachingApi, CoachingModule, GENERATION_POLL_TIMEOUT_MS } from '@/lib/api';
 import MarkdownView from '@/components/MarkdownView';
 import { withFigures } from '@/components/lessonFigureComponents';
+import MediaStage from '@/components/MediaStage';
 
 // M3c Phase 2a (W-68): admin module editor. Loads a draft/approved module, shows a live markdown
 // preview beside the raw text, surfaces any unresolved verifier warnings (passed via router state
@@ -25,6 +26,9 @@ export default function ModuleEditor() {
   const [approving, setApproving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [regenerating, setRegenerating] = useState(false);
+  const [embedUrl, setEmbedUrl] = useState('');
+  const [mediaBusy, setMediaBusy] = useState(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -93,6 +97,20 @@ export default function ModuleEditor() {
     } catch (e) {
       setError((e as Error).message);
       setRegenerating(false);
+    }
+  }
+
+  // W-127: attach Building-Block media (embed link / uploaded video), or clear it.
+  async function runMedia(fn: () => Promise<CoachingModule>) {
+    setMediaBusy(true);
+    setMediaError(null);
+    try {
+      setModule(await fn());
+      setEmbedUrl('');
+    } catch (e) {
+      setMediaError((e as Error).message);
+    } finally {
+      setMediaBusy(false);
     }
   }
 
@@ -180,6 +198,63 @@ export default function ModuleEditor() {
           </ul>
         </div>
       )}
+
+      {/* W-127: Building-block media — embed a YouTube/Vimeo link or upload a video. */}
+      <div className="mb-4 rounded-xl border border-gray-200 p-4">
+        <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-900">
+          <Film size={16} className="text-brand-blue" /> Building-block media
+          <span className="font-normal text-gray-400">— plays on the Intuitive Building Block card</span>
+        </div>
+
+        {module.mediaKind && module.mediaKind !== 'none' && module.mediaUrl ? (
+          <div className="mb-3">
+            <div className="max-w-md">
+              <MediaStage kind={module.mediaKind} url={module.mediaUrl} />
+            </div>
+            <button
+              onClick={() => runMedia(() => coachingApi.clearMedia(module.id))}
+              disabled={mediaBusy}
+              className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-red-600 disabled:opacity-50"
+            >
+              <X size={13} /> Remove media
+            </button>
+          </div>
+        ) : (
+          <p className="mb-3 text-sm text-gray-500">No media yet — add a video below (optional).</p>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="text"
+            value={embedUrl}
+            onChange={(e) => setEmbedUrl(e.target.value)}
+            placeholder="Paste a YouTube or Vimeo link"
+            className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none"
+          />
+          <button
+            onClick={() => runMedia(() => coachingApi.setMediaEmbed(module.id, embedUrl))}
+            disabled={mediaBusy || !embedUrl.trim()}
+            className="rounded-lg bg-brand-blue px-3.5 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50"
+          >
+            Embed
+          </button>
+          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-200 px-3.5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            <Upload size={14} /> {mediaBusy ? 'Uploading…' : 'Upload video'}
+            <input
+              type="file"
+              accept="video/*"
+              className="hidden"
+              disabled={mediaBusy}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) runMedia(() => coachingApi.uploadMedia(module.id, file));
+                e.target.value = '';
+              }}
+            />
+          </label>
+        </div>
+        {mediaError && <p className="mt-2 text-sm text-red-600">{mediaError}</p>}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div>

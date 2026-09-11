@@ -276,6 +276,8 @@ export interface CoachingModule {
   title: string;
   content: string;
   status: 'draft' | 'approved';
+  mediaKind?: 'none' | 'upload' | 'embed';
+  mediaUrl?: string | null;
   reviewedById: number | null;
   version: number;
   createdAt: string;
@@ -313,6 +315,22 @@ export const coachingApi = {
     fetchJSON<CoachingModule>(`/coaching/modules/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   approve: (id: number) =>
     fetchJSON<CoachingModule>(`/coaching/modules/${id}/approve`, { method: 'POST', body: '{}' }),
+  // Media (W-126): embed a YouTube/Vimeo link, upload a video file, or clear.
+  setMediaEmbed: (id: number, url: string) =>
+    fetchJSON<CoachingModule>(`/coaching/modules/${id}/media`, { method: 'PATCH', body: JSON.stringify({ kind: 'embed', url }) }),
+  clearMedia: (id: number) =>
+    fetchJSON<CoachingModule>(`/coaching/modules/${id}/media`, { method: 'PATCH', body: JSON.stringify({ kind: 'none' }) }),
+  uploadMedia: async (id: number, file: File): Promise<CoachingModule> => {
+    const fd = new FormData();
+    fd.append('file', file);
+    // Raw fetch: FormData must set its own multipart Content-Type (fetchJSON would force JSON).
+    const res = await fetch(`${API_BASE}/coaching/modules/${id}/media/upload`, { method: 'POST', body: fd });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  },
   // Student (W-70/W-71)
   listApproved: () => fetchJSON<CoachingModule[]>('/coaching/modules?approved=1'),
   myAssignments: () => fetchJSON<CoachingAssignmentSummary[]>('/coaching/assignments/me'),

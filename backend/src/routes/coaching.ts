@@ -1,9 +1,23 @@
 import { Router, Request, Response } from 'express';
+import path from 'path';
+import multer from 'multer';
 import prisma from '../lib/prisma';
 import { asyncHandler } from '../lib/async-handler';
 import { requireAdmin, requireAuth } from '../middleware/auth';
 import { createJob, getJobForWorkspace } from '../lib/generation-jobs';
 import { generateCoachingModuleContent } from '../services/coaching.service';
+import { normalizeEmbed } from '../lib/media-embed';
+import { MEDIA_DIR } from '../lib/media-storage';
+
+// W-126: uploaded lesson media — video files only, ≤100 MB, stored on local disk.
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, MEDIA_DIR),
+    filename: (req, file, cb) => cb(null, `mod${req.params.id}-${Date.now()}${path.extname(file.originalname) || '.mp4'}`),
+  }),
+  limits: { fileSize: 100 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => cb(null, file.mimetype.startsWith('video/')),
+});
 
 // M3c Phase 2 (W-64): coaching modules. Generation runs as a background job (like worksheet
 // generation) so the admin can navigate away and re-attach. Approved-only visibility is enforced
@@ -110,6 +124,51 @@ router.post('/modules/:id/approve', requireAdmin, asyncHandler(async (req: Reque
     include: { skill: { select: { name: true, slug: true, topicId: true } } },
   });
   res.json(approved);
+}));
+
+// PATCH /api/coaching/modules/:id/media { kind, url? } — set the Building-Block media (W-126).
+//  - kind 'embed' → normalise to a YouTube/Vimeo embed URL (400 on unsupported links).
+//  - kind 'none'  → clear it.
+router.patch('/modules/:id/media', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+  const mod = await prisma.coachingModule.findFirst({
+    where: { id: Number(req.params.id), workspaceId: req.user!.workspaceId },
+  });
+  if (!mod) return res.status(404).json({ error: 'Module not found' });
+
+  const kind = req.body?.kind;
+  let data: { mediaKind: string; mediaUrl: string | null };
+  if (kind === 'none') {
+    data = { mediaKind: 'none', mediaUrl: null };
+  } else if (kind === 'embed') {
+    const embed = normalizeEmbed(String(req.body?.url ?? ''));
+    if (!embed) return res.status(400).json({ error: 'Enter a valid YouTube or Vimeo link.' });
+    data = { mediaKind: 'embed', mediaUrl: embed };
+  } else {
+    return res.status(400).json({ error: 'Unsupported media kind' });
+  }
+
+  const updated = await prisma.coachingModule.update({
+    where: { id: mod.id },
+    data,
+    include: { skill: { select: { name: true, slug: true, topicId: true } } },
+  });
+  res.json(updated);
+}));
+
+// POST /api/coaching/modules/:id/media/upload (multipart `file`) — attach an uploaded video (W-126).
+router.post('/modules/:id/media/upload', requireAdmin, upload.single('file'), asyncHandler(async (req: Request, res: Response) => {
+  const mod = await prisma.coachingModule.findFirst({
+    where: { id: Number(req.params.id), workspaceId: req.user!.workspaceId },
+  });
+  if (!mod) return res.status(404).json({ error: 'Module not found' });
+  if (!req.file) return res.status(400).json({ error: 'Upload a video file.' });
+
+  const updated = await prisma.coachingModule.update({
+    where: { id: mod.id },
+    data: { mediaKind: 'upload', mediaUrl: `/api/media/${req.file.filename}` },
+    include: { skill: { select: { name: true, slug: true, topicId: true } } },
+  });
+  res.json(updated);
 }));
 
 // GET /api/coaching/assignments/me — the caller's lesson assignments (approved modules only), for

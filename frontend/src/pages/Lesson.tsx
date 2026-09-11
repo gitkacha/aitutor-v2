@@ -6,6 +6,7 @@ import { coachingApi, CoachingModule } from '@/lib/api';
 import MarkdownView from '@/components/MarkdownView';
 import { withFigures } from '@/components/lessonFigureComponents';
 import LessonQuiz, { parseQuiz, type QuizQuestion } from '@/components/LessonQuiz';
+import MediaStage from '@/components/MediaStage';
 
 // M3c Phase 2b + W-124/W-125: the student Lesson page is a segment-by-segment "player" — the lesson
 // markdown (§8.1 sections) is split on `##` headings and ONE section is shown per card, with a quiet
@@ -172,6 +173,13 @@ export default function Lesson() {
   const allSolved = quizzes.length === 0 || solved.size >= quizzes.length;
   const node = NODE[section.kind];
 
+  // The media stage (W-127) lives on the Building-Block card (fallback: the 2nd card).
+  const buildingBlockIdx = (() => {
+    const i = cards.findIndex((s) => /building block|mental model/i.test(s.heading));
+    return i >= 0 ? i : Math.min(1, cards.length - 1);
+  })();
+  const showMedia = idx === buildingBlockIdx && module.mediaKind && module.mediaKind !== 'none' && !!module.mediaUrl;
+
   return (
     <div className="max-w-2xl mx-auto">
       <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1 text-sm text-brand-blue mb-4">
@@ -241,7 +249,10 @@ export default function Lesson() {
               )}
             </div>
           ) : (
-            <SegmentBody section={section} />
+            <div>
+              {showMedia && <MediaStage kind={module.mediaKind} url={module.mediaUrl} />}
+              <SegmentBody section={section} />
+            </div>
           )}
         </div>
 

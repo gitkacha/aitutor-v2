@@ -18,6 +18,11 @@ every agent, on any model, without exception):
 
 ## Open
 
+Lesson experience redesign — Phase 2: media stage (upload + embed) (plan `~/.claude/plans/tingly-tumbling-shore.md`, approved 2026-09-12; branch `guided-quiz`; inline). Admin attaches a video to a lesson (upload a file or embed a YouTube/Vimeo link); it plays on the Building-Block card. Additive & opt-in — media-less lessons render exactly as Phase 1. Constraint: ZERO regression.
+
+- [ ] **W-126** — Backend media: `CoachingModule.mediaKind` (default `"none"`) + `mediaUrl` columns + migration; `normalizeEmbed` provider allow-list (YouTube/Vimeo only) in `backend/src/lib/media-embed.ts`; `PATCH /coaching/modules/:id/media` (embed/none) + `POST /coaching/modules/:id/media/upload` (multer, local `backend/media/` storage) + `/api/media` static serving; api client (`setMedia`/`uploadMedia`/`clearMedia`). Proof: `backend/src/lib/media-embed.test.ts` + `e2e/lesson-media.spec.ts` (embed + upload).
+- [ ] **W-127** — Media UI: shared `frontend/src/components/MediaStage.tsx` (embed→iframe, upload→video, none→nothing); admin Media panel in `ModuleEditor` (None/Upload/Embed + preview + clear); player renders the stage on the Building-Block card when media is set. Proof: `MediaStage.test.tsx` + `e2e/lesson-media.spec.ts` (student sees the media) + live screenshot.
+
 Lesson experience redesign — Phase 1: segmented player + gated quiz (plan `~/.claude/plans/tingly-tumbling-shore.md`, approved 2026-09-12; branch `guided-quiz`; inline). Frontend-only; reuses the existing parsing + figure/quiz engines; admin editor + backend untouched. Absolute constraint: ZERO regression.
 
 - [ ] **W-124** — Segmented student lesson player: `Lesson.tsx` shows one `##` section per card with a quiet progress/step header and Back/Next (content is the hero); reuses `parseSections`/`classify`/`SectionBlock` body treatments + `withFigures` (figures unchanged, W-114). Admin `ModuleEditor` preview + backend untouched. Proof: `frontend/src/pages/Lesson.player.test.tsx` + updated `e2e/ab-lesson-approach.spec.ts` + live screenshot.

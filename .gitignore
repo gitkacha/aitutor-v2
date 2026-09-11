@@ -9,3 +9,6 @@ playwright-report/
 docs/screenshots/
 e2e/.auth/
 .claude/worktrees/
+
+# Uploaded lesson media (W-126)
+backend/media/

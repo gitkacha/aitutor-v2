@@ -299,6 +299,8 @@ model CoachingModule {
   content      String   // markdown, structure in §8.1
   status       String   @default("draft") // 'draft' | 'approved'
   approach     String   @default("standard") // 'standard' (A) | 'tactical' (B) — which generation prompt made it (W-118)
+  mediaKind    String   @default("none") // 'none' | 'upload' | 'embed' (Phase 3: 'animation') — Building-Block media (W-126)
+  mediaUrl     String?  // normalized embed URL, or served path of an uploaded file
   reviewedById Int?
   version      Int      @default(1)
   createdAt    DateTime @default(now())
