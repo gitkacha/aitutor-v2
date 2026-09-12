@@ -12,7 +12,7 @@ const get = vi.fn();
 const complete = vi.fn();
 vi.mock('@/lib/api', () => ({ coachingApi: { get: (...a: unknown[]) => get(...a), complete: (...a: unknown[]) => complete(...a) } }));
 
-import Lesson from './Lesson';
+import Lesson, { referencesFigure, figureCarriedTo } from './Lesson';
 
 const content = [
   '## 1. The Selective Trap',
@@ -66,6 +66,53 @@ describe('segmented lesson player', () => {
     fireEvent.click(next());
     expect(await screen.findByText(/BUILDMARKER/)).toBeTruthy();
     expect(screen.queryByText(/TRAPMARKER/)).toBeNull();
+  });
+
+  it('carries the figure onto a card that references it — for a pie AND a non-pie figure (W-132)', async () => {
+    const withFig = (fig: string) => [
+      '## 1. The Selective Trap', 'Spot it.',
+      '## 2. The Intuitive Building Block', 'Here it is.', fig,
+      '## 3. The Speed Shortcut', 'Now look at the graph and the 15% slice to solve it.',
+    ].join('\n');
+
+    // Pie referenced on card 3 (which has no ```figure of its own).
+    get.mockResolvedValue({ id: 1, title: 'L', status: 'approved', skill: { name: 'S', slug: 's', topicId: 1 },
+      content: withFig('```figure\n{"kind":"pie-chart","title":"P","sectors":[{"label":"A","percent":60},{"label":"B","percent":40}]}\n```') });
+    renderLesson();
+    await screen.findByText(/Spot it/);
+    fireEvent.click(next()); // Building Block (its own pie)
+    fireEvent.click(next()); // Speed Shortcut (references it → carried pie)
+    expect(await screen.findByText(/Now look at the graph/)).toBeTruthy();
+    expect(screen.getByTestId('stimulus-pie-chart')).toBeTruthy();
+
+    // Same behaviour for a bar-chart — proves it isn't pie-specific.
+    get.mockResolvedValue({ id: 2, title: 'L2', status: 'approved', skill: { name: 'S', slug: 's', topicId: 1 },
+      content: withFig('```figure\n{"kind":"bar-chart","title":"G","points":[{"x":"Mon","y":4},{"x":"Tue","y":8}]}\n```') });
+    render(
+      <MemoryRouter initialEntries={['/lesson/2']}>
+        <Routes><Route path="/lesson/:id" element={<Lesson />} /></Routes>
+      </MemoryRouter>,
+    );
+    await screen.findAllByText(/Spot it/);
+    const nexts = screen.getAllByRole('button', { name: /next/i });
+    fireEvent.click(nexts[nexts.length - 1]);
+    const nexts2 = screen.getAllByRole('button', { name: /next/i });
+    fireEvent.click(nexts2[nexts2.length - 1]);
+    expect(await screen.findByTestId('stimulus-bar-chart')).toBeTruthy();
+  });
+
+  it('referencesFigure / figureCarriedTo helpers', () => {
+    expect(referencesFigure('look at the chart above')).toBe(true);
+    expect(referencesFigure('the 15% slice of the pie')).toBe(true);
+    expect(referencesFigure('read the graph / table / diagram')).toBe(true);
+    expect(referencesFigure('just add the numbers, no visual needed here')).toBe(false);
+    const cards = [
+      { kind: 'idea' as const, heading: 'Trap', body: 'x' },
+      { kind: 'steps' as const, heading: 'Block', body: 'y\n```figure\n{"kind":"pie-chart"}\n```' },
+      { kind: 'trick' as const, heading: 'Shortcut', body: 'see the pie' },
+    ];
+    expect(figureCarriedTo(cards, 2)).toContain('pie-chart'); // nearest preceding figure
+    expect(figureCarriedTo(cards, 1)).toBeNull(); // no figure before card 1
   });
 
   it('gates completion — Mark complete is disabled until the quiz is answered correctly', async () => {

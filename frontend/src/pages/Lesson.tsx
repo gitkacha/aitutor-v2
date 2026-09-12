@@ -89,6 +89,23 @@ function extractQuizzes(body: string): { prose: string; quizzes: QuizQuestion[] 
   return { prose, quizzes };
 }
 
+// W-132: does a card's text refer to a figure/chart it should be able to see? Kind-agnostic (works
+// for pie/bar/line/table/grid/shape/…), so a figure is shown wherever it's discussed.
+const FIGURE_REF = /\b(figure|chart|graph|diagram|table|grid|pie|slice|slices|sector|shape|picture|image|protractor|compass)\b/i;
+export function referencesFigure(text: string): boolean {
+  return FIGURE_REF.test(text) || /shown above|the visual/i.test(text);
+}
+
+// The nearest ```figure block introduced in a card BEFORE `idx` (null if none) — the figure this
+// card references but doesn't embed. Kind-agnostic: it's rendered by the shared block renderer.
+export function figureCarriedTo(cards: Section[], idx: number): string | null {
+  for (let i = idx - 1; i >= 0; i--) {
+    const m = cards[i].body.match(/```figure[\s\S]*?```/);
+    if (m) return m[0];
+  }
+  return null;
+}
+
 // The body of one section, keeping each kind's treatment but WITHOUT the heading (the player's header
 // already shows the segment title).
 function SegmentBody({ section }: { section: Section }) {
@@ -184,6 +201,8 @@ export default function Lesson() {
   // figure is the visual and the media stage is suppressed.
   const sectionHasFigure = /```figure/.test(section.body);
   const showMedia = idx === buildingBlockIdx && hasMedia && !sectionHasFigure;
+  // W-132: if this card discusses a figure but doesn't embed one, carry the nearest earlier figure in.
+  const carriedFigure = !sectionHasFigure && referencesFigure(section.body) ? figureCarriedTo(cards, idx) : null;
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -256,6 +275,7 @@ export default function Lesson() {
           ) : (
             <div>
               {showMedia && <MediaStage kind={module.mediaKind} url={module.mediaUrl} svg={module.mediaSvg} />}
+              {carriedFigure && <MarkdownView content={carriedFigure} components={withFigures()} />}
               <SegmentBody section={section} />
             </div>
           )}
