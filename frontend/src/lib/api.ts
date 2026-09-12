@@ -276,8 +276,9 @@ export interface CoachingModule {
   title: string;
   content: string;
   status: 'draft' | 'approved';
-  mediaKind?: 'none' | 'upload' | 'embed';
+  mediaKind?: 'none' | 'upload' | 'embed' | 'animation';
   mediaUrl?: string | null;
+  mediaSvg?: string | null;
   reviewedById: number | null;
   version: number;
   createdAt: string;
@@ -320,6 +321,8 @@ export const coachingApi = {
     fetchJSON<CoachingModule>(`/coaching/modules/${id}/media`, { method: 'PATCH', body: JSON.stringify({ kind: 'embed', url }) }),
   clearMedia: (id: number) =>
     fetchJSON<CoachingModule>(`/coaching/modules/${id}/media`, { method: 'PATCH', body: JSON.stringify({ kind: 'none' }) }),
+  startAnimation: (id: number) =>
+    fetchJSON<{ jobId: string }>(`/coaching/modules/${id}/media/animation/generate`, { method: 'POST', body: '{}' }),
   uploadMedia: async (id: number, file: File): Promise<CoachingModule> => {
     const fd = new FormData();
     fd.append('file', file);

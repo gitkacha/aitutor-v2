@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate, Link } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft, Check, RefreshCw, Film, Upload, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Check, RefreshCw, Film, Upload, X, Sparkles } from 'lucide-react';
 import { coachingApi, CoachingModule, GENERATION_POLL_TIMEOUT_MS } from '@/lib/api';
 import MarkdownView from '@/components/MarkdownView';
 import { withFigures } from '@/components/lessonFigureComponents';
@@ -114,6 +114,31 @@ export default function ModuleEditor() {
     }
   }
 
+  // W-129: AI-generate an animation (background job) → re-fetch the module to show it.
+  async function generateAnimation() {
+    if (!module) return;
+    setMediaBusy(true);
+    setMediaError(null);
+    try {
+      const { jobId } = await coachingApi.startAnimation(module.id);
+      const deadline = Date.now() + GENERATION_POLL_TIMEOUT_MS;
+      for (;;) {
+        const job = await coachingApi.getGenerationJob(jobId);
+        if (job.status === 'done') {
+          setModule(await coachingApi.get(module.id));
+          break;
+        }
+        if (job.status === 'error') throw new Error(job.error || 'Generation failed');
+        if (Date.now() > deadline) throw new Error('Generation timed out');
+        await new Promise((r) => setTimeout(r, 500));
+      }
+    } catch (e) {
+      setMediaError((e as Error).message);
+    } finally {
+      setMediaBusy(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -206,10 +231,10 @@ export default function ModuleEditor() {
           <span className="font-normal text-gray-400">— plays on the Intuitive Building Block card</span>
         </div>
 
-        {module.mediaKind && module.mediaKind !== 'none' && module.mediaUrl ? (
+        {module.mediaKind && module.mediaKind !== 'none' && (module.mediaUrl || module.mediaSvg) ? (
           <div className="mb-3">
             <div className="max-w-md">
-              <MediaStage kind={module.mediaKind} url={module.mediaUrl} />
+              <MediaStage kind={module.mediaKind} url={module.mediaUrl} svg={module.mediaSvg} />
             </div>
             <button
               onClick={() => runMedia(() => coachingApi.clearMedia(module.id))}
@@ -220,7 +245,7 @@ export default function ModuleEditor() {
             </button>
           </div>
         ) : (
-          <p className="mb-3 text-sm text-gray-500">No media yet — add a video below (optional).</p>
+          <p className="mb-3 text-sm text-gray-500">No media yet — add a video or generate an animation below (optional).</p>
         )}
 
         <div className="flex flex-wrap items-center gap-2">
@@ -239,7 +264,7 @@ export default function ModuleEditor() {
             Embed
           </button>
           <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-200 px-3.5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-            <Upload size={14} /> {mediaBusy ? 'Uploading…' : 'Upload video'}
+            <Upload size={14} /> Upload video
             <input
               type="file"
               accept="video/*"
@@ -252,6 +277,14 @@ export default function ModuleEditor() {
               }}
             />
           </label>
+          <button
+            onClick={generateAnimation}
+            disabled={mediaBusy}
+            title="AI-generate an animated diagram for this lesson"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-brand-blue px-3.5 py-2 text-sm font-semibold text-brand-blue hover:bg-blue-50 disabled:opacity-50"
+          >
+            <Sparkles size={14} /> {mediaBusy ? 'Working…' : 'Generate animation (AI)'}
+          </button>
         </div>
         {mediaError && <p className="mt-2 text-sm text-red-600">{mediaError}</p>}
       </div>

@@ -25,4 +25,17 @@ describe('MediaStage', () => {
     expect(render(<MediaStage kind="none" url={null} />).container.firstChild).toBeNull();
     expect(render(<MediaStage />).container.firstChild).toBeNull();
   });
+
+  it('renders an inline SVG for an animation and strips any <script>', () => {
+    const svg = '<svg viewBox="0 0 320 180"><rect width="10" height="10" fill="#1c6dd0"/><script>alert(1)</script></svg>';
+    const { container } = render(<MediaStage kind="animation" svg={svg} />);
+    expect(container.querySelector('svg')).not.toBeNull();
+    // DOMPurify must remove the script.
+    expect(container.querySelector('script')).toBeNull();
+    expect(container.innerHTML).not.toContain('alert(1)');
+  });
+
+  it('renders nothing for an animation with no svg', () => {
+    expect(render(<MediaStage kind="animation" />).container.firstChild).toBeNull();
+  });
 });

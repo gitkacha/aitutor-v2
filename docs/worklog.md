@@ -18,6 +18,11 @@ every agent, on any model, without exception):
 
 ## Open
 
+Lesson experience redesign — Phase 3: AI-generate animation (plan `~/.claude/plans/tingly-tumbling-shore.md`, approved 2026-09-12; branch `guided-quiz`; inline). Third media source: `gpt-5-mini` → a self-contained animated SVG, sanitised and rendered in-browser on the Building-Block card. Additive `'animation'` media kind. Constraint: ZERO regression; SVG sanitisation is security-critical.
+
+- [ ] **W-128** — Backend AI animation: `CoachingModule.mediaSvg` column + migration; `backend/src/lib/svg-safe.ts` `sanitizeAnimationSvg` (element allow-list; reject `<script>`/`on*=`/`foreignObject`/`iframe`/`image`/external+`javascript:`+`data:` refs); `backend/src/services/coaching-animation.service.ts` (`gpt-5-mini` → SVG → sanitise, one retry); `POST /coaching/modules/:id/media/animation/generate` (background job → `mediaKind='animation'`). Proof: `backend/src/lib/svg-safe.test.ts` + `e2e/lesson-animation.spec.ts`.
+- [ ] **W-129** — Frontend AI animation: `MediaStage` renders `kind='animation'` as a **DOMPurify**-sanitised inline SVG; player passes `mediaSvg`; admin "Generate animation (AI)" button (job poll) in the Media panel. Proof: `frontend/src/components/MediaStage.test.tsx` (renders + strips `<script>`) + `e2e/lesson-animation.spec.ts` (student sees it) + live screenshot.
+
 Lesson experience redesign — Phase 2: media stage (upload + embed) (plan `~/.claude/plans/tingly-tumbling-shore.md`, approved 2026-09-12; branch `guided-quiz`; inline). Admin attaches a video to a lesson (upload a file or embed a YouTube/Vimeo link); it plays on the Building-Block card. Additive & opt-in — media-less lessons render exactly as Phase 1. Constraint: ZERO regression.
 
 - [ ] **W-126** — Backend media: `CoachingModule.mediaKind` (default `"none"`) + `mediaUrl` columns + migration; `normalizeEmbed` provider allow-list (YouTube/Vimeo only) in `backend/src/lib/media-embed.ts`; `PATCH /coaching/modules/:id/media` (embed/none) + `POST /coaching/modules/:id/media/upload` (multer, local `backend/media/` storage) + `/api/media` static serving; api client (`setMedia`/`uploadMedia`/`clearMedia`). Proof: `backend/src/lib/media-embed.test.ts` + `e2e/lesson-media.spec.ts` (embed + upload).

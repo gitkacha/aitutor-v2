@@ -6,8 +6,19 @@ import { asyncHandler } from '../lib/async-handler';
 import { requireAdmin, requireAuth } from '../middleware/auth';
 import { createJob, getJobForWorkspace } from '../lib/generation-jobs';
 import { generateCoachingModuleContent } from '../services/coaching.service';
+import { generateAnimationSvg } from '../services/coaching-animation.service';
 import { normalizeEmbed } from '../lib/media-embed';
 import { MEDIA_DIR } from '../lib/media-storage';
+
+// The "Building Block" section text is the concept an AI animation should illustrate (W-128).
+function buildingBlockConcept(content: string): string {
+  const parts = content.split(/^##\s+/m).slice(1);
+  const bodyOf = (block: string) => block.slice(block.indexOf('\n') + 1).trim().slice(0, 800);
+  const bb = parts.find((b) => /building block|mental model/i.test(b.slice(0, b.indexOf('\n'))));
+  if (bb) return bodyOf(bb);
+  if (parts[1]) return bodyOf(parts[1]);
+  return content.slice(0, 800);
+}
 
 // W-126: uploaded lesson media — video files only, ≤100 MB, stored on local disk.
 const upload = multer({
@@ -169,6 +180,26 @@ router.post('/modules/:id/media/upload', requireAdmin, upload.single('file'), as
     include: { skill: { select: { name: true, slug: true, topicId: true } } },
   });
   res.json(updated);
+}));
+
+// POST /api/coaching/modules/:id/media/animation/generate — AI-generate a safe animated SVG for the
+// Building-Block card (background job; W-128).
+router.post('/modules/:id/media/animation/generate', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+  const mod = await prisma.coachingModule.findFirst({
+    where: { id: Number(req.params.id), workspaceId: req.user!.workspaceId },
+    include: { skill: { select: { name: true } } },
+  });
+  if (!mod) return res.status(404).json({ error: 'Module not found' });
+
+  const jobId = createJob('math', req.user!.workspaceId, async () => {
+    const svg = await generateAnimationSvg(mod.skill.name, buildingBlockConcept(mod.content));
+    await prisma.coachingModule.update({
+      where: { id: mod.id },
+      data: { mediaKind: 'animation', mediaSvg: svg, mediaUrl: null },
+    });
+    return { ok: true };
+  });
+  res.status(202).json({ jobId });
 }));
 
 // GET /api/coaching/assignments/me — the caller's lesson assignments (approved modules only), for

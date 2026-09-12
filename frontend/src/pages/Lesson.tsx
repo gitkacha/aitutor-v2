@@ -178,7 +178,9 @@ export default function Lesson() {
     const i = cards.findIndex((s) => /building block|mental model/i.test(s.heading));
     return i >= 0 ? i : Math.min(1, cards.length - 1);
   })();
-  const showMedia = idx === buildingBlockIdx && module.mediaKind && module.mediaKind !== 'none' && !!module.mediaUrl;
+  const hasMedia = module.mediaKind && module.mediaKind !== 'none' &&
+    (module.mediaKind === 'animation' ? !!module.mediaSvg : !!module.mediaUrl);
+  const showMedia = idx === buildingBlockIdx && hasMedia;
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -250,7 +252,7 @@ export default function Lesson() {
             </div>
           ) : (
             <div>
-              {showMedia && <MediaStage kind={module.mediaKind} url={module.mediaUrl} />}
+              {showMedia && <MediaStage kind={module.mediaKind} url={module.mediaUrl} svg={module.mediaSvg} />}
               <SegmentBody section={section} />
             </div>
           )}
