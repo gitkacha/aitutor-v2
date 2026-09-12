@@ -8,6 +8,7 @@ import { createJob, getJobForWorkspace } from '../lib/generation-jobs';
 import { generateCoachingModuleContent } from '../services/coaching.service';
 import { generateAnimationSvg } from '../services/coaching-animation.service';
 import { normalizeEmbed } from '../lib/media-embed';
+import { sanitizeAnimationSvg } from '../lib/svg-safe';
 import { MEDIA_DIR } from '../lib/media-storage';
 
 // The "Building Block" section text is the concept an AI animation should illustrate (W-128).
@@ -200,6 +201,42 @@ router.post('/modules/:id/media/animation/generate', requireAdmin, asyncHandler(
     return { ok: true };
   });
   res.status(202).json({ jobId });
+}));
+
+// POST /api/coaching/modules/:id/media/animation/suggest { instructions? } — AI animation assistant
+// (W-133): generate a candidate animated SVG WITHOUT storing it, so the admin can preview it first.
+router.post('/modules/:id/media/animation/suggest', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+  const mod = await prisma.coachingModule.findFirst({
+    where: { id: Number(req.params.id), workspaceId: req.user!.workspaceId },
+    include: { skill: { select: { name: true } } },
+  });
+  if (!mod) return res.status(404).json({ error: 'Module not found' });
+  const instructions = typeof req.body?.instructions === 'string' ? req.body.instructions.slice(0, 500) : undefined;
+
+  const jobId = createJob('math', req.user!.workspaceId, async () => {
+    const svg = await generateAnimationSvg(mod.skill.name, buildingBlockConcept(mod.content), instructions);
+    return { svg };
+  });
+  res.status(202).json({ jobId });
+}));
+
+// POST /api/coaching/modules/:id/media/animation { svg } — commit a chosen candidate as the lesson's
+// animation. The SVG is re-validated server-side (never trust the client) before storing (W-133).
+router.post('/modules/:id/media/animation', requireAdmin, asyncHandler(async (req: Request, res: Response) => {
+  const mod = await prisma.coachingModule.findFirst({
+    where: { id: Number(req.params.id), workspaceId: req.user!.workspaceId },
+  });
+  if (!mod) return res.status(404).json({ error: 'Module not found' });
+
+  const clean = sanitizeAnimationSvg(String(req.body?.svg ?? ''));
+  if (!clean) return res.status(400).json({ error: 'That animation could not be verified as safe.' });
+
+  const updated = await prisma.coachingModule.update({
+    where: { id: mod.id },
+    data: { mediaKind: 'animation', mediaSvg: clean, mediaUrl: null },
+    include: { skill: { select: { name: true, slug: true, topicId: true } } },
+  });
+  res.json(updated);
 }));
 
 // GET /api/coaching/assignments/me — the caller's lesson assignments (approved modules only), for

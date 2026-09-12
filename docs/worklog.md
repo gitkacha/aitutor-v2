@@ -18,6 +18,11 @@ every agent, on any model, without exception):
 
 ## Open
 
+Lesson experience redesign — Phase B: AI animation assistant for figure-less cards (plan `~/.claude/plans/tingly-tumbling-shore.md`, approved 2026-09-12; branch `guided-quiz`; inline). For text-only concepts the AI suggests + previews candidate animations and the admin decides. Reuses W-128 plumbing + `svg-safe`. Constraint: ZERO regression; SVG stays double-sanitised.
+
+- [ ] **W-133** — Backend animation assistant: `generateAnimationSvg(skillName, concept, instructions?)`; `POST /coaching/modules/:id/media/animation/suggest` (generate-without-store, background job → `{ svg }`); `POST /coaching/modules/:id/media/animation` (re-validate a client-provided SVG via `sanitizeAnimationSvg` → store, else 400). Keeps the one-shot `…/generate` endpoint. Proof: `e2e/lesson-animation-assistant.spec.ts` (suggest doesn't store; commit stores; `<script>` commit → 400).
+- [ ] **W-134** — Frontend animation assistant: replace the one-shot "Generate animation (AI)" button (figure-less only) with an assistant — instructions box, "Suggest an animation" → candidate previews (`MediaStage`) each with "Use this" → `commitAnimation`; api `suggestAnimation`/`commitAnimation`. Proof: `e2e/lesson-animation-assistant.spec.ts` (UI loop) + live screenshot.
+
 Lesson experience redesign — interactive figures + one-visual-per-card (plan `~/.claude/plans/tingly-tumbling-shore.md`, approved 2026-09-12; branch `guided-quiz`; inline). Cards with a figure animate the figure itself (deterministic hover-to-explain), not a separate AI animation. Constraint: ZERO regression — interactivity is opt-in and LESSON-ONLY (MCQ/test figures unchanged).
 
 - [ ] **W-132** — Player carries the lesson's figure onto any card that references a figure but doesn't embed its own, so figures appear where they're discussed (no back-and-forth between cards). Figure-kind-agnostic (pie/bar/line/table/grid/shape/… — reuses the ` ```figure ` block renderer); carries the nearest preceding figure; interactive (W-130); one visual per card preserved. Frontend-only, additive. Proof: `frontend/src/pages/Lesson.player.test.tsx` (carried figure on a referencing card incl. a non-pie kind; none on a non-referencing card) + `e2e/lesson-interactive-figure.spec.ts`.

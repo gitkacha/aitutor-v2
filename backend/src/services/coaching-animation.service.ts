@@ -9,13 +9,14 @@ import { sanitizeAnimationSvg } from '../lib/svg-safe';
 // reasoning, so give it comfortable headroom — 6000 truncated to empty content in practice (W-128).
 const ANIMATION_MAX_TOKENS = 12000;
 
-function animationPrompt(skillName: string, concept: string, feedback?: string): string {
-  const retry = feedback ? `\nYour previous attempt was REJECTED: ${feedback}\nReturn a corrected SVG.\n` : '';
+function animationPrompt(skillName: string, concept: string, opts?: { feedback?: string; instructions?: string }): string {
+  const retry = opts?.feedback ? `\nYour previous attempt was REJECTED: ${opts.feedback}\nReturn a corrected SVG.\n` : '';
+  const steer = opts?.instructions ? `\nThe admin asked for this specifically — follow it: ${opts.instructions}\n` : '';
   return `You are creating a short looping animation that teaches an 11-year-old ONE idea for the NSW Selective High School Placement Test.
 
 Skill: ${skillName}
 The idea to animate (from the lesson's "Building Block" section — translate it into a clear visual): ${concept}
-${retry}
+${steer}${retry}
 Produce ONE self-contained animated SVG. STRICT rules:
 - Root exactly: <svg viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg"> … </svg>.
 - Use ONLY these elements: rect, circle, ellipse, line, polyline, polygon, path, text, tspan, g, defs,
@@ -31,13 +32,13 @@ Produce ONE self-contained animated SVG. STRICT rules:
 Output ONLY the <svg>…</svg> — no prose, no markdown code fences.`;
 }
 
-export async function generateAnimationSvg(skillName: string, concept: string): Promise<string> {
-  const first = await chatCompletion(providerFor('generation'), animationPrompt(skillName, concept), ANIMATION_MAX_TOKENS, 0.7);
+export async function generateAnimationSvg(skillName: string, concept: string, instructions?: string): Promise<string> {
+  const first = await chatCompletion(providerFor('generation'), animationPrompt(skillName, concept, { instructions }), ANIMATION_MAX_TOKENS, 0.7);
   let svg = sanitizeAnimationSvg(first.content);
   if (!svg) {
     // One retry with explicit feedback — the model's output failed the safety allow-list.
     const feedback = 'it must be ONLY a safe animated <svg> using the allowed elements — no <script>, <style>, event handlers, or external references.';
-    const second = await chatCompletion(providerFor('generation'), animationPrompt(skillName, concept, feedback), ANIMATION_MAX_TOKENS, 0.7);
+    const second = await chatCompletion(providerFor('generation'), animationPrompt(skillName, concept, { instructions, feedback }), ANIMATION_MAX_TOKENS, 0.7);
     svg = sanitizeAnimationSvg(second.content);
   }
   if (!svg) throw new Error('Could not generate a safe animation. Please try again.');

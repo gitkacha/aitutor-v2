@@ -323,6 +323,15 @@ export const coachingApi = {
     fetchJSON<CoachingModule>(`/coaching/modules/${id}/media`, { method: 'PATCH', body: JSON.stringify({ kind: 'none' }) }),
   startAnimation: (id: number) =>
     fetchJSON<{ jobId: string }>(`/coaching/modules/${id}/media/animation/generate`, { method: 'POST', body: '{}' }),
+  // W-133: assistant — suggest a candidate animation (not stored) then commit the chosen one.
+  suggestAnimation: (id: number, instructions?: string) =>
+    fetchJSON<{ jobId: string }>(`/coaching/modules/${id}/media/animation/suggest`, {
+      method: 'POST',
+      body: JSON.stringify({ instructions }),
+    }),
+  getAnimationJob: (jobId: string) => fetchJSON<GenerationJob<{ svg: string }>>(`/coaching/jobs/${jobId}`),
+  commitAnimation: (id: number, svg: string) =>
+    fetchJSON<CoachingModule>(`/coaching/modules/${id}/media/animation`, { method: 'POST', body: JSON.stringify({ svg }) }),
   uploadMedia: async (id: number, file: File): Promise<CoachingModule> => {
     const fd = new FormData();
     fd.append('file', file);

@@ -29,6 +29,9 @@ export default function ModuleEditor() {
   const [embedUrl, setEmbedUrl] = useState('');
   const [mediaBusy, setMediaBusy] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
+  const [instructions, setInstructions] = useState('');
+  const [candidates, setCandidates] = useState<string[]>([]);
+  const [suggesting, setSuggesting] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -114,24 +117,38 @@ export default function ModuleEditor() {
     }
   }
 
-  // W-129: AI-generate an animation (background job) → re-fetch the module to show it.
-  async function generateAnimation() {
+  // W-133/W-134: AI animation assistant — suggest a candidate (not stored) then commit the chosen one.
+  async function suggestAnimation() {
     if (!module) return;
-    setMediaBusy(true);
+    setSuggesting(true);
     setMediaError(null);
     try {
-      const { jobId } = await coachingApi.startAnimation(module.id);
+      const { jobId } = await coachingApi.suggestAnimation(module.id, instructions.trim() || undefined);
       const deadline = Date.now() + GENERATION_POLL_TIMEOUT_MS;
       for (;;) {
-        const job = await coachingApi.getGenerationJob(jobId);
-        if (job.status === 'done') {
-          setModule(await coachingApi.get(module.id));
+        const job = await coachingApi.getAnimationJob(jobId);
+        if (job.status === 'done' && job.result?.svg) {
+          setCandidates((c) => [job.result!.svg, ...c]);
           break;
         }
         if (job.status === 'error') throw new Error(job.error || 'Generation failed');
         if (Date.now() > deadline) throw new Error('Generation timed out');
         await new Promise((r) => setTimeout(r, 500));
       }
+    } catch (e) {
+      setMediaError((e as Error).message);
+    } finally {
+      setSuggesting(false);
+    }
+  }
+
+  async function useCandidate(svg: string) {
+    if (!module) return;
+    setMediaBusy(true);
+    setMediaError(null);
+    try {
+      setModule(await coachingApi.commitAnimation(module.id, svg));
+      setCandidates([]);
     } catch (e) {
       setMediaError((e as Error).message);
     } finally {
@@ -277,20 +294,52 @@ export default function ModuleEditor() {
               }}
             />
           </label>
-          {/* W-131: no AI animation when the lesson already has a figure — the figure is interactive. */}
-          {!/```figure/.test(content) && (
-            <button
-              onClick={generateAnimation}
-              disabled={mediaBusy}
-              title="AI-generate an animated diagram for this lesson"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-brand-blue px-3.5 py-2 text-sm font-semibold text-brand-blue hover:bg-blue-50 disabled:opacity-50"
-            >
-              <Sparkles size={14} /> {mediaBusy ? 'Working…' : 'Generate animation (AI)'}
-            </button>
-          )}
         </div>
-        {/\`\`\`figure/.test(content) && (
+
+        {/* W-131: lessons with a figure animate the figure itself (hover). W-134: figure-less lessons
+            get the AI animation assistant — suggest, preview candidates, keep one, or stay text-only. */}
+        {/\`\`\`figure/.test(content) ? (
           <p className="mt-2 text-xs text-gray-500">This lesson has a figure — it's interactive for students (hover to explore), so a separate animation isn't needed.</p>
+        ) : (
+          <div className="mt-3 rounded-lg border border-gray-100 bg-gray-50/60 p-3">
+            <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-gray-700">
+              <Sparkles size={13} className="text-brand-blue" /> AI animation assistant
+              <span className="font-normal text-gray-400">— for a text-only concept</span>
+            </div>
+            <textarea
+              value={instructions}
+              onChange={(e) => setInstructions(e.target.value)}
+              rows={2}
+              placeholder="Describe the visual you want — or leave blank and let the AI suggest one."
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-blue focus:outline-none"
+            />
+            <button
+              onClick={suggestAnimation}
+              disabled={suggesting}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-brand-blue px-3.5 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50"
+            >
+              <Sparkles size={14} /> {suggesting ? 'Thinking…' : 'Suggest an animation'}
+            </button>
+            {candidates.length > 0 && (
+              <div className="mt-3 space-y-3">
+                <p className="text-xs text-gray-500">Preview a suggestion, then keep the one you like:</p>
+                {candidates.map((svg, i) => (
+                  <div key={i} className="rounded-lg border border-gray-200 p-2">
+                    <div className="max-w-sm">
+                      <MediaStage kind="animation" svg={svg} />
+                    </div>
+                    <button
+                      onClick={() => useCandidate(svg)}
+                      disabled={mediaBusy}
+                      className="mt-1 inline-flex items-center gap-1 rounded-lg bg-brand-green px-3 py-1.5 text-xs font-semibold text-white hover:brightness-95 disabled:opacity-50"
+                    >
+                      <Check size={13} /> Use this
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
         {mediaError && <p className="mt-2 text-sm text-red-600">{mediaError}</p>}
       </div>
