@@ -276,7 +276,9 @@ export interface CoachingModule {
   title: string;
   content: string;
   status: 'draft' | 'approved';
-  approach?: 'standard' | 'tactical';
+  mediaKind?: 'none' | 'upload' | 'embed' | 'animation';
+  mediaUrl?: string | null;
+  mediaSvg?: string | null;
   reviewedById: number | null;
   version: number;
   createdAt: string;
@@ -293,12 +295,17 @@ export interface CoachingAssignmentSummary {
   interventionId: number | null;
 }
 
+// How long the client polls a lesson-generation job before giving up. Generation on gpt-5-mini runs
+// ~85–95s (reasoning + a full lesson + the verifier round-trip; a verifier retry can add one more),
+// so this sits well above that to avoid a false "Generation timed out" (W-121).
+export const GENERATION_POLL_TIMEOUT_MS = 210_000;
+
 export const coachingApi = {
   // Admin authoring
-  startGeneration: (skillId: number, approach: 'standard' | 'tactical' = 'standard') =>
+  startGeneration: (skillId: number) =>
     fetchJSON<{ jobId: string }>('/coaching/modules/generate', {
       method: 'POST',
-      body: JSON.stringify({ skillId, approach }),
+      body: JSON.stringify({ skillId }),
     }),
   getGenerationJob: (jobId: string) =>
     fetchJSON<GenerationJob<{ moduleId: number; verifierWarnings: string[] }>>(`/coaching/jobs/${jobId}`),
@@ -309,6 +316,33 @@ export const coachingApi = {
     fetchJSON<CoachingModule>(`/coaching/modules/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   approve: (id: number) =>
     fetchJSON<CoachingModule>(`/coaching/modules/${id}/approve`, { method: 'POST', body: '{}' }),
+  // Media (W-126): embed a YouTube/Vimeo link, upload a video file, or clear.
+  setMediaEmbed: (id: number, url: string) =>
+    fetchJSON<CoachingModule>(`/coaching/modules/${id}/media`, { method: 'PATCH', body: JSON.stringify({ kind: 'embed', url }) }),
+  clearMedia: (id: number) =>
+    fetchJSON<CoachingModule>(`/coaching/modules/${id}/media`, { method: 'PATCH', body: JSON.stringify({ kind: 'none' }) }),
+  startAnimation: (id: number) =>
+    fetchJSON<{ jobId: string }>(`/coaching/modules/${id}/media/animation/generate`, { method: 'POST', body: '{}' }),
+  // W-133: assistant — suggest a candidate animation (not stored) then commit the chosen one.
+  suggestAnimation: (id: number, instructions?: string) =>
+    fetchJSON<{ jobId: string }>(`/coaching/modules/${id}/media/animation/suggest`, {
+      method: 'POST',
+      body: JSON.stringify({ instructions }),
+    }),
+  getAnimationJob: (jobId: string) => fetchJSON<GenerationJob<{ svg: string }>>(`/coaching/jobs/${jobId}`),
+  commitAnimation: (id: number, svg: string) =>
+    fetchJSON<CoachingModule>(`/coaching/modules/${id}/media/animation`, { method: 'POST', body: JSON.stringify({ svg }) }),
+  uploadMedia: async (id: number, file: File): Promise<CoachingModule> => {
+    const fd = new FormData();
+    fd.append('file', file);
+    // Raw fetch: FormData must set its own multipart Content-Type (fetchJSON would force JSON).
+    const res = await fetch(`${API_BASE}/coaching/modules/${id}/media/upload`, { method: 'POST', body: fd });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  },
   // Student (W-70/W-71)
   listApproved: () => fetchJSON<CoachingModule[]>('/coaching/modules?approved=1'),
   myAssignments: () => fetchJSON<CoachingAssignmentSummary[]>('/coaching/assignments/me'),

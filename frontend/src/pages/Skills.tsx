@@ -1,7 +1,7 @@
 import { useState, useEffect, ReactNode } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { skillsApi, mathApi, coachingApi, Skill, MathTopic, CoachingModule } from '@/lib/api';
+import { skillsApi, mathApi, coachingApi, Skill, MathTopic, CoachingModule, GENERATION_POLL_TIMEOUT_MS } from '@/lib/api';
 import { BookOpen, ChevronRight } from 'lucide-react';
 
 // M3a Task 10: read-only browser over the skill taxonomy (Task 2's 89-skill seed) — math
@@ -74,12 +74,12 @@ export default function Skills() {
       .finally(() => setLoading(false));
   }, []);
 
-  async function generateLesson(skillId: number, approach: 'standard' | 'tactical' = 'standard') {
+  async function generateLesson(skillId: number) {
     setGeneratingSkillId(skillId);
     setError(null);
     try {
-      const { jobId } = await coachingApi.startGeneration(skillId, approach);
-      const deadline = Date.now() + 90_000;
+      const { jobId } = await coachingApi.startGeneration(skillId);
+      const deadline = Date.now() + GENERATION_POLL_TIMEOUT_MS;
       for (;;) {
         const job = await coachingApi.getGenerationJob(jobId);
         if (job.status === 'done' && job.result) {
@@ -112,32 +112,14 @@ export default function Skills() {
         </button>
       );
     }
-    // A/B (W-118): generate with the Standard prompt or the opt-in Tactical prompt.
-    const busy = generatingSkillId !== null;
     return (
-      <div className="flex items-center gap-1.5">
-        {generatingSkillId === skill.id ? (
-          <span className="px-3 py-1.5 text-xs font-semibold text-gray-500">Generating…</span>
-        ) : (
-          <>
-            <button
-              onClick={() => generateLesson(skill.id, 'standard')}
-              disabled={busy}
-              className="rounded-lg bg-brand-blue px-3 py-1.5 text-xs font-semibold text-white hover:brightness-95 disabled:opacity-50"
-            >
-              Standard
-            </button>
-            <button
-              onClick={() => generateLesson(skill.id, 'tactical')}
-              disabled={busy}
-              title="Tactical A/B approach: Selective Trap → Building Block → Speed Shortcut → Guided Drills"
-              className="rounded-lg border border-brand-blue px-3 py-1.5 text-xs font-semibold text-brand-blue hover:bg-blue-50 disabled:opacity-50"
-            >
-              Tactical
-            </button>
-          </>
-        )}
-      </div>
+      <button
+        onClick={() => generateLesson(skill.id)}
+        disabled={generatingSkillId !== null}
+        className="rounded-lg bg-brand-blue px-3 py-1.5 text-xs font-semibold text-white hover:brightness-95 disabled:opacity-50"
+      >
+        {generatingSkillId === skill.id ? 'Generating…' : 'Generate lesson'}
+      </button>
     );
   };
 

@@ -1,11 +1,74 @@
+import { useState } from 'react';
 import {
-  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
+  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, Sector,
   XAxis, YAxis, CartesianGrid, ResponsiveContainer,
 } from 'recharts';
 import type {
   Figure, GridFigure, ProtractorFigure, CompassFigure, ShapeFigure,
-  RotationFigure, RotationShape, FoldCutFigure, TargetFigure,
+  RotationFigure, RotationShape, FoldCutFigure, TargetFigure, PieChartFigure,
 } from '@/lib/stimulus';
+
+// W-130: caption explaining a pie slice's 5%-block breakdown (shown on hover in interactive lessons).
+// Only decomposes into blocks when the percent is a clean multiple of 5.
+export function blocksLabel(name: string, percent: number): string {
+  if (percent > 0 && percent % 5 === 0) {
+    const n = percent / 5;
+    return `${name} — ${percent}% = ${n} block${n === 1 ? '' : 's'} of 5%`;
+  }
+  return `${name} — ${percent}%`;
+}
+
+// W-130: the pie chart. In lessons (`interactive`), hovering a slice highlights it and captions its
+// 5%-block breakdown, reverting on mouse-out. In tests/questions (default), it's the static chart.
+function PieFigure({ f, interactive, compact }: { f: PieChartFigure; interactive?: boolean; compact?: boolean }) {
+  const [active, setActive] = useState<number | null>(null);
+  const data = f.sectors.map((s) => ({ name: s.label, value: s.percent, show: s.showPercent !== false }));
+  const hovered = interactive && active != null ? f.sectors[active] : null;
+  // Compact: a wider box + smaller radius (more room around the pie) so outer slice labels aren't clipped.
+  return (
+    <div className={compact ? 'w-full max-w-[320px]' : 'w-full max-w-md'}>
+      {f.title && <p className="text-sm font-medium text-gray-700 text-center mb-1">{f.title}</p>}
+      <ResponsiveContainer width="100%" height={compact ? 170 : 240}>
+        <PieChart>
+          <Pie
+            data={data}
+            dataKey="value"
+            nameKey="name"
+            outerRadius={compact ? 62 : 80}
+            isAnimationActive={!!interactive && !compact}
+            activeIndex={interactive && active != null ? active : undefined}
+            activeShape={interactive ? (props: any) => <Sector {...props} outerRadius={props.outerRadius + 8} /> : undefined}
+            onMouseEnter={interactive ? (_: unknown, i: number) => setActive(i) : undefined}
+            onMouseLeave={interactive ? () => setActive(null) : undefined}
+            // Compact: no outer labels (they clip in a small pie) — a legend below carries name + %.
+            label={compact ? false : (entry: any) => (entry.show ? `${entry.name}, ${entry.value}%` : entry.name)}
+          >
+            {f.sectors.map((_, i) => (
+              <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+            ))}
+          </Pie>
+        </PieChart>
+      </ResponsiveContainer>
+      {compact && (
+        <div className="mt-1 flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-gray-600">
+          {f.sectors.map((s, i) => (
+            <span key={i} className="inline-flex items-center gap-1">
+              <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+              {s.label} {s.percent}%
+            </span>
+          ))}
+        </div>
+      )}
+      {interactive && (
+        <p className="min-h-[20px] text-center text-sm font-medium text-brand-blue" aria-live="polite">
+          {hovered ? blocksLabel(hovered.label, hovered.percent) : (
+            <span className="font-normal text-gray-400">Hover a slice to see its 5% blocks</span>
+          )}
+        </p>
+      )}
+    </div>
+  );
+}
 
 // Renders one structured stimulus figure (W-8). Charts use Recharts; geometric
 // figures (protractor, compass, shape, rotation) are deterministic parametric SVG —
@@ -272,7 +335,7 @@ function Target({ f }: { f: TargetFigure }) {
   );
 }
 
-export default function StimulusFigure({ figure }: { figure: Figure }) {
+export default function StimulusFigure({ figure, interactive, compact }: { figure: Figure; interactive?: boolean; compact?: boolean }) {
   const body = (() => {
     switch (figure.kind) {
       case 'table':
@@ -302,9 +365,9 @@ export default function StimulusFigure({ figure }: { figure: Figure }) {
       case 'bar-chart': {
         const data = figure.points.map((p) => ({ x: String(p.x), y: p.y }));
         return (
-          <div className="w-full max-w-xl">
+          <div className={compact ? 'w-full max-w-[440px]' : 'w-full max-w-xl'}>
             {figure.title && <p className="text-sm font-medium text-gray-700 text-center mb-1">{figure.title}</p>}
-            <ResponsiveContainer width="100%" height={230}>
+            <ResponsiveContainer width="100%" height={compact ? 210 : 230}>
               {figure.kind === 'line-chart' ? (
                 <LineChart data={data} margin={{ top: 5, right: 20, bottom: 18, left: 4 }}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -325,27 +388,7 @@ export default function StimulusFigure({ figure }: { figure: Figure }) {
         );
       }
       case 'pie-chart':
-        return (
-          <div className="w-full max-w-md">
-            {figure.title && <p className="text-sm font-medium text-gray-700 text-center mb-1">{figure.title}</p>}
-            <ResponsiveContainer width="100%" height={240}>
-              <PieChart>
-                <Pie
-                  data={figure.sectors.map((s) => ({ name: s.label, value: s.percent, show: s.showPercent !== false }))}
-                  dataKey="value"
-                  nameKey="name"
-                  outerRadius={80}
-                  isAnimationActive={false}
-                  label={(entry: any) => (entry.show ? `${entry.name}, ${entry.value}%` : entry.name)}
-                >
-                  {figure.sectors.map((_, i) => (
-                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        );
+        return <PieFigure f={figure} interactive={interactive} compact={compact} />;
       case 'protractor':
         return <Protractor f={figure} />;
       case 'compass':

@@ -99,23 +99,21 @@ describe('generation prompt teaches figures + the teaching framework (W-115)', (
     return chatCompletion.mock.calls[0][1] as string;
   }
 
-  it('math: prompt embeds the ```figure vocabulary and the what-to-look-for → fast-shortcut framework', async () => {
+  it('math: prompt embeds the ```figure vocabulary and the speed-shortcut framework', async () => {
     const p = await promptFor('math');
     expect(p).toContain('```figure');
     expect(p).toContain('pie-chart');
-    expect(p.toLowerCase()).toContain('what to look for');
     expect(p.toLowerCase()).toContain('shortcut');
     // math wording preserved (W-110 regression)
     expect(p).toContain('ONE maths skill');
   });
 
-  it('thinking-skills: prompt embeds the ```figure vocabulary and the same framework, reasoning wording', async () => {
+  it('thinking-skills: prompt embeds the ```figure vocabulary, reasoning wording', async () => {
     chatCompletion.mockReset();
     chatCompletion.mockResolvedValueOnce({ content: '## The idea\nlesson', usage: null });
     await generateCoachingModuleContent(skill, 'thinking-skills');
     const p = chatCompletion.mock.calls[0][1] as string;
     expect(p).toContain('```figure');
-    expect(p.toLowerCase()).toContain('what to look for');
     expect(p.toLowerCase()).toContain('shortcut');
     expect(p).not.toContain('maths skill');
     expect(p.toLowerCase()).toContain('reasoning');
@@ -145,52 +143,46 @@ describe('generation prompt prefers intuitive "Building Blocks" shortcuts (W-117
   });
 });
 
-describe('A/B: tactical approach (W-118)', () => {
-  async function tacticalPrompt(subject: 'math' | 'thinking-skills'): Promise<string> {
+describe('lesson prompt is the single tactical structure (W-118/W-123)', () => {
+  async function promptFor(subject: 'math' | 'thinking-skills'): Promise<string> {
     chatCompletion.mockReset();
     chatCompletion
       .mockResolvedValueOnce({ content: '# The Selective Trap\nlesson', usage: null })
       .mockResolvedValueOnce({ content: '{"ok":true,"warnings":[]}', usage: null });
-    await generateCoachingModuleContent(skill, subject, 'tactical');
+    await generateCoachingModuleContent(skill, subject);
     return chatCompletion.mock.calls[0][1] as string;
   }
 
-  it('tactical prompt (math) uses the 4-part structure, the figure engine, and the mental-model library', async () => {
-    const p = await tacticalPrompt('math');
+  it('math: uses the 4-part structure, the figure engine, and the mental-model library', async () => {
+    const p = await promptFor('math');
     expect(p).toContain('Selective Trap');
     expect(p).toContain('Building Block');
     expect(p).toContain('Speed Shortcut');
-    expect(p).toContain('Guided Drills');
+    // Section 4 is an interactive quiz, not a solution-revealing drill (W-120).
+    expect(p).toContain('Guided Quiz');
+    expect(p).not.toContain('Guided Drills');
+    expect(p).toContain('```quiz');
+    // W-136: a question may carry its own small figure; don't reuse the lesson figure across questions.
+    expect(p).toContain('PER-QUESTION FIGURE');
     expect(p).toContain('```figure');
     // Draws on the named concrete mental models the user asked for.
     expect(p).toContain('Bar Model');
     expect(p).toContain('Clock Face');
   });
 
-  it('tactical prompt works for thinking-skills too (reasoning wording, no "maths skill")', async () => {
-    const p = await tacticalPrompt('thinking-skills');
+  it('thinking-skills: reasoning wording, no "maths skill"', async () => {
+    const p = await promptFor('thinking-skills');
     expect(p).toContain('Selective Trap');
     expect(p).not.toContain('maths skill');
   });
 
-  it('tactical generation requests a larger completion budget than standard', async () => {
+  it('requests a generous completion budget (>= 12000)', async () => {
     chatCompletion.mockReset();
     chatCompletion
       .mockResolvedValueOnce({ content: '# The Selective Trap\nlesson', usage: null })
       .mockResolvedValueOnce({ content: '{"ok":true,"warnings":[]}', usage: null });
-    await generateCoachingModuleContent(skill, 'math', 'tactical');
-    expect(chatCompletion.mock.calls[0][2] as number).toBeGreaterThanOrEqual(12000);
-  });
-
-  it('standard (default) is unchanged — A prompt still used when approach omitted', async () => {
-    chatCompletion.mockReset();
-    chatCompletion
-      .mockResolvedValueOnce({ content: '## The idea\nlesson', usage: null })
-      .mockResolvedValueOnce({ content: '{"ok":true,"warnings":[]}', usage: null });
     await generateCoachingModuleContent(skill, 'math');
-    const p = chatCompletion.mock.calls[0][1] as string;
-    expect(p).toContain('ONE maths skill');
-    expect(p).not.toContain('Selective Trap');
+    expect(chatCompletion.mock.calls[0][2] as number).toBeGreaterThanOrEqual(12000);
   });
 });
 

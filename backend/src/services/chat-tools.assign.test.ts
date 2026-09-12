@@ -46,6 +46,11 @@ describe('assign_coaching action tool', () => {
 
     expect(generateCoachingModuleContent).toHaveBeenCalledTimes(1);
     expect(prismaMock.coachingModule.create).toHaveBeenCalledTimes(1);
+    // W-137: the chat draft must be persisted EXACTLY as the Admin UI persists it — a tactical
+    // draft (never the W-123-obsolete 'standard' default the schema falls back to).
+    expect(prismaMock.coachingModule.create.mock.calls[0][0].data).toMatchObject({
+      workspaceId: 1, skillId: skill.id, status: 'draft', approach: 'tactical',
+    });
     expect(prismaMock.coachingAssignment.upsert).not.toHaveBeenCalled();
     expect(result).toMatchObject({ generatedDraft: true, needsApproval: true, moduleId: 10 });
   });

@@ -1,19 +1,16 @@
 import type { Components } from 'react-markdown';
 import { validateStimulus, type Figure } from '@/lib/stimulus';
 import StimulusFigure from './StimulusFigure';
+import LessonQuiz, { parseQuiz } from './LessonQuiz';
 
-// W-114: render real figures inside coaching lessons. A lesson embeds one figure as a fenced block
-// whose language is `figure`, carrying a single figure JSON object (the same objects the MCQ
-// stimulus engine renders):
-//
-//   ```figure
-//   {"kind":"pie-chart","title":"...","sectors":[...]}
-//   ```
+// Render interactive blocks inside coaching lessons. A lesson embeds them as fenced code blocks:
+//   ```figure    — one figure JSON object, rendered by the MCQ stimulus engine (W-114)
+//   ```quiz      — one interactive Guided-Quiz question (W-120)
 //
 // These overrides are OPT-IN — only the lesson render sites (student Lesson page, admin ModuleEditor
 // preview) pass them, so all other markdown (and the shared MarkdownView defaults) are untouched.
-// A block that isn't valid figure JSON falls back to the normal inline code rendering, so a garbled
-// block degrades to readable text rather than crashing.
+// A block that isn't valid JSON falls back to the normal inline code rendering, so a garbled block
+// degrades to readable text rather than crashing.
 
 function codeText(children: React.ReactNode): string {
   if (typeof children === 'string') return children;
@@ -45,18 +42,24 @@ export const figureComponents: Components = {
       if (figure) {
         return (
           <div className="my-3 rounded-xl border border-gray-100 bg-gray-50/70 p-3">
-            <StimulusFigure figure={figure} />
+            {/* W-130: lesson figures are interactive (hover-to-explain). MCQ/test figures are not. */}
+            <StimulusFigure figure={figure} interactive />
           </div>
         );
       }
+    }
+    if (className && /\blanguage-quiz\b/.test(className)) {
+      const quiz = parseQuiz(codeText(children));
+      if (quiz) return <LessonQuiz quiz={quiz} />;
     }
     // Default: match MarkdownView's inline code chip.
     return <code className="rounded bg-gray-100 px-1.5 py-0.5 text-sm font-mono text-gray-900">{children}</code>;
   },
 };
 
-// Merge the figure overrides with any caller-supplied component overrides. Figure handling always
-// wins for `code`/`pre` so embedded figures render regardless of the caller's other overrides.
+// Merge the lesson-block overrides with any caller-supplied component overrides. Block handling
+// always wins for `code`/`pre` so embedded figures/quizzes render regardless of the caller's other
+// overrides. (Named `withFigures` for historical reasons; it now covers all lesson blocks.)
 export function withFigures(extra?: Components): Components {
   return { ...extra, ...figureComponents };
 }

@@ -54,18 +54,23 @@ test.describe('W-70/W-73/W-80 — student sees lessons under the topic', () => {
     await expect(lessons).toBeVisible();
     await expect(lessons.getByText(LESSON_TITLE)).toBeVisible();
 
-    // Open it → the lesson page renders the markdown.
+    // Open it → the segmented player shows one section per card (W-124).
     await lessons.getByText(LESSON_TITLE).click();
     await expect(page).toHaveURL(new RegExp(`/lesson/${moduleId}`));
-    // Playbook sections all render (parser splits the markdown into styled sections).
     await expect(page.getByRole('heading', { name: 'The idea' })).toBeVisible();
+
+    // Step to the Speed technique card — it keeps its green "Show-off move" treatment.
+    await page.getByRole('button', { name: 'Next' }).click(); // Step by step
+    await page.getByRole('button', { name: 'Next' }).click(); // Speed technique
     await expect(page.getByRole('heading', { name: 'Speed technique' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Traps to avoid' })).toBeVisible();
     await expect(page.getByText('Show-off move')).toBeVisible();
 
-    // Mark it complete.
-    await page.getByRole('button', { name: /Mark as complete/i }).click();
-    await expect(page.getByText(/Completed/i)).toBeVisible();
+    // Step to the last card (Traps to avoid). No quiz → completion is available immediately.
+    await page.getByRole('button', { name: 'Next' }).click(); // Worked examples
+    await page.getByRole('button', { name: 'Next' }).click(); // Traps to avoid
+    await expect(page.getByRole('heading', { name: 'Traps to avoid' })).toBeVisible();
+    await page.getByRole('button', { name: 'Mark complete' }).click();
+    await expect(page.getByText(/Lesson complete|Completed/i).first()).toBeVisible();
   });
 
   test('a student never receives a draft lesson (404)', async ({ page, request }) => {

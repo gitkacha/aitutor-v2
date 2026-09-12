@@ -19,11 +19,6 @@ export interface GeneratedModule {
   verifierWarnings: string[];
 }
 
-// The exact section order a module must follow (§8.1). "Speed technique" is omitted by the model
-// when no shortcut applies.
-const SECTION_GUIDE =
-  '## The idea\n## Step by step\n## Speed technique (omit this heading entirely if there is no genuine shortcut)\n## Worked examples\n## Traps to avoid';
-
 // Lessons may embed a REAL figure the app renders (charts via a chart library, geometry via SVG) by
 // writing a fenced ```figure block containing ONE figure JSON object. This vocabulary is a
 // deliberately SEPARATE copy of the MCQ generator's figure list (ai.service.ts) — the MCQ prompt
@@ -55,82 +50,13 @@ Rules for figures:
 
 type CoachingSubject = 'math' | 'thinking-skills';
 
-function generationPrompt(skill: CoachingSkillInput, subject: CoachingSubject, feedback?: string[]): string {
-  const ts = subject === 'thinking-skills';
-  const misconceptions =
-    skill.misconceptions && skill.misconceptions.length > 0
-      ? `\nCommon mistakes students make on this skill (turn these into the "Traps to avoid"):\n- ${skill.misconceptions.join('\n- ')}\n`
-      : '';
-  const retry =
-    feedback && feedback.length > 0
-      ? ts
-        ? `\nA reviewer found problems in your previous attempt. FIX these — rework every worked example so the reasoning is sound:\n- ${feedback.join('\n- ')}\n`
-        : `\nA maths checker found errors in your previous attempt. FIX these — recompute every worked example so the arithmetic is correct:\n- ${feedback.join('\n- ')}\n`
-      : '';
-  // The skill kind + the two subject-specific bullet lines are the only differences; the math path
-  // reproduces the original prompt verbatim (W-110).
-  const skillKind = ts ? 'Thinking Skills reasoning skill' : 'maths skill';
-  const concreteLine = ts
-    ? 'Keep it under a 5-minute read. Use a concrete, relatable example every time.'
-    : 'Keep it under a 5-minute read. Use concrete, relatable numbers in every example.';
-  const correctnessLine = ts
-    ? 'Every worked example must be logically sound — double-check the reasoning in each before you finish.'
-    : 'Every worked example must be arithmetically correct — double-check each calculation before you finish.';
-  return `You are writing a short coaching lesson for an 11-year-old preparing for the NSW Selective High School Placement Test. The lesson teaches ONE ${skillKind}.
+// The lesson-generation prompt. Lessons follow the Selective-exam "tactics" structure (Selective
+// Trap → Intuitive Building Block → Speed Shortcut → interactive Guided Quiz) and draw on a library
+// of named, concrete mental models. This is the ONLY lesson style (W-123 — the earlier Standard/
+// Tactical A/B was collapsed to this one).
 
-Skill: ${skill.name}
-What exam-level mastery looks like (tutor notes — do NOT copy verbatim, translate into kid-friendly teaching): ${skill.examLevelNotes}
-${misconceptions}${retry}
-Write it FOR the student, not the tutor:
-- Talk straight to them ("you"), short sentences, a warm and encouraging tone. Never babyish, never a wall of text.
-- Make the speed technique feel like a trick worth showing off. Frame the traps as "gotchas the test setters hope you fall for".
-- ${concreteLine}
-- ${correctnessLine}
-
-TEACH IT SO IT STICKS. Build the whole lesson around three moves, in this order:
-1. WHAT TO LOOK FOR — the tell-tale signs that a question is "one of these", so the student recognises
-   the type instantly.
-2. WHAT IT MEANS HERE — take a real example and read it out loud: what each number/clue/figure is
-   actually saying.
-3. HOW TO APPLY THE TRICK FAST — walk through solving it quickly using the shortcut.
-Map these onto the sections: "The idea" = what to look for; "Step by step" = what it means here; "Speed
-technique" + "Worked examples" = applying the trick fast.
-
-MAKE THE MATHS INTUITIVE. Prefer shortcuts a human brain finds natural over grinding calculation:
-estimate and round, lean on friendly benchmarks (10%, 25%, 50%, doubling/halving), compare instead of
-compute, eliminate impossible options, and use symmetry or patterns. If a slow calculation can be
-skipped, show the student how to skip it — that is the trick worth showing off.
-
-USE THE "BUILDING BLOCKS" METHOD for percentages, proportions, ratios and unit-rate problems. Find
-the SMALLEST CLEAN BUILDING BLOCK — the biggest single step that divides BOTH the given amount and
-the given percent/quantity into WHOLE NUMBERS — then scale that one block up to the answer. Pick the
-block to fit the numbers in the question; do NOT blindly reach for 10% when it makes an ugly fraction.
-Picture it physically: "imagine the total is hidden in a number of identical boxes — just find how
-many are in one box, then count the boxes." Worked example to copy the STYLE of (not the numbers):
-- "15% of the visitors is 18 people. How many visitors in total?" 15 and 18 both divide by 3, so use
-  5% as the block: chop 15% into three 5% pieces, and 18 into three equal pieces → 18 ÷ 3 = 6, so
-  5% = 6 people. 100% is twenty 5%-blocks → 6 × 20 = 120 visitors.
-Every intermediate number MUST stay a whole number. NEVER leave an awkward step like "18 × (10/15)" or
-a messy fraction in a worked example when a whole-number building block exists — that is exactly the
-slow, un-intuitive move to avoid.
-
-${LESSON_FIGURE_VOCAB}
-
-Output ONLY GitHub-flavoured markdown with these sections, in this exact order (no preamble, and no
-code fences EXCEPT the \`\`\`figure blocks described above):
-${SECTION_GUIDE}
-
-Include 2–3 worked examples under "## Worked examples".`;
-}
-
-// ── Approach B: "Tactical" prompt (W-118) ─────────────────────────────────────
-// An opt-in alternative lesson style for A/B testing. Restructures the lesson as a Selective-exam
-// tactics plan and draws on a library of named, concrete mental models. Approach A (generationPrompt
-// above) is untouched and remains the default.
-export type CoachingApproach = 'standard' | 'tactical';
-
-// Named concrete mental models the tactical author should reach for (user-curated). The AI picks the
-// one that fits the skill, or invents an equally concrete model in the same spirit.
+// Named concrete mental models the author should reach for (user-curated). The AI picks the one that
+// fits the skill, or invents an equally concrete model in the same spirit.
 const MENTAL_MODEL_LIBRARY = `MENTAL MODEL LIBRARY — reach for the concrete model that fits this skill (or invent one just as
 physical and visual, never an abstract formula):
 - Patterns / Magic Squares → the "Balance Scale" or "Averages as the Anchor" method (find the centre/
@@ -145,7 +71,7 @@ physical and visual, never an abstract formula):
   both numbers into whole numbers, then scale one block up.
 - Money / sharing → coin and note analogies; comparisons → line the amounts up and compare, don't compute.`;
 
-function tacticalPrompt(skill: CoachingSkillInput, subject: CoachingSubject, feedback?: string[]): string {
+function generationPrompt(skill: CoachingSkillInput, subject: CoachingSubject, feedback?: string[]): string {
   const ts = subject === 'thinking-skills';
   const skillKind = ts ? 'Thinking Skills reasoning skill' : 'maths skill';
   const misconceptions =
@@ -181,14 +107,24 @@ Explain the concept with a concrete, non-abstract mental model from the library 
 ## 3. The Speed Shortcut
 Turn that mental model into a rapid mental-maths strategy. Walk through the example step by step, showing exactly what the student should "see" in their head. End with a one-line "Mental Map:" of the chain.
 
-## 4. Guided Drills
-Give 3 progressive practice questions. For EACH: a **Scripted Hint** (what a tutor would say to nudge them visually) and a **Speed Solution** broken down conceptually.
+## 4. Guided Quiz
+An INTERACTIVE quiz that makes the student DO the trick — it must not hand them the answer. Give 3 progressive questions. Output EACH question as a fenced code block whose language is "quiz" containing ONE JSON object:
+
+\`\`\`quiz
+{"question":"<the question>","hint":"<a tutor nudge that walks them toward the speed trick, using BLANKS like [___] [___] where the key numbers or the answer would go — NEVER fill the numbers in, NEVER reveal the answer>","answer":"<the short final answer, e.g. 20 or 23/40 or 200 m>","acceptable":["<0-2 tolerant variants of the answer>"],"solution":"<the full step-by-step speed solution — this is hidden until the student answers, so it is the ONLY place the working may appear>","figure":<OPTIONAL — a figure object, same format as the figure vocabulary below, shown INSIDE this question>}
+\`\`\`
+
+Rules for the quiz:
+- The "hint" prompts the METHOD with blanks; it must never contain the answer or the filled-in numbers (write "[___] [___]", not "[Feb 60] [Jan 40]").
+- Put ALL the worked steps in "solution" only. Nothing outside the quiz blocks may reveal an answer.
+- Keep "answer" short and clean (a number, a fraction, or a number with a unit).
+- PER-QUESTION FIGURE — MANDATORY WHEN A QUESTION DESCRIBES A DIAGRAM. If a question mentions a specific pie/chart/graph/slice/sector/angle (e.g. "A pie chart shows Car 40%, Bus 25%, Train ?" or "A slice has angle 54°"), you MUST include a matching "figure" object in THAT question's JSON so the student SEES the picture — NEVER describe a chart in words and leave the figure out. The figure's numbers must match the question exactly; keep it small and relevant. Example of a question that carries its own figure: {"question":"This pie shows Car 40%, Bus 25% and Train (unlabelled). What percent take the Train?","hint":"add the labelled slices [___] + [___], then 100 − [___]","answer":"35","acceptable":["35%"],"solution":"40 + 25 = 65, so Train = 100 − 65 = 35%.","figure":{"kind":"pie-chart","title":"Modes of travel","sectors":[{"label":"Car","percent":40,"showPercent":true},{"label":"Bus","percent":25,"showPercent":true},{"label":"Train","percent":35}]}}. Do NOT reuse the lesson's main figure across questions — only omit per-question figures when EVERY question genuinely uses that ONE shared lesson figure.
 
 Talk straight to the student ("you"), short sentences, warm, encouraging, highly tactical. ${correctnessLine}
 
 ${LESSON_FIGURE_VOCAB}
 
-Output ONLY GitHub-flavoured markdown with those four \`##\` sections (no preamble, and no code fences EXCEPT the \`\`\`figure blocks described above).`;
+Output ONLY GitHub-flavoured markdown with those four \`##\` sections (no preamble, and no code fences EXCEPT the \`\`\`figure and \`\`\`quiz blocks described above).`;
 }
 
 function verifierPrompt(content: string): string {
@@ -223,43 +159,39 @@ export async function verifyWorkedExamples(content: string): Promise<string[]> {
 }
 
 // On a reasoning model (gpt-5-mini) the completion budget is spent on reasoning AND output. The
-// richer visual lessons (figures + the what-to-look-for → shortcut framework) pushed the old 3000
-// budget to its edge (~2.5k used per run), so a slightly longer run truncated and returned empty
-// content. 8000 gives comfortable headroom for reasoning + a full lesson (W-115 fix).
-const GENERATION_MAX_TOKENS = 8000;
-// The tactical lesson (4 sections + 3 fully-worked drills) is longer, so it needs a bigger budget to
-// avoid truncation on the reasoning model (W-118).
-const TACTICAL_MAX_TOKENS = 12000;
+// lesson (4 sections + an interactive quiz + figures) is long, so this budget gives comfortable
+// headroom to avoid truncating to empty content (W-115/W-118).
+const GENERATION_MAX_TOKENS = 12000;
 
 async function generateOnce(
   skill: CoachingSkillInput,
   subject: CoachingSubject,
-  approach: CoachingApproach,
   feedback?: string[],
 ): Promise<string> {
-  const prompt =
-    approach === 'tactical' ? tacticalPrompt(skill, subject, feedback) : generationPrompt(skill, subject, feedback);
-  const maxTokens = approach === 'tactical' ? TACTICAL_MAX_TOKENS : GENERATION_MAX_TOKENS;
-  const { content } = await chatCompletion(providerFor('generation'), prompt, maxTokens, 0.7);
+  const { content } = await chatCompletion(
+    providerFor('generation'),
+    generationPrompt(skill, subject, feedback),
+    GENERATION_MAX_TOKENS,
+    0.7,
+  );
   return content.trim();
 }
 
 export async function generateCoachingModuleContent(
   skill: CoachingSkillInput,
   subject: CoachingSubject = 'math',
-  approach: CoachingApproach = 'standard',
 ): Promise<GeneratedModule> {
-  let content = await generateOnce(skill, subject, approach);
+  let content = await generateOnce(skill, subject);
   // The arithmetic verifier is meaningful only for maths worked examples. Thinking Skills lessons
   // teach reasoning (no arithmetic to check) — they rely on admin review, matching the fails-open
-  // design (W-110). Both approaches share this flow.
+  // design (W-110).
   if (subject !== 'math') {
     return { title: skill.name, content, verifierWarnings: [] };
   }
   let warnings = await verifyWorkedExamples(content);
   if (warnings.length > 0) {
     // Exactly one retry, feeding the verifier's findings back into generation.
-    content = await generateOnce(skill, subject, approach, warnings);
+    content = await generateOnce(skill, subject, warnings);
     warnings = await verifyWorkedExamples(content);
   }
   return { title: skill.name, content, verifierWarnings: warnings };
