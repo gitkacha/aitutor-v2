@@ -111,13 +111,14 @@ Turn that mental model into a rapid mental-maths strategy. Walk through the exam
 An INTERACTIVE quiz that makes the student DO the trick — it must not hand them the answer. Give 3 progressive questions. Output EACH question as a fenced code block whose language is "quiz" containing ONE JSON object:
 
 \`\`\`quiz
-{"question":"<the question>","hint":"<a tutor nudge that walks them toward the speed trick, using BLANKS like [___] [___] where the key numbers or the answer would go — NEVER fill the numbers in, NEVER reveal the answer>","answer":"<the short final answer, e.g. 20 or 23/40 or 200 m>","acceptable":["<0-2 tolerant variants of the answer>"],"solution":"<the full step-by-step speed solution — this is hidden until the student answers, so it is the ONLY place the working may appear>"}
+{"question":"<the question>","hint":"<a tutor nudge that walks them toward the speed trick, using BLANKS like [___] [___] where the key numbers or the answer would go — NEVER fill the numbers in, NEVER reveal the answer>","answer":"<the short final answer, e.g. 20 or 23/40 or 200 m>","acceptable":["<0-2 tolerant variants of the answer>"],"solution":"<the full step-by-step speed solution — this is hidden until the student answers, so it is the ONLY place the working may appear>","figure":<OPTIONAL — a figure object, same format as the figure vocabulary below, shown INSIDE this question>}
 \`\`\`
 
 Rules for the quiz:
 - The "hint" prompts the METHOD with blanks; it must never contain the answer or the filled-in numbers (write "[___] [___]", not "[Feb 60] [Jan 40]").
 - Put ALL the worked steps in "solution" only. Nothing outside the quiz blocks may reveal an answer.
 - Keep "answer" short and clean (a number, a fraction, or a number with a unit).
+- PER-QUESTION FIGURE: if a question refers to its OWN specific diagram (e.g. "a pie chart shows Car 40%, Bus 25%, Train ?"), embed that diagram as the question's "figure" so the student sees it right there — do NOT describe a chart in words and leave it out. Keep each figure small and directly relevant. Do NOT reuse the lesson's main figure across questions: only omit per-question figures when EVERY question genuinely uses that ONE shared lesson figure.
 
 Talk straight to the student ("you"), short sentences, warm, encouraging, highly tactical. ${correctnessLine}
 

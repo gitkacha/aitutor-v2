@@ -20,20 +20,20 @@ export function blocksLabel(name: string, percent: number): string {
 
 // W-130: the pie chart. In lessons (`interactive`), hovering a slice highlights it and captions its
 // 5%-block breakdown, reverting on mouse-out. In tests/questions (default), it's the static chart.
-function PieFigure({ f, interactive }: { f: PieChartFigure; interactive?: boolean }) {
+function PieFigure({ f, interactive, compact }: { f: PieChartFigure; interactive?: boolean; compact?: boolean }) {
   const [active, setActive] = useState<number | null>(null);
   const data = f.sectors.map((s) => ({ name: s.label, value: s.percent, show: s.showPercent !== false }));
   const hovered = interactive && active != null ? f.sectors[active] : null;
   return (
-    <div className="w-full max-w-md">
+    <div className={compact ? 'w-full max-w-[300px]' : 'w-full max-w-md'}>
       {f.title && <p className="text-sm font-medium text-gray-700 text-center mb-1">{f.title}</p>}
-      <ResponsiveContainer width="100%" height={240}>
+      <ResponsiveContainer width="100%" height={compact ? 170 : 240}>
         <PieChart>
           <Pie
             data={data}
             dataKey="value"
             nameKey="name"
-            outerRadius={80}
+            outerRadius={compact ? 54 : 80}
             isAnimationActive={!!interactive}
             activeIndex={interactive && active != null ? active : undefined}
             activeShape={interactive ? (props: any) => <Sector {...props} outerRadius={props.outerRadius + 8} /> : undefined}
@@ -323,7 +323,7 @@ function Target({ f }: { f: TargetFigure }) {
   );
 }
 
-export default function StimulusFigure({ figure, interactive }: { figure: Figure; interactive?: boolean }) {
+export default function StimulusFigure({ figure, interactive, compact }: { figure: Figure; interactive?: boolean; compact?: boolean }) {
   const body = (() => {
     switch (figure.kind) {
       case 'table':
@@ -353,9 +353,9 @@ export default function StimulusFigure({ figure, interactive }: { figure: Figure
       case 'bar-chart': {
         const data = figure.points.map((p) => ({ x: String(p.x), y: p.y }));
         return (
-          <div className="w-full max-w-xl">
+          <div className={compact ? 'w-full max-w-[340px]' : 'w-full max-w-xl'}>
             {figure.title && <p className="text-sm font-medium text-gray-700 text-center mb-1">{figure.title}</p>}
-            <ResponsiveContainer width="100%" height={230}>
+            <ResponsiveContainer width="100%" height={compact ? 170 : 230}>
               {figure.kind === 'line-chart' ? (
                 <LineChart data={data} margin={{ top: 5, right: 20, bottom: 18, left: 4 }}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -376,7 +376,7 @@ export default function StimulusFigure({ figure, interactive }: { figure: Figure
         );
       }
       case 'pie-chart':
-        return <PieFigure f={figure} interactive={interactive} />;
+        return <PieFigure f={figure} interactive={interactive} compact={compact} />;
       case 'protractor':
         return <Protractor f={figure} />;
       case 'compass':

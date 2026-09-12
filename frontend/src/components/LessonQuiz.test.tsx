@@ -2,6 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import MarkdownView from './MarkdownView';
 import { withFigures } from './lessonFigureComponents';
+import { parseQuiz } from './LessonQuiz';
+
+// Recharts' ResponsiveContainer needs ResizeObserver, which jsdom lacks.
+class ResizeObserverStub { observe() {} unobserve() {} disconnect() {} }
+(globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = ResizeObserverStub;
 
 // W-120: a ```quiz block renders an interactive question — the worked solution stays hidden until the
 // student answers correctly or clicks "Show me".
@@ -47,5 +52,30 @@ describe('LessonQuiz', () => {
     renderQuiz();
     fireEvent.click(screen.getByRole('button', { name: /show me/i }));
     expect(screen.getByText(/SIXTYMINUSFORTY/)).toBeTruthy();
+  });
+});
+
+describe('per-question quiz figure (W-136)', () => {
+  const withFig = [
+    '## 4. Guided Quiz',
+    '```quiz',
+    '{"question":"On this pie, what percent is Bus?","hint":"read the slice","answer":"25","solution":"25%",' +
+      '"figure":{"kind":"pie-chart","title":"Travel","sectors":[{"label":"Car","percent":40},{"label":"Bus","percent":25},{"label":"Train","percent":35}]}}',
+    '```',
+  ].join('\n');
+
+  it('parses and renders a figure INSIDE the question', () => {
+    expect(
+      parseQuiz('{"question":"q","answer":"1","figure":{"kind":"pie-chart","sectors":[{"label":"A","percent":60},{"label":"B","percent":40}]}}')?.figure,
+    ).toBeTruthy();
+    const { container } = render(<MarkdownView content={withFig} components={withFigures()} />);
+    expect(screen.getByText(/On this pie, what percent is Bus/)).toBeTruthy();
+    expect(container.querySelector('[data-testid="stimulus-pie-chart"]')).not.toBeNull();
+  });
+
+  it('ignores a malformed figure but still renders the question', () => {
+    const q = parseQuiz('{"question":"q","answer":"1","figure":{"kind":"not-a-figure"}}');
+    expect(q).not.toBeNull();
+    expect(q?.figure).toBeUndefined();
   });
 });

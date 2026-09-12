@@ -119,6 +119,26 @@ describe('segmented lesson player', () => {
     expect(screen.getByTestId('stimulus-bar-chart')).toBeTruthy();
   });
 
+  it('quiz with per-question figures suppresses the shared carried figure (W-136)', async () => {
+    const content = [
+      '## 1. The Selective Trap', 'Spot it.',
+      '## 2. The Intuitive Building Block', 'Here it is.',
+      '```figure\n{"kind":"pie-chart","title":"Gallery","sectors":[{"label":"A","percent":60},{"label":"B","percent":40}]}\n```',
+      '## 3. Guided Quiz', 'Use the pie in each question.',
+      '```quiz\n{"question":"Q1 on its own chart","hint":"h","answer":"1","figure":{"kind":"bar-chart","title":"Travel","points":[{"x":"Mon","y":4},{"x":"Tue","y":8}]}}\n```',
+    ].join('\n');
+    get.mockResolvedValue({ id: 4, title: 'L', status: 'approved', skill: { name: 'S', slug: 's', topicId: 1 }, content });
+    renderLesson();
+    await screen.findByText(/Spot it/);
+    fireEvent.click(next()); // Building Block
+    fireEvent.click(next()); // Guided Quiz
+    expect(await screen.findByText(/Q1 on its own chart/)).toBeTruthy();
+    // The question's own bar chart shows…
+    expect(screen.getByTestId('stimulus-bar-chart')).toBeTruthy();
+    // …and the shared "Gallery" pie is NOT carried onto the card.
+    expect(screen.queryByTestId('stimulus-pie-chart')).toBeNull();
+  });
+
   it('referencesFigure / figureCarriedTo helpers', () => {
     expect(referencesFigure('look at the chart above')).toBe(true);
     expect(referencesFigure('the 15% slice of the pie')).toBe(true);

@@ -71,6 +71,31 @@ test.describe('W-130/W-131 — interactive figures + one visual per card', () =>
     await expect(page.getByTestId('stimulus-pie-chart')).toBeVisible();
   });
 
+  test('a quiz question carries its own figure; the shared figure is suppressed (W-136)', async ({ page }) => {
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: 'e2e-admin@test.local' } });
+    const skill = await prisma.skill.findFirstOrThrow({ where: { subject: 'math' } });
+    const content = [
+      '## 1. The Selective Trap', 'Spot it.', '',
+      '## 2. The Intuitive Building Block', 'Here it is.', '',
+      '```figure\n{"kind":"pie-chart","title":"Gallery","sectors":[{"label":"A","percent":60,"showPercent":true},{"label":"B","percent":40}]}\n```', '',
+      '## 3. Guided Quiz', 'Answer each.', '',
+      '```quiz\n{"question":"On this travel chart, what percent is Bus?","hint":"read it","answer":"25","solution":"25%",' +
+        '"figure":{"kind":"pie-chart","title":"Travel","sectors":[{"label":"Car","percent":40},{"label":"Bus","percent":25},{"label":"Train","percent":35}]}}\n```',
+    ].join('\n');
+    const mod = await prisma.coachingModule.create({
+      data: { workspaceId: admin.workspaceId, skillId: skill.id, title: 'Per-question figure', content, status: 'approved' },
+    });
+    await page.goto(`/lesson/${mod.id}`);
+    await page.getByRole('button', { name: 'Next' }).click(); // → Building Block
+    await page.getByRole('button', { name: 'Next' }).click(); // → Guided Quiz
+    await expect(page.getByText(/what percent is Bus/)).toBeVisible();
+    await expect(page.getByTestId('stimulus-pie-chart').getByText('Travel')).toBeVisible(); // the question's own small figure
+    await expect(page.locator('.recharts-pie-sector').first()).toBeVisible(); // the pie actually draws
+    await expect(page.getByText('Gallery')).toHaveCount(0); // the shared figure is NOT carried here
+    await page.waitForTimeout(700); // let the draw-in animation settle before the screenshot
+    await page.screenshot({ path: 'docs/screenshots/w136-per-question-figure.png' });
+  });
+
   test('a card with a figure suppresses the media animation — one visual (W-131)', async ({ page }) => {
     const svg = '<svg viewBox="0 0 320 180"><rect width="10" height="10"><animate attributeName="x" from="0" to="10" dur="1s"/></rect></svg>';
     const id = await seed({ mediaKind: 'animation', mediaSvg: svg });

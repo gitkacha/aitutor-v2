@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { CheckCircle2, HelpCircle } from 'lucide-react';
 import { checkAnswer } from '@/lib/quizAnswer';
+import { validateStimulus, type Figure } from '@/lib/stimulus';
 import MarkdownView from './MarkdownView';
+import StimulusFigure from './StimulusFigure';
 
 // W-120: one interactive Guided-Quiz question, embedded in a lesson via a ```quiz block. The hint
 // nudges the student to apply the speed trick (with blanks, not the numbers); the worked solution is
@@ -15,6 +17,14 @@ export interface QuizQuestion {
   answer: string;
   acceptable?: string[];
   solution?: string;
+  figure?: Figure; // W-136: a small diagram specific to THIS question (validated).
+}
+
+// Validate an optional per-question figure the same way inline ```figure blocks are validated.
+function parseQuizFigure(raw: unknown): Figure | undefined {
+  return raw && typeof raw === 'object' && validateStimulus({ version: 1, figures: [raw] })
+    ? (raw as Figure)
+    : undefined;
 }
 
 // Parse a ```quiz block body into a QuizQuestion, or null if it isn't one.
@@ -30,6 +40,7 @@ export function parseQuiz(raw: string): QuizQuestion | null {
       hint: typeof o.hint === 'string' ? o.hint : undefined,
       acceptable: Array.isArray(o.acceptable) ? o.acceptable.filter((x): x is string => typeof x === 'string') : undefined,
       solution: typeof o.solution === 'string' ? o.solution : undefined,
+      figure: parseQuizFigure(o.figure),
     };
   } catch {
     return null;
@@ -55,6 +66,11 @@ export default function LessonQuiz({ quiz, onSolved }: { quiz: QuizQuestion; onS
   return (
     <div className="my-3 rounded-xl border border-gray-200 bg-white p-4">
       <p className="text-[15px] font-medium text-gray-900">{quiz.question}</p>
+      {quiz.figure && (
+        <div className="mt-2 flex justify-center rounded-lg bg-gray-50/70 p-2">
+          <StimulusFigure figure={quiz.figure} interactive compact />
+        </div>
+      )}
       {quiz.hint && (
         <p className="mt-1.5 flex items-start gap-1.5 text-sm text-gray-500">
           <HelpCircle size={15} className="mt-0.5 shrink-0 text-brand-blue" />

@@ -162,6 +162,8 @@ describe('lesson prompt is the single tactical structure (W-118/W-123)', () => {
     expect(p).toContain('Guided Quiz');
     expect(p).not.toContain('Guided Drills');
     expect(p).toContain('```quiz');
+    // W-136: a question may carry its own small figure; don't reuse the lesson figure across questions.
+    expect(p).toContain('PER-QUESTION FIGURE');
     expect(p).toContain('```figure');
     // Draws on the named concrete mental models the user asked for.
     expect(p).toContain('Bar Model');

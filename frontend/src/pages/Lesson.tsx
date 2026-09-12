@@ -202,7 +202,11 @@ export default function Lesson() {
   const sectionHasFigure = /```figure/.test(section.body);
   const showMedia = idx === buildingBlockIdx && hasMedia && !sectionHasFigure;
   // W-132: if this card discusses a figure but doesn't embed one, carry the nearest earlier figure in.
-  const carriedFigure = !sectionHasFigure && referencesFigure(section.body) ? figureCarriedTo(cards, idx) : null;
+  // W-136: on the quiz card, per-question figures take over — only show the shared carried figure when
+  // NO question has its own (i.e. every question uses the one lesson diagram).
+  const quizHasOwnFigure = hasQuiz && quizzes.some((q) => q.figure);
+  const carriedFigure =
+    !sectionHasFigure && !quizHasOwnFigure && referencesFigure(section.body) ? figureCarriedTo(cards, idx) : null;
 
   return (
     <div className="max-w-2xl mx-auto">
