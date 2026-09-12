@@ -67,7 +67,11 @@ export default function LessonQuiz({ quiz, onSolved }: { quiz: QuizQuestion; onS
     <div className="my-3 rounded-xl border border-gray-200 bg-white p-4">
       <p className="text-[15px] font-medium text-gray-900">{quiz.question}</p>
       {quiz.figure && (
-        <div className="mt-2 flex justify-center rounded-lg bg-gray-50/70 p-2">
+        // A plain block wrapper (not flex): StimulusFigure's own wrapper is a block-level
+        // `flex justify-center` that spans this box's full width and centres the figure. Making
+        // THIS a flex container instead would shrink-wrap the figure — collapsing width-100% charts
+        // (bar/line) to their title width so ResponsiveContainer has no room to draw (W-136).
+        <div className="mt-2 rounded-lg bg-gray-50/70 p-2">
           <StimulusFigure figure={quiz.figure} interactive compact />
         </div>
       )}

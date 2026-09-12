@@ -97,6 +97,36 @@ test.describe('W-130/W-131 — interactive figures + one visual per card', () =>
     await page.screenshot({ path: 'docs/screenshots/w136-per-question-figure.png' });
   });
 
+  test('per-question figures render cleanly for non-pie kinds too — bar chart + table (W-136)', async ({ page }) => {
+    const admin = await prisma.user.findUniqueOrThrow({ where: { email: 'e2e-admin@test.local' } });
+    const skill = await prisma.skill.findFirstOrThrow({ where: { subject: 'math' } });
+    const content = [
+      '## 1. The Selective Trap', 'Spot it.', '',
+      '## 2. The Intuitive Building Block', 'Here.', '',
+      '## 3. Guided Quiz', 'Answer each.', '',
+      '```quiz\n{"question":"On this bar chart, how many on Tue?","hint":"read the bar","answer":"8","solution":"8",' +
+        '"figure":{"kind":"bar-chart","title":"Sales","xLabel":"Day","yLabel":"Count","points":[{"x":"Mon","y":4},{"x":"Tue","y":8},{"x":"Wed","y":6}]}}\n```', '',
+      '```quiz\n{"question":"From this table, the price of Large?","hint":"read the row","answer":"9","solution":"9",' +
+        '"figure":{"kind":"table","columns":["Size","Price"],"rows":[["Small",5],["Large",9]]}}\n```',
+    ].join('\n');
+    const mod = await prisma.coachingModule.create({
+      data: { workspaceId: admin.workspaceId, skillId: skill.id, title: 'Non-pie figures', content, status: 'approved' },
+    });
+    await page.goto(`/lesson/${mod.id}`);
+    await page.getByRole('button', { name: 'Next' }).click(); // → Building Block
+    await page.getByRole('button', { name: 'Next' }).click(); // → Guided Quiz
+    await expect(page.getByTestId('stimulus-bar-chart')).toBeVisible();
+    await expect(page.getByTestId('stimulus-table')).toBeVisible();
+    // The bar chart must actually draw — not collapse to its title width (the W-136 regression):
+    // one <rect> per data point and the x-axis category labels are visible.
+    const bar = page.getByTestId('stimulus-bar-chart');
+    await expect(bar.locator('.recharts-rectangle')).toHaveCount(3);
+    await expect(bar.getByText('Tue')).toBeVisible();
+    await expect(bar.getByText('Day')).toBeVisible(); // xLabel renders, not clipped away
+    await expect(bar.getByText('Count')).toBeVisible(); // yLabel renders
+    await page.screenshot({ path: 'docs/screenshots/w136-non-pie-figures.png', fullPage: true });
+  });
+
   test('a card with a figure suppresses the media animation — one visual (W-131)', async ({ page }) => {
     const svg = '<svg viewBox="0 0 320 180"><rect width="10" height="10"><animate attributeName="x" from="0" to="10" dur="1s"/></rect></svg>';
     const id = await seed({ mediaKind: 'animation', mediaSvg: svg });

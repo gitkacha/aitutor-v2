@@ -365,9 +365,9 @@ export default function StimulusFigure({ figure, interactive, compact }: { figur
       case 'bar-chart': {
         const data = figure.points.map((p) => ({ x: String(p.x), y: p.y }));
         return (
-          <div className={compact ? 'w-full max-w-[340px]' : 'w-full max-w-xl'}>
+          <div className={compact ? 'w-full max-w-[440px]' : 'w-full max-w-xl'}>
             {figure.title && <p className="text-sm font-medium text-gray-700 text-center mb-1">{figure.title}</p>}
-            <ResponsiveContainer width="100%" height={compact ? 170 : 230}>
+            <ResponsiveContainer width="100%" height={compact ? 210 : 230}>
               {figure.kind === 'line-chart' ? (
                 <LineChart data={data} margin={{ top: 5, right: 20, bottom: 18, left: 4 }}>
                   <CartesianGrid strokeDasharray="3 3" />
