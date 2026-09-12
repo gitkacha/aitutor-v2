@@ -277,15 +277,21 @@ export default function ModuleEditor() {
               }}
             />
           </label>
-          <button
-            onClick={generateAnimation}
-            disabled={mediaBusy}
-            title="AI-generate an animated diagram for this lesson"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-brand-blue px-3.5 py-2 text-sm font-semibold text-brand-blue hover:bg-blue-50 disabled:opacity-50"
-          >
-            <Sparkles size={14} /> {mediaBusy ? 'Working…' : 'Generate animation (AI)'}
-          </button>
+          {/* W-131: no AI animation when the lesson already has a figure — the figure is interactive. */}
+          {!/```figure/.test(content) && (
+            <button
+              onClick={generateAnimation}
+              disabled={mediaBusy}
+              title="AI-generate an animated diagram for this lesson"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-brand-blue px-3.5 py-2 text-sm font-semibold text-brand-blue hover:bg-blue-50 disabled:opacity-50"
+            >
+              <Sparkles size={14} /> {mediaBusy ? 'Working…' : 'Generate animation (AI)'}
+            </button>
+          )}
         </div>
+        {/\`\`\`figure/.test(content) && (
+          <p className="mt-2 text-xs text-gray-500">This lesson has a figure — it's interactive for students (hover to explore), so a separate animation isn't needed.</p>
+        )}
         {mediaError && <p className="mt-2 text-sm text-red-600">{mediaError}</p>}
       </div>
 

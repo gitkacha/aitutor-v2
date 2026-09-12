@@ -18,6 +18,11 @@ every agent, on any model, without exception):
 
 ## Open
 
+Lesson experience redesign — interactive figures + one-visual-per-card (plan `~/.claude/plans/tingly-tumbling-shore.md`, approved 2026-09-12; branch `guided-quiz`; inline). Cards with a figure animate the figure itself (deterministic hover-to-explain), not a separate AI animation. Constraint: ZERO regression — interactivity is opt-in and LESSON-ONLY (MCQ/test figures unchanged).
+
+- [ ] **W-130** — Interactive lesson figures: opt-in `interactive` prop on `StimulusFigure`; the pie chart highlights the hovered slice and explains its 5%-block breakdown (e.g. "Children — 15% = 3 blocks of 5%"), reverting on mouse-out, with a gentle draw-in. Lesson figures opt in via `lessonFigureComponents` (student player + admin preview); MCQ figures (`MathStimulusDisplay`/question cards) are unchanged — no answer leakage on tests. Proof: `StimulusFigure` `blocksLabel` unit test + e2e hover.
+- [ ] **W-131** — One visual per card: the player suppresses the media stage on a Building-Block card that already contains an inline ` ```figure ` (the interactive figure is the visual); admin hides "Generate animation (AI)" when the lesson has a figure. Fixes `/lesson/16`'s double visual. Proof: e2e (figure present → no media animation, pie shows; figure-less → animation still shows).
+
 Lesson experience redesign — Phase 3: AI-generate animation (plan `~/.claude/plans/tingly-tumbling-shore.md`, approved 2026-09-12; branch `guided-quiz`; inline). Third media source: `gpt-5-mini` → a self-contained animated SVG, sanitised and rendered in-browser on the Building-Block card. Additive `'animation'` media kind. Constraint: ZERO regression; SVG sanitisation is security-critical.
 
 - [ ] **W-128** — Backend AI animation: `CoachingModule.mediaSvg` column + migration; `backend/src/lib/svg-safe.ts` `sanitizeAnimationSvg` (element allow-list; reject `<script>`/`on*=`/`foreignObject`/`iframe`/`image`/external+`javascript:`+`data:` refs); `backend/src/services/coaching-animation.service.ts` (`gpt-5-mini` → SVG → sanitise, one retry); `POST /coaching/modules/:id/media/animation/generate` (background job → `mediaKind='animation'`). Proof: `backend/src/lib/svg-safe.test.ts` + `e2e/lesson-animation.spec.ts`.

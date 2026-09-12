@@ -42,7 +42,8 @@ export const figureComponents: Components = {
       if (figure) {
         return (
           <div className="my-3 rounded-xl border border-gray-100 bg-gray-50/70 p-3">
-            <StimulusFigure figure={figure} />
+            {/* W-130: lesson figures are interactive (hover-to-explain). MCQ/test figures are not. */}
+            <StimulusFigure figure={figure} interactive />
           </div>
         );
       }

@@ -180,7 +180,10 @@ export default function Lesson() {
   })();
   const hasMedia = module.mediaKind && module.mediaKind !== 'none' &&
     (module.mediaKind === 'animation' ? !!module.mediaSvg : !!module.mediaUrl);
-  const showMedia = idx === buildingBlockIdx && hasMedia;
+  // W-131: one visual per card — if the card already has an inline figure (now interactive), the
+  // figure is the visual and the media stage is suppressed.
+  const sectionHasFigure = /```figure/.test(section.body);
+  const showMedia = idx === buildingBlockIdx && hasMedia && !sectionHasFigure;
 
   return (
     <div className="max-w-2xl mx-auto">
