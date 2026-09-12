@@ -89,10 +89,11 @@ test.describe('W-130/W-131 — interactive figures + one visual per card', () =>
     await page.getByRole('button', { name: 'Next' }).click(); // → Building Block
     await page.getByRole('button', { name: 'Next' }).click(); // → Guided Quiz
     await expect(page.getByText(/what percent is Bus/)).toBeVisible();
-    await expect(page.getByTestId('stimulus-pie-chart').getByText('Travel')).toBeVisible(); // the question's own small figure
-    await expect(page.locator('.recharts-pie-sector').first()).toBeVisible(); // the pie actually draws
+    const fig = page.getByTestId('stimulus-pie-chart');
+    await expect(fig.getByText('Travel')).toBeVisible(); // the question's own small figure
+    await expect(fig.locator('.recharts-pie-sector').first()).toBeVisible(); // the pie actually draws
+    await expect(fig.getByText(/Bus\s*25%/)).toBeVisible(); // the legend carries each slice's name + % (no clipped outer labels)
     await expect(page.getByText('Gallery')).toHaveCount(0); // the shared figure is NOT carried here
-    await page.waitForTimeout(700); // let the draw-in animation settle before the screenshot
     await page.screenshot({ path: 'docs/screenshots/w136-per-question-figure.png' });
   });
 
