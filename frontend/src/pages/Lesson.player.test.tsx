@@ -101,6 +101,24 @@ describe('segmented lesson player', () => {
     expect(await screen.findByTestId('stimulus-bar-chart')).toBeTruthy();
   });
 
+  it('carries the figure onto the Guided Quiz card when the quiz references it (W-135)', async () => {
+    const content = [
+      '## 1. The Selective Trap', 'Spot it.',
+      '## 2. The Intuitive Building Block', 'Here it is.',
+      '```figure\n{"kind":"bar-chart","title":"Sales","points":[{"x":"Mon","y":4},{"x":"Tue","y":8}]}\n```',
+      '## 3. Guided Quiz', 'Use the numbers below.',
+      '```quiz\n{"question":"From the graph, what is Tuesday?","hint":"read the bar","answer":"8","solution":"It is 8."}\n```',
+    ].join('\n');
+    get.mockResolvedValue({ id: 3, title: 'L', status: 'approved', skill: { name: 'S', slug: 's', topicId: 1 }, content });
+    renderLesson();
+    await screen.findByText(/Spot it/);
+    fireEvent.click(next()); // Building Block (its own bar chart)
+    fireEvent.click(next()); // Guided Quiz — references "the graph"
+    expect(await screen.findByText(/From the graph/)).toBeTruthy();
+    // The bar chart is carried onto the quiz card even though it has no ```figure of its own.
+    expect(screen.getByTestId('stimulus-bar-chart')).toBeTruthy();
+  });
+
   it('referencesFigure / figureCarriedTo helpers', () => {
     expect(referencesFigure('look at the chart above')).toBe(true);
     expect(referencesFigure('the 15% slice of the pie')).toBe(true);

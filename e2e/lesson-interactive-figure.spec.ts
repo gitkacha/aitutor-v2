@@ -16,7 +16,8 @@ const CONTENT = [
   '## 1. The Selective Trap', 'Spot it.', '',
   '## 2. The Intuitive Building Block', 'Break it into 5% blocks.', '', PIE, '',
   '## 3. The Speed Shortcut', 'Now use the pie: read the 15% slice and scale up.', '',
-  '## 4. Guided Quiz', 'Done.',
+  '## 4. Guided Quiz', 'Use the pie above to answer.', '',
+  '```quiz\n{"question":"What percent is Children on the chart?","hint":"read the slice","answer":"15","solution":"15%"}\n```',
 ].join('\n');
 
 async function seed(media?: { mediaKind: string; mediaSvg: string }): Promise<number> {
@@ -59,6 +60,15 @@ test.describe('W-130/W-131 — interactive figures + one visual per card', () =>
     await page.locator('.recharts-pie-sector').first().hover();
     await expect(page.getByText(/15% = 3 blocks of 5%/)).toBeVisible();
     await page.screenshot({ path: 'docs/screenshots/w132-carried-figure.png' });
+  });
+
+  test('the Guided Quiz card shows the figure it references (W-135)', async ({ page }) => {
+    const id = await seed();
+    await page.goto(`/lesson/${id}`);
+    for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Next' }).click(); // → Guided Quiz
+    await expect(page.getByText(/What percent is Children/)).toBeVisible();
+    // The pie is carried onto the quiz card too — no jumping back.
+    await expect(page.getByTestId('stimulus-pie-chart')).toBeVisible();
   });
 
   test('a card with a figure suppresses the media animation — one visual (W-131)', async ({ page }) => {

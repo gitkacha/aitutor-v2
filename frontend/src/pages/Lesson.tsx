@@ -253,31 +253,37 @@ export default function Lesson() {
               <p className="text-lg font-bold text-gray-900">Lesson complete</p>
               <p className="mt-1 text-sm text-gray-500">Nice work — you got every question right.</p>
             </div>
-          ) : idx === 0 && intro ? (
-            <div className="space-y-3">
-              <MarkdownView content={intro} components={withFigures()} />
-              {hasQuiz ? null : <SegmentBody section={section} />}
-            </div>
-          ) : hasQuiz ? (
-            <div>
-              {prose && <MarkdownView content={prose} components={withFigures()} />}
-              <div className="mt-3 space-y-3">
-                {quizzes.map((q, i) => (
-                  <LessonQuiz key={i} quiz={q} onSolved={() => setSolved((prev) => new Set(prev).add(i))} />
-                ))}
-              </div>
-              {!allSolved && (
-                <p className="mt-3 text-sm text-gray-500">
-                  Answer every question correctly to finish — use <strong>Back</strong> to review a step.
-                </p>
-              )}
-            </div>
           ) : (
-            <div>
-              {showMedia && <MediaStage kind={module.mediaKind} url={module.mediaUrl} svg={module.mediaSvg} />}
+            <>
+              {/* W-135: a figure the current card references (of any kind) is shown right here on
+                  EVERY card — teaching cards and the Guided Quiz — so students never jump back. */}
               {carriedFigure && <MarkdownView content={carriedFigure} components={withFigures()} />}
-              <SegmentBody section={section} />
-            </div>
+              {idx === 0 && intro ? (
+                <div className="space-y-3">
+                  <MarkdownView content={intro} components={withFigures()} />
+                  {hasQuiz ? null : <SegmentBody section={section} />}
+                </div>
+              ) : hasQuiz ? (
+                <div>
+                  {prose && <MarkdownView content={prose} components={withFigures()} />}
+                  <div className="mt-3 space-y-3">
+                    {quizzes.map((q, i) => (
+                      <LessonQuiz key={i} quiz={q} onSolved={() => setSolved((prev) => new Set(prev).add(i))} />
+                    ))}
+                  </div>
+                  {!allSolved && (
+                    <p className="mt-3 text-sm text-gray-500">
+                      Answer every question correctly to finish — use <strong>Back</strong> to review a step.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  {showMedia && <MediaStage kind={module.mediaKind} url={module.mediaUrl} svg={module.mediaSvg} />}
+                  <SegmentBody section={section} />
+                </div>
+              )}
+            </>
           )}
         </div>
 
