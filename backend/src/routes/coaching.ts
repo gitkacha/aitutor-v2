@@ -5,7 +5,7 @@ import prisma from '../lib/prisma';
 import { asyncHandler } from '../lib/async-handler';
 import { requireAdmin, requireAuth } from '../middleware/auth';
 import { createJob, getJobForWorkspace } from '../lib/generation-jobs';
-import { generateCoachingModuleContent } from '../services/coaching.service';
+import { generateAndSaveCoachingDraft } from '../services/coaching-module.service';
 import { generateAnimationSvg } from '../services/coaching-animation.service';
 import { normalizeEmbed } from '../lib/media-embed';
 import { sanitizeAnimationSvg } from '../lib/svg-safe';
@@ -44,23 +44,9 @@ router.post('/modules/generate', requireAdmin, asyncHandler(async (req: Request,
   if (!skill) return res.status(400).json({ error: 'Skill not found' });
 
   const jobId = createJob('math', req.user!.workspaceId, async () => {
-    const gen = await generateCoachingModuleContent({
-      name: skill.name,
-      slug: skill.slug,
-      examLevelNotes: skill.examLevelNotes,
-    }, skill.subject === 'thinking-skills' ? 'thinking-skills' : 'math');
-    const mod = await prisma.coachingModule.create({
-      data: {
-        workspaceId: req.user!.workspaceId,
-        skillId: skill.id,
-        title: gen.title,
-        content: gen.content,
-        status: 'draft',
-        // The Standard/Tactical A/B was collapsed to one style; the column is retained (W-123).
-        approach: 'tactical',
-      },
-    });
-    return { moduleId: mod.id, verifierWarnings: gen.verifierWarnings };
+    // W-137: generate + persist through the shared helper — the coach chat uses the very same one,
+    // so the two surfaces produce identical drafts (tactical, W-123) and cannot drift.
+    return generateAndSaveCoachingDraft(skill, req.user!.workspaceId);
   });
   res.status(202).json({ jobId });
 }));

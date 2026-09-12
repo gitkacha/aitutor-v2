@@ -9,7 +9,7 @@ import { ChatToolSchema, generateMathWorksheet } from './ai.service';
 import { getStudentSkillReport, getOpportunityAreas } from './analytics.service';
 import { saveAndAssignWorksheet } from './math-worksheet.service';
 import { createIntervention, listInterventions } from './intervention.service';
-import { generateCoachingModuleContent } from './coaching.service';
+import { generateAndSaveCoachingDraft } from './coaching-module.service';
 import { deleteWorksheetIfUnattempted } from './worksheet-delete';
 
 export interface ToolContext {
@@ -339,15 +339,10 @@ export async function executeActionTool(name: string, args: any, ctx: ToolContex
         orderBy: { version: 'desc' },
       });
       if (!approved) {
-        const gen = await generateCoachingModuleContent({
-          name: skill.name,
-          slug: skill.slug,
-          examLevelNotes: skill.examLevelNotes,
-        }, skill.subject === 'thinking-skills' ? 'thinking-skills' : 'math');
-        const draft = await prisma.coachingModule.create({
-          data: { workspaceId: ctx.workspaceId, skillId: skill.id, title: gen.title, content: gen.content, status: 'draft' },
-        });
-        return { generatedDraft: true, needsApproval: true, moduleId: draft.id, verifierWarnings: gen.verifierWarnings };
+        // W-137: persist the draft through the shared helper so it is byte-for-byte what the Admin
+        // UI generate button produces (tactical draft), not a divergent inline create.
+        const { moduleId, verifierWarnings } = await generateAndSaveCoachingDraft(skill, ctx.workspaceId);
+        return { generatedDraft: true, needsApproval: true, moduleId, verifierWarnings };
       }
 
       // Idempotent on @@unique([moduleId, studentId]) — re-assigning is a no-op update.
