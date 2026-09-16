@@ -171,6 +171,8 @@ describe('lesson prompt is the single tactical structure (W-118/W-123)', () => {
     // W-139: pie/angle figures must use intuitive slices (45°/90°/180° ↔ eighths/quarters/halves),
     // never an awkward slice for the student to decipher visually.
     expect(p).toContain('READABLE SLICES & ANGLES');
+    // W-139 follow-on: intuitive angles must not trivialise — chart questions stay multi-step.
+    expect(p).toContain('MULTI-STEP DATA INTERPRETATION');
     // Draws on the named concrete mental models the user asked for.
     expect(p).toContain('Bar Model');
     expect(p).toContain('Clock Face');

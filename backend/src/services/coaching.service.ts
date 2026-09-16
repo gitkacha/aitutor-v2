@@ -53,6 +53,13 @@ Rules for figures:
   make the student decipher an awkward slice or angle that has no shortcut (16%, 27%, 33%, 40%, 72° …).
   A slice you LABEL with "showPercent":true may carry a clean arithmetic value (e.g. a 5%-block value)
   since the student reads the number rather than judging the angle by eye.
+- MULTI-STEP DATA INTERPRETATION. Clean angles are for READABILITY, never an excuse to make a chart
+  question easy. When you build a worked example or Guided-Quiz question on a pie/bar/line/table, make
+  it a genuine multi-step NSW-Selective problem, not a one-step read: apply a share to a whole ("360
+  people; the 25% slice is how many?"), REVERSE it ("the 90° slice is 60 people — how many in total?"),
+  compare or difference two categories AS QUANTITIES, or CHAIN steps (find the missing share, THEN
+  apply it to the total). Keep the numbers clean so the arithmetic stays mental, but the reasoning
+  must be exam-level.
 - Only embed a figure when it genuinely helps. A pure-reasoning skill (logic, deduction, spotting a
   flaw in an argument) needs no chart — do NOT invent one.`;
 

@@ -721,6 +721,16 @@ computed answer is intuitive too. NEVER make the student decipher an awkward sli
 no mental shortcut (16%, 27%, 33%, 40%, 72° …). A slice printed with "showPercent":true may carry a
 clean labelled value, since the student reads the number rather than judging the angle by eye.
 
+MULTI-STEP DATA INTERPRETATION. Clean angles and numbers are for READABILITY — never an excuse to
+make a chart question easy. Every data-interpretation question (pie, bar, line, table) must be a
+genuine multi-step NSW-Selective problem, not a one-step read. Do NOT ask "what percent is the biggest
+slice?" or "the other slices are 40% and 25%, what is the third?". Instead demand reasoning that
+combines the figure with a total or across categories: apply a share to a whole ("360 people; the 25%
+slice is how many?"), REVERSE it ("the 90° slice is 60 people — how many in total?"), compare or
+difference two categories AS QUANTITIES, or CHAIN steps (find the missing share, THEN apply it to the
+total, THEN compare). Keep every number clean so the arithmetic stays mental, but the REASONING must
+be exam-level and multi-step.
+
 COMPASS & DIRECTION CONVENTION. On any grid, map, or figure, NORTH is toward the TOP of the figure
 (up on the screen), SOUTH the bottom, EAST the right, WEST the left. A grid renders its row labels
 from top to bottom exactly as listed, so the row shown at the TOP is the northernmost. When a
