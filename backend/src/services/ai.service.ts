@@ -704,13 +704,22 @@ shapes). Format: {"version":1,"text":"<lead-in sentence>","figures":[<figure>]} 
 figure is ONE of:
 - {"kind":"protractor","rays":[20,50],"joinPairs":[[20,50]]} — rays at degree marks 0-180
 - {"kind":"line-chart","title":"...","xLabel":"...","yLabel":"...","points":[{"x":"9 am","y":0},...]} (same shape for "bar-chart")
-- {"kind":"pie-chart","sectors":[{"label":"Rent","percent":27,"showPercent":false},...]} — percents must sum to 100
+- {"kind":"pie-chart","sectors":[{"label":"Rent","percent":25,"showPercent":false},...]} — percents must sum to 100
 - {"kind":"table","columns":["Size","Price"],"rows":[["Small",6],...]}
 - {"kind":"grid","rows":4,"cols":6,"filled":[[0,2],[1,1]],"rowLabels":["1","2","3","4"],"colLabels":["A","B","C","D","E","F"]}
 - {"kind":"compass","facing":"N"}
 - {"kind":"shape","unit":"cm","vertices":[[0,0],[12,0],[12,12],[0,12]],"sideLabels":[{"side":0,"label":"12 cm"}]}
 - {"kind":"rotation","shape":"arrow","beforeDeg":0,"afterDeg":225}
 - {"kind":"cards","values":["4/5","0.15","1/3"]}${extraFigures}
+
+READABLE SLICES & ANGLES. When a pie-chart, protractor or rotation asks the student to READ or
+ESTIMATE a slice or angle FROM the figure (an unlabelled slice, "what fraction is shaded?", "estimate
+this angle", "which slice is biggest?"), that amount MUST be an intuitive one with a mental shortcut:
+halves (50% = 180°), quarters (25% = 90°), eighths (12.5% = 45°) and their multiples or sums, or
+clock-face angles (multiples of 30° / 90°). Build the WHOLE pie from these clean fractions so the
+computed answer is intuitive too. NEVER make the student decipher an awkward slice or angle that has
+no mental shortcut (16%, 27%, 33%, 40%, 72° …). A slice printed with "showPercent":true may carry a
+clean labelled value, since the student reads the number rather than judging the angle by eye.
 
 COMPASS & DIRECTION CONVENTION. On any grid, map, or figure, NORTH is toward the TOP of the figure
 (up on the screen), SOUTH the bottom, EAST the right, WEST the left. A grid renders its row labels

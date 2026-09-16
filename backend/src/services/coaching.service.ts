@@ -45,6 +45,14 @@ Rules for figures:
 - Right after each figure, point at exactly what to notice ("look at the biggest slice — that's over
   half already").
 - Use "showPercent":true only on the one or two sectors the trick depends on, so the key numbers pop.
+- READABLE SLICES & ANGLES. Whenever the student must READ or ESTIMATE a slice or angle FROM the pie
+  (an unlabelled slice, "what fraction is this?", "estimate the angle"), that amount MUST be an
+  intuitive one with a mental shortcut: halves (50% = 180°), quarters (25% = 90°), eighths
+  (12.5% = 45°) and their multiples or sums, or clock-face angles (multiples of 30° / 90°). Build the
+  WHOLE pie from these clean fractions so the answer the student works out is intuitive too. NEVER
+  make the student decipher an awkward slice or angle that has no shortcut (16%, 27%, 33%, 40%, 72° …).
+  A slice you LABEL with "showPercent":true may carry a clean arithmetic value (e.g. a 5%-block value)
+  since the student reads the number rather than judging the angle by eye.
 - Only embed a figure when it genuinely helps. A pure-reasoning skill (logic, deduction, spotting a
   flaw in an argument) needs no chart — do NOT invent one.`;
 
