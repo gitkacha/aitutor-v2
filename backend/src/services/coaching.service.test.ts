@@ -165,6 +165,9 @@ describe('lesson prompt is the single tactical structure (W-118/W-123)', () => {
     // W-136: a question may carry its own small figure; don't reuse the lesson figure across questions.
     expect(p).toContain('PER-QUESTION FIGURE');
     expect(p).toContain('```figure');
+    // W-138: every question must state the exact unit/form of the expected answer (no ambiguous
+    // "which pack / what is the cheapest way" where dollars vs pack-count is left implicit).
+    expect(p).toContain('STATE THE ANSWER UNIT');
     // Draws on the named concrete mental models the user asked for.
     expect(p).toContain('Bar Model');
     expect(p).toContain('Clock Face');
