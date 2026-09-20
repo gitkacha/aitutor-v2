@@ -306,3 +306,6 @@ in dev.db (0 untagged).
 - [ ] W-140: Add topic-briefs.ts (4 briefs + DISTRACTOR & FIGURES rule blocks + buildTopicBriefSection renderer), unit-tested
 - [ ] W-141: Wire topic briefs into buildGenerationBatchPrompt behind the MATH_TOPIC_BRIEFS A/B toggle (briefVariant opt); off/unbriefed = baseline prompt
 - [ ] W-142: e2e — default (variant on) generation for a briefed topic sends the DISTRACTOR/FIGURES text to OpenAI and still produces a valid worksheet
+- [ ] W-143: Fix reasoning-budget exhaustion — raise generation max_completion_tokens (generationTokenBudget = count*1200+6000, cap 24000) so briefed gpt-5-mini batches stop returning empty and retry-storming; unit-tested (root cause: 7000-token budget was consumed by reasoning alone on briefed prompts → empty response → retries → ~15min stall)
+- [ ] W-144: Bound each OpenAI call with an AbortSignal timeout (OPENAI_TIMEOUT_MS, default 180s) so a hung call fails fast instead of hanging; unit-tested (signal wired)
+- [ ] W-145: Admin math generation poll gets a deadline (isGenerationExpired helper) + clearer "taking too long / no longer available" messaging instead of a silent 15-min stall; unit-tested helper + manual

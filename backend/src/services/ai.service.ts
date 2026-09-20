@@ -53,6 +53,11 @@ export function providerFor(role: ModelRole): ModelProvider {
 // Reasoning models reject `temperature` and think inside the completion budget.
 const isReasoningModel = (model: string) => /^(gpt-5|o[134])/.test(model);
 
+// W-144: a single OpenAI call must not hang forever. A briefed reasoning-model batch legitimately
+// takes ~1-2 min, so the ceiling is generous; a genuinely hung socket aborts and the caller's
+// retry path recovers. Override with OPENAI_TIMEOUT_MS.
+const OPENAI_TIMEOUT_MS = Number(process.env.OPENAI_TIMEOUT_MS) || 180_000;
+
 interface ChatCompletionResponse {
   choices: Array<{
     message: {
@@ -107,6 +112,7 @@ export async function chatCompletion(provider: ModelProvider, prompt: string, ma
       'Authorization': `Bearer ${provider.apiKey}`,
     },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(OPENAI_TIMEOUT_MS), // W-144: fail a hung call fast
   });
 
   if (!response.ok) {
@@ -223,6 +229,7 @@ export async function chatWithTools(
       'Authorization': `Bearer ${provider.apiKey}`,
     },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(OPENAI_TIMEOUT_MS), // W-144: fail a hung call fast
   });
 
   if (!response.ok) {
@@ -775,6 +782,15 @@ Respond with ONLY a JSON array (no markdown, no code fences) in this exact forma
 Generate exactly ${count} questions. Make sure distractors are plausible — they should be answers a student might get from common mistakes.`;
 }
 
+// W-143: gpt-5-mini is a reasoning model — hidden reasoning tokens are drawn from the SAME
+// max_completion_tokens budget as the visible JSON. A budget sized only for the JSON (the old
+// count*600+4000) is fully consumed by reasoning on the heavier briefed prompts, so the model
+// returns EMPTY content (finish_reason=length) and the batch retry-storms — the ~15-minute stall.
+// Measured headroom: a 10-question briefed batch spends ~12.4k completion tokens, so give ~18k.
+export function generationTokenBudget(count: number): number {
+  return Math.min(count * 1200 + 6000, 24000);
+}
+
 async function generateQuestionBatch(
   topics: MathTopicForGen[],
   count: number,
@@ -782,8 +798,8 @@ async function generateQuestionBatch(
   opts: GenerationOpts = {},
 ): Promise<{ questions: any[]; usage: Usage | null }> {
   const prompt = buildGenerationBatchPrompt(topics, count, avoidTexts, opts);
-  // Reasoning models think inside the completion budget, so leave generous headroom.
-  const { content, usage } = await chatCompletion(providerFor('generation'), prompt, Math.min(count * 600 + 4000, 16000), 0.8);
+  // Reasoning models think inside the completion budget, so leave generous headroom (W-143).
+  const { content, usage } = await chatCompletion(providerFor('generation'), prompt, generationTokenBudget(count), 0.8);
   const arrayMatch = content.match(/\[[\s\S]*\]/);
   if (!arrayMatch) {
     throw new Error('Generation response did not contain a JSON array');
