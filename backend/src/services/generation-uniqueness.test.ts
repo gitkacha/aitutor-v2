@@ -34,3 +34,34 @@ describe('normalizeQuestionText', () => {
     expect(normalizeQuestionText('Lily faces West.')).not.toBe(normalizeQuestionText('Chris faces North.'));
   });
 });
+
+import { buildGenerationBatchPrompt } from './ai.service';
+
+const topic = (slug: string, name: string) => ({
+  id: 1, name, slug, description: `${name} description`,
+  questions: [{ id: 1, questionText: `hardest ${name} q`, options: '[]', correctIndex: 0, explanation: '', percentCorrect: 20 }],
+});
+
+describe('buildGenerationBatchPrompt — topic briefs A/B', () => {
+  it("variant 'on' with a briefed topic injects the DISTRACTOR and FIGURES rules", () => {
+    const prompt = buildGenerationBatchPrompt([topic('data-interpretation', 'Data Interpretation')], 10, [], { briefVariant: 'on' });
+    expect(prompt).toContain('DISTRACTOR RULE');
+    expect(prompt).toContain('FIGURES — DRAW THEM ACCURATELY');
+    expect(prompt.toLowerCase()).toContain('counting gridlines instead of the gaps');
+  });
+
+  it("variant 'off' emits the baseline prompt (no brief text) for a briefed topic", () => {
+    const t = [topic('data-interpretation', 'Data Interpretation')];
+    const off = buildGenerationBatchPrompt(t, 10, [], { briefVariant: 'off' });
+    expect(off).not.toContain('DISTRACTOR RULE');
+    expect(off).not.toContain('FIGURES — DRAW THEM ACCURATELY');
+  });
+
+  it("variant 'on' with only unbriefed topics equals the baseline (no brief text)", () => {
+    const t = [topic('arithmetic', 'Arithmetic')];
+    const on = buildGenerationBatchPrompt(t, 10, [], { briefVariant: 'on' });
+    const off = buildGenerationBatchPrompt(t, 10, [], { briefVariant: 'off' });
+    expect(on).toBe(off);
+    expect(on).not.toContain('DISTRACTOR RULE');
+  });
+});

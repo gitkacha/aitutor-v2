@@ -4,6 +4,7 @@ import { validateStimulus, StimulusSpec } from '../lib/stimulus';
 import { hasDistinctOptions, explanationMatchesKey, keptByEscalation } from '../lib/question-checks';
 import { balanceAnswerPositions } from '../lib/answer-balance';
 import { MATH_SKILLS, WRITING_SKILLS, THINKING_SKILLS } from '../../prisma/seed-skills';
+import { buildTopicBriefSection } from './topic-briefs';
 
 // Per-role model providers (W-21). Each role — generation, answer-key verification, writing
 // analysis — resolves its own {model, baseUrl, apiKey} from role-specific env, falling back
@@ -628,9 +629,15 @@ export function buildUniquenessInstructions(avoidTexts: string[]): string {
 export interface GenerationOpts {
   optionCount?: number; // 5 for math (default), 4 for thinking-skills
   subject?: string;     // 'math' (default) | 'thinking-skills' — selects the figure vocabulary
+  briefVariant?: 'on' | 'off'; // W-141 A/B: 'on' splices topic briefs in; 'off' = baseline prompt
 }
 
 const OPTION_WORD: Record<number, string> = { 3: 'three', 4: 'four', 5: 'five' };
+
+// W-141 A/B toggle for the topic-brief injection. Default 'on'; set MATH_TOPIC_BRIEFS=off (or 0 /
+// false) to revert to the pre-brief baseline prompt with zero code changes. Read once at load.
+const DEFAULT_BRIEF_VARIANT: 'on' | 'off' =
+  /^(off|0|false)$/i.test(process.env.MATH_TOPIC_BRIEFS ?? '') ? 'off' : 'on';
 
 // W-93: the batch prompt, subject-parametrized. For subject 'math' (the default) it is unchanged
 // from before: five-option, four distractors, a 5-option example, and the base figure vocabulary.
@@ -658,6 +665,10 @@ export function buildGenerationBatchPrompt(
     if (!hardest) return null;
     return { topic: t.name, percentCorrect: hardest.percentCorrect, question: hardest.questionText };
   }).filter(Boolean);
+
+  const briefVariant = opts.briefVariant ?? DEFAULT_BRIEF_VARIANT;
+  // '' when variant is 'off' OR no selected topic is briefed → prompt stays byte-for-byte baseline.
+  const briefSection = briefVariant === 'on' ? buildTopicBriefSection(topics.map((t) => t.slug)) : '';
 
   return `You are a mathematics tutor creating a practice worksheet for a student preparing for the NSW Selective High School Placement Test (Mathematical Reasoning section).
 
@@ -712,7 +723,7 @@ figure is ONE of:
 - {"kind":"rotation","shape":"arrow","beforeDeg":0,"afterDeg":225}
 - {"kind":"cards","values":["4/5","0.15","1/3"]}${extraFigures}
 
-READABLE SLICES & ANGLES. When a pie-chart, protractor or rotation asks the student to READ or
+${briefSection ? briefSection + '\n\n' : ''}READABLE SLICES & ANGLES. When a pie-chart, protractor or rotation asks the student to READ or
 ESTIMATE a slice or angle FROM the figure (an unlabelled slice, "what fraction is shaded?", "estimate
 this angle", "which slice is biggest?"), that amount MUST be an intuitive one with a mental shortcut:
 halves (50% = 180°), quarters (25% = 90°), eighths (12.5% = 45°) and their multiples or sums, or
