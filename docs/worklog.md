@@ -301,3 +301,8 @@ in dev.db (0 untagged).
 - [x] **C4** — AI provider broken (OpenRouter/free-model 404s, fake zero scores persisted); migrated to OpenAI, plus latent bug: backend never loaded `.env` — commit `13a52ad` · proof: `e2e/c4-analysis.spec.ts` + live gpt-4o-mini call
 - [x] **C2/C3** — Worksheet attempts scored against wrong questions; placeholder options rendered — worksheet questions persisted as real `MathQuestion` rows — commit `13a52ad` · proof: `e2e/c2-c3-worksheet.spec.ts`
 - [x] **C1** — Math timed practice auto-submits immediately on load — commit `13a52ad` · proof: `e2e/c1-math-timer.spec.ts`
+
+## Math Topic Briefs (plan 2026-09-21-math-topic-briefs.md, base 7b6a73a)
+- [ ] W-140: Add topic-briefs.ts (4 briefs + DISTRACTOR & FIGURES rule blocks + buildTopicBriefSection renderer), unit-tested
+- [ ] W-141: Wire topic briefs into buildGenerationBatchPrompt behind the MATH_TOPIC_BRIEFS A/B toggle (briefVariant opt); off/unbriefed = baseline prompt
+- [ ] W-142: e2e — default (variant on) generation for a briefed topic sends the DISTRACTOR/FIGURES text to OpenAI and still produces a valid worksheet
