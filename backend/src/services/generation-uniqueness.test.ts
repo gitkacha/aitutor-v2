@@ -80,3 +80,18 @@ describe('buildGenerationBatchPrompt — pie inference guidance', () => {
     expect(lower).toContain('by eye');
   });
 });
+
+// W-149: a value the student must READ off a bar/line graph must be pinpointable by intuitive
+// calculation from the axis spacing — on a gridline or a clean half/quarter-step — never an awkward
+// mid-gridline value like 7.5/22.5 against a spacing of 8.
+describe('buildGenerationBatchPrompt — readable plotted values on bar/line graphs', () => {
+  it('tells the model plotted values must be readable from the axis spacing', () => {
+    const prompt = buildGenerationBatchPrompt([topic('data-interpretation', 'Data Interpretation')], 10, [], { briefVariant: 'off' });
+    expect(prompt).toContain('READABLE PLOTTED VALUES');
+    const lower = prompt.toLowerCase();
+    expect(lower).toContain('gridline');
+    expect(lower).toContain('intuitive calculation');
+    // Uses the concrete failing case as a counter-example.
+    expect(lower).toMatch(/7\.5|22\.5/);
+  });
+});
