@@ -87,6 +87,12 @@ export const DISTRACTOR_RULE = `DISTRACTOR RULE — the most important instructi
 
 export const FIGURES_RULE = `FIGURES — DRAW THEM ACCURATELY. Any graph, scale, number line, measuring cylinder, protractor or shape must be specified precisely enough that a tutor could redraw it by hand: give exact axis labels, the value of every gridline, the number of unlabelled intervals between labelled points, and the coordinates or side lengths of every plotted point or vertex. For the AXIS or SCALE intervals of graphs, number lines and measuring scales, deliberately avoid an interval of 1 — use an interval like 1.1, 2.5 or 30 so the student must work out the scale rather than assume each gridline is 1. (This applies to axis/scale intervals only; pie-chart slices and protractor angles stay clean and eye-readable as required elsewhere in this prompt.)`;
 
+// W-146: only for a worksheet that is EXCLUSIVELY Data Interpretation. The topic spans several
+// figure sub-types, and left alone the model leans on one (usually pie charts); this spreads the
+// questions across all four. Phrased per-batch (rotate through the sub-types) because generation
+// runs in independent <=10 batches that cannot coordinate whole-worksheet totals.
+export const DATA_INTERP_SUBTYPE_BALANCE = `DATA INTERPRETATION SUB-TYPE BALANCE. This worksheet is entirely Data Interpretation, so spread the questions roughly EQUALLY across the four figure sub-types — pie charts, bar graphs, line graphs, and tables — aiming for about a quarter of the whole worksheet on each. Do NOT lean on one sub-type: within every batch, rotate through pie / bar / line / table so no single kind dominates. (Use the matching stimulus figure — pie-chart, bar-chart, line-chart or table — for each.)`;
+
 /**
  * Assembles the per-topic brief blocks (de-duplicated by shared brief identity) followed by the two
  * shared rule blocks, each once. Returns '' when none of the selected topics is briefed, so the
@@ -113,5 +119,9 @@ export function buildTopicBriefSection(topicSlugs: string[]): string {
     )
     .join('\n\n');
 
-  return `${blocks}\n\n${DISTRACTOR_RULE}\n\n${FIGURES_RULE}\n\nVary the names, contexts and objects across questions so repeat worksheets don't feel recycled.`;
+  // W-146: sub-type balance applies only when Data Interpretation is the SOLE selected topic.
+  const singleDataInterp = topicSlugs.length === 1 && topicSlugs[0] === 'data-interpretation';
+  const subtypeBalance = singleDataInterp ? `\n\n${DATA_INTERP_SUBTYPE_BALANCE}` : '';
+
+  return `${blocks}\n\n${DISTRACTOR_RULE}\n\n${FIGURES_RULE}${subtypeBalance}\n\nVary the names, contexts and objects across questions so repeat worksheets don't feel recycled.`;
 }

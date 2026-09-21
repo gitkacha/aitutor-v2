@@ -309,3 +309,4 @@ in dev.db (0 untagged).
 - [ ] W-143: Fix reasoning-budget exhaustion — raise generation max_completion_tokens (generationTokenBudget = count*1200+6000, cap 24000) so briefed gpt-5-mini batches stop returning empty and retry-storming; unit-tested (root cause: 7000-token budget was consumed by reasoning alone on briefed prompts → empty response → retries → ~15min stall)
 - [ ] W-144: Bound each OpenAI call with an AbortSignal timeout (OPENAI_TIMEOUT_MS, default 180s) so a hung call fails fast instead of hanging; unit-tested (signal wired)
 - [ ] W-145: Admin math generation poll gets a deadline (isGenerationExpired helper) + clearer "taking too long / no longer available" messaging instead of a silent 15-min stall; unit-tested helper + manual
+- [ ] W-146: Single-topic Data Interpretation worksheets balance figure sub-types (pie/bar/line/table) roughly equally via a brief instruction injected only when the selection is exactly [data-interpretation]; unit-tested

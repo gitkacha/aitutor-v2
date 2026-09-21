@@ -1,6 +1,29 @@
 import { describe, it, expect } from 'vitest';
 import { buildTopicBriefSection, TOPIC_BRIEFS } from './topic-briefs';
 
+// W-146: a worksheet that is EXCLUSIVELY Data Interpretation should spread its questions roughly
+// equally across the figure sub-types (pie / bar / line / table) rather than leaning on one.
+const SUBTYPE_MARKER = 'SUB-TYPE BALANCE';
+describe('data-interpretation sub-type balance (W-146)', () => {
+  it('injects the sub-type balance instruction when the selection is exactly [data-interpretation]', () => {
+    const text = buildTopicBriefSection(['data-interpretation']);
+    expect(text).toContain(SUBTYPE_MARKER);
+    const lower = text.toLowerCase();
+    expect(lower).toContain('pie');
+    expect(lower).toContain('bar');
+    expect(lower).toContain('line');
+    expect(lower).toContain('table');
+  });
+
+  it('does NOT inject it when Data Interpretation is mixed with another topic', () => {
+    expect(buildTopicBriefSection(['data-interpretation', 'fractions'])).not.toContain(SUBTYPE_MARKER);
+  });
+
+  it('does NOT inject it for the protractor half of the shared Brief 1', () => {
+    expect(buildTopicBriefSection(['protractor-skills'])).not.toContain(SUBTYPE_MARKER);
+  });
+});
+
 describe('TOPIC_BRIEFS mapping', () => {
   it('maps the four briefs to their topic slugs', () => {
     expect(TOPIC_BRIEFS['data-interpretation'].title).toBe('Graph and scale reading');
