@@ -739,6 +739,15 @@ computed answer is intuitive too. NEVER make the student decipher an awkward sli
 no mental shortcut (16%, 27%, 33%, 40%, 72° …). A slice printed with "showPercent":true may carry a
 clean labelled value, since the student reads the number rather than judging the angle by eye.
 
+PIE LABELS — LEAVE ROOM TO INFER. Do NOT label every slice with its percentage. On many pie
+questions, deliberately leave ONE (or more) slices UNLABELLED (set "showPercent":false on them) so
+the student must INFER that value — but only by a clean, intuitive calculation, never by judging the
+slice's angle by eye. Make the inference clean: the unlabelled slice is the remainder (100 minus the
+labelled clean slices), or it is an obvious clean fraction of the whole (a quarter, a half, an
+eighth). Keep enough slices labelled ("showPercent":true) that the inference is a simple mental
+subtraction or fraction, not a guess — a value the student must READ to plug into later arithmetic
+stays labelled; a value the student should DERIVE is left unlabelled.
+
 MULTI-STEP DATA INTERPRETATION. Clean angles and numbers are for READABILITY — never an excuse to
 make a chart question easy. Every data-interpretation question (pie, bar, line, table) must be a
 genuine multi-step NSW-Selective problem, not a one-step read. Do NOT ask "what percent is the biggest

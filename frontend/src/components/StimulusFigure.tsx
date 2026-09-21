@@ -18,6 +18,13 @@ export function blocksLabel(name: string, percent: number): string {
   return `${name} — ${percent}%`;
 }
 
+// W-148: compact-legend label for a pie slice. Honours showPercent (default = shown, matching the
+// non-compact chart's `showPercent !== false`), so a slice marked showPercent:false shows only its
+// name and the student can infer its value.
+export function sectorLegendText(label: string, percent: number, showPercent?: boolean): string {
+  return showPercent === false ? label : `${label} ${percent}%`;
+}
+
 // W-130: the pie chart. In lessons (`interactive`), hovering a slice highlights it and captions its
 // 5%-block breakdown, reverting on mouse-out. In tests/questions (default), it's the static chart.
 function PieFigure({ f, interactive, compact }: { f: PieChartFigure; interactive?: boolean; compact?: boolean }) {
@@ -54,7 +61,7 @@ function PieFigure({ f, interactive, compact }: { f: PieChartFigure; interactive
           {f.sectors.map((s, i) => (
             <span key={i} className="inline-flex items-center gap-1">
               <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
-              {s.label} {s.percent}%
+              {sectorLegendText(s.label, s.percent, s.showPercent)}
             </span>
           ))}
         </div>

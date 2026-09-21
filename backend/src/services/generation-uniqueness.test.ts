@@ -65,3 +65,18 @@ describe('buildGenerationBatchPrompt — topic briefs A/B', () => {
     expect(on).not.toContain('DISTRACTOR RULE');
   });
 });
+
+// W-147: pie questions must leave room to infer — the model should NOT label every slice; some
+// slices are left unlabelled (showPercent:false) for the student to derive by a clean calculation.
+describe('buildGenerationBatchPrompt — pie inference guidance', () => {
+  it('tells the model to leave some pie slices unlabelled for the student to infer', () => {
+    // Base-prompt guidance (present regardless of the brief A/B variant).
+    const prompt = buildGenerationBatchPrompt([topic('data-interpretation', 'Data Interpretation')], 10, [], { briefVariant: 'off' });
+    expect(prompt).toContain('PIE LABELS — LEAVE ROOM TO INFER');
+    expect(prompt).toContain('showPercent":false');
+    const lower = prompt.toLowerCase();
+    expect(lower).toContain('infer');
+    // The inference must stay a clean calculation, never an eyeball-angle guess.
+    expect(lower).toContain('by eye');
+  });
+});
