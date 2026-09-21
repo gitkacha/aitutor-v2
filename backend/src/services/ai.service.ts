@@ -746,7 +746,10 @@ slice's angle by eye. Make the inference clean: the unlabelled slice is the rema
 labelled clean slices), or it is an obvious clean fraction of the whole (a quarter, a half, an
 eighth). Keep enough slices labelled ("showPercent":true) that the inference is a simple mental
 subtraction or fraction, not a guess — a value the student must READ to plug into later arithmetic
-stays labelled; a value the student should DERIVE is left unlabelled.
+stays labelled; a value the student should DERIVE is left unlabelled. Inferring the unlabelled slice
+must NEVER be the whole question (that is just a one-step read, e.g. "the other slices are 40% and
+25%, what is the third?"). The derived share must then FEED a further step — apply it to a total, or
+compare it against another category as a quantity — so the question stays multi-step per below.
 
 MULTI-STEP DATA INTERPRETATION. Clean angles and numbers are for READABILITY — never an excuse to
 make a chart question easy. Every data-interpretation question (pie, bar, line, table) must be a
