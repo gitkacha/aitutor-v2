@@ -741,14 +741,15 @@ clean labelled value, since the student reads the number rather than judging the
 
 READABLE PLOTTED VALUES (bar & line graphs). Every data value the student must READ off a bar or
 line graph must sit where they can pinpoint it by intuitive calculation from the axis — either ON a
-gridline, or at an OBVIOUS clean fraction of the gridline spacing (exactly halfway, or a quarter of
-the way, between two gridlines) that lands on a clean number. Choose the gridline spacing to make
-each read value fall on such a spot: spacing 5 lets you use 7.5 (the clear midpoint of 5 and 10);
-spacing 0.5 puts 7.5 right on a line. NEVER require reading a value that sits at an awkward position
-with no obvious fraction of the spacing — with gridlines 8 apart (0, 8, 16, 24) the values 7.5 and
-22.5 are unreadable, because neither is a gridline nor a clean half/quarter step of 8. The FIGURES
-rule still holds (gridline spacing must not be 1, so the student still works out the scale). Also
-keep the answer clean: for a mean or total, make the read values sum to a clean multiple.
+gridline, or at an OBVIOUS clean fraction of the gridline spacing (exactly halfway, or a quarter or
+three-quarters of the way, between two gridlines) that lands on a clean number. Choose the gridline
+spacing to make each read value fall on such a spot: spacing 5 lets you use 7.5 (the clear midpoint
+of 5 and 10); spacing 0.5 puts 7.5 right on a line. NEVER require reading a value that sits at an
+awkward position with no obvious fraction of the spacing — with gridlines 8 apart (0, 8, 16, 24) the
+values 7.5 and 22.5 are unreadable, because neither is a gridline nor a clean half/quarter step of 8.
+Gridline spacing must still not be 1 (per the FIGURES rule when present), so the student still works
+out the scale. Also keep the answer clean: for a mean or total, make the read values sum to a clean
+multiple.
 
 PIE LABELS — LEAVE ROOM TO INFER. Do NOT label every slice with its percentage. On many pie
 questions, deliberately leave ONE (or more) slices UNLABELLED (set "showPercent":false on them) so
