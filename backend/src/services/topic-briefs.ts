@@ -91,7 +91,7 @@ export const FIGURES_RULE = `FIGURES — DRAW THEM ACCURATELY. Any graph, scale,
 // figure sub-types, and left alone the model leans on one (usually pie charts); this spreads the
 // questions across all four. Phrased per-batch (rotate through the sub-types) because generation
 // runs in independent <=10 batches that cannot coordinate whole-worksheet totals.
-export const DATA_INTERP_SUBTYPE_BALANCE = `DATA INTERPRETATION SUB-TYPE BALANCE. This worksheet is entirely Data Interpretation, so spread the questions roughly EQUALLY across the four figure sub-types — pie charts, bar graphs, line graphs, and tables — aiming for about a quarter of the whole worksheet on each. Do NOT lean on one sub-type: within every batch, rotate through pie / bar / line / table so no single kind dominates. (Use the matching stimulus figure — pie-chart, bar-chart, line-chart or table — for each.)`;
+export const DATA_INTERP_SUBTYPE_BALANCE = `DATA INTERPRETATION SUB-TYPE BALANCE. This worksheet is entirely Data Interpretation, so spread the questions roughly EQUALLY across the four figure sub-types — pie charts, bar graphs, line graphs, and tables. Do NOT lean on one sub-type: within every batch, rotate through pie / bar / line / table so no single kind dominates. (Use the matching stimulus figure — pie-chart, bar-chart, line-chart or table — for each.)`;
 
 /**
  * Assembles the per-topic brief blocks (de-duplicated by shared brief identity) followed by the two
