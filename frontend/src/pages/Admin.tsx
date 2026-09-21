@@ -268,7 +268,11 @@ export default function Admin() {
     const tick = async () => {
       try {
         // W-145: stop waiting once past the deadline instead of spinning forever on a wedged job.
-        const startedAt = Number(localStorage.getItem('coach.mathGenStart')) || Date.now();
+        // If the start marker is missing (e.g. re-attaching to a job started before this shipped),
+        // stamp it once now so the deadline measures from first observation instead of resetting
+        // every tick (which would never expire).
+        let startedAt = Number(localStorage.getItem('coach.mathGenStart'));
+        if (!startedAt) { startedAt = Date.now(); localStorage.setItem('coach.mathGenStart', String(startedAt)); }
         const count = Number(localStorage.getItem('coach.mathGenCount')) || undefined;
         if (isGenerationExpired(startedAt, Date.now(), count)) {
           if (!cancelled) { setMessage('Generation is taking longer than expected — please try again.'); finish(); }
