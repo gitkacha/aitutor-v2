@@ -4,11 +4,17 @@
 
 import { z } from 'zod';
 import {
-  round6, approxEq, isMultiple, isClean, fracInInterval, isEasyPosition,
+  TOL, round6, approxEq, isMultiple, isClean, fracInInterval, isEasyPosition,
   gridTicks, inferSubdivision, ambiguousValues,
 } from './chart-grid';
 import type { GridConfig, Difficulty, Subdivision } from './chart-grid';
 import type { StimulusSpec } from '../lib/stimulus';
+
+// W-156: round/format to at most 2 decimal places. round2 is used both to reject answers that need
+// more precision (validateItem) and to format displayed option values (toGeneratedMathQuestion), so
+// nothing ever renders as a long float tail like 195.83333333333334.
+const round2 = (x: number) => Math.round(x * 100) / 100;
+const fmt2 = (x: number) => String(round2(x));
 
 // Local structural type mirroring ai.service.ts's (unexported) GeneratedMathQuestion, to
 // avoid importing a non-exported interface / a potential circular import with ai.service.ts.
@@ -166,6 +172,11 @@ export function validateItem(raw: unknown, cfg: GridConfig, difficulty: Difficul
   // Answer recomputed by code
   const correct = round6(computeAxis(op, chart.values) * cfg.unit);
   if (!approxEq(correct, item.answer)) errors.push(`answer should be ${correct}, got ${item.answer}`);
+  // W-156: the answer must be mentally checkable — at most 2 decimal places, never a repeating/long
+  // decimal (e.g. a mean like 1175/6 = 195.8333…). Reject so the model picks cleaner values.
+  if (Math.abs(round2(correct) - correct) > TOL) {
+    errors.push(`answer ${correct} needs more than 2 decimal places — choose values with a clean answer`);
+  }
 
   // Options
   const values = item.options.map((o) => round6(o.value));
@@ -253,7 +264,7 @@ OPERATION. Set "operation" to exactly one of:
 - {"type":"sum"} — sum of all values
 - {"type":"mean"} — average of all values
 
-ANSWER & OPTIONS. Give the correct "answer" in REAL units (axis value × ${cfg.unit}). Provide 4-5 "options", each {"value": <number in real units>, "error": <string naming the exact misreading/miscalculation that produces it, or null for the single correct option>}. Exactly one option must have "error": null and its value must equal the correct answer. Every wrong option must name a plausible, specific mistake (e.g. "read the wrong bar", "used only the largest value", "forgot to convert to real units") — never a generic label. Do NOT include a distractor reachable only by misreading a value as a third instead of a quarter (or vice versa) — that ambiguity is checked and rejected.
+ANSWER & OPTIONS. Give the correct "answer" in REAL units (axis value × ${cfg.unit}). Provide 4-5 "options", each {"value": <number in real units>, "error": <string naming the exact misreading/miscalculation that produces it, or null for the single correct option>}. Exactly one option must have "error": null and its value must equal the correct answer. The correct answer must be a clean number with AT MOST 2 decimal places — never a repeating or long decimal. If an average/mean would not come out to 2 decimals or fewer, choose values whose total divides cleanly (or pick a different operation). Every wrong option must name a plausible, specific mistake (e.g. "read the wrong bar", "used only the largest value", "forgot to convert to real units") — never a generic label. Do NOT include a distractor reachable only by misreading a value as a third instead of a quarter (or vice versa) — that ambiguity is checked and rejected.
 
 Respond with ONLY a JSON object (no markdown, no code fences) in this exact shape:
 {
@@ -311,11 +322,13 @@ export function toGeneratedMathQuestion(
   topicName: string,
   kind: 'line-chart' | 'bar-chart' = 'line-chart',
 ): GeneratedMathQuestion {
-  const options = item.options.map((o) => String(o.value));
+  // W-156: format to <=2dp so nothing renders as a long float tail (validateItem already guarantees
+  // the correct answer is <=2dp, so this is lossless for it and just trims any distractor noise).
+  const options = item.options.map((o) => fmt2(o.value));
   const correctIndex = item.options.findIndex((o) => o.error === null);
   const distractorLines = item.options
     .filter((o) => o.error !== null)
-    .map((o) => `If you chose ${o.value}, you ${o.error}.`);
+    .map((o) => `If you chose ${fmt2(o.value)}, you ${o.error}.`);
   const explanation = [item.worked_solution, ...distractorLines].join(' ');
   const stimulus: StimulusSpec = {
     version: 1,

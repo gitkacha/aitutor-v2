@@ -84,3 +84,53 @@ describe('generateChartQuestion', () => {
     expect(q.stimulus).toMatchObject({ figures: [{ kind: 'line-chart', yMax: 8 }] });
   });
 });
+
+// W-156: chart answers must be mentally checkable — never a repeating/long decimal.
+describe('validateItem — answer decimal precision', () => {
+  const cfg = { G: 2, d: 4, yMax: 8, unit: 100, cleanStep: 25 } as const;
+  // mean of these six axis values = 23/6 = 3.8333… → ×100 = 383.33… (repeating, >2dp).
+  const uglyMeanItem = () => ({
+    chart: { title: 'Books', xLabel: 'Day', yLabel: 'Hundreds', gridStep: 2, yMax: 8,
+             labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], values: [2, 4, 2.5, 6, 5.5, 3] },
+    question_text: 'The chart shows books borrowed. What was the average per day?',
+    operation: { type: 'mean' as const },
+    answer: 383.333333,
+    options: [
+      { value: 383.333333, error: null },
+      { value: 38.33, error: 'forgot to convert to real units' },
+      { value: 460, error: 'divided by five instead of six' },
+      { value: 230, error: 'used only one day' },
+    ],
+    worked_solution: 'Add all six and divide by six.',
+  });
+
+  it('rejects an answer that needs more than 2 decimal places', () => {
+    const r = validateItem(uglyMeanItem(), cfg, 'medium');
+    expect(r.ok).toBe(false);
+    expect(r.errors.some((e) => /decimal/i.test(e))).toBe(true);
+  });
+});
+
+describe('toGeneratedMathQuestion — value formatting', () => {
+  const cfg = { G: 2, d: 4, yMax: 8, unit: 100, cleanStep: 25 } as const;
+  it('formats option values and explanation references to at most 2 decimals', () => {
+    const item = {
+      chart: { title: 'Books', xLabel: 'Day', yLabel: 'Hundreds', gridStep: 2, yMax: 8,
+               labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], values: [2, 4, 2.5, 6, 5.5] },
+      question_text: 'The chart shows books borrowed. What was the average per day?',
+      operation: { type: 'mean' as const },
+      answer: 400,
+      options: [
+        { value: 195.83333333333334, error: null },
+        { value: 191.66666666666666, error: 'misread Tuesday' },
+        { value: 235, error: 'divided by five' },
+        { value: 206.25, error: 'averaged only Monday to Thursday' },
+      ],
+      worked_solution: 'Add and divide.',
+    };
+    const q = toGeneratedMathQuestion(item as any, cfg, 'Data Interpretation', 'line-chart');
+    expect(q.options).toEqual(['195.83', '191.67', '235', '206.25']);
+    expect(q.explanation).toContain('If you chose 191.67');
+    expect(q.explanation).not.toMatch(/191\.6{4}/); // no long-decimal tail
+  });
+});
