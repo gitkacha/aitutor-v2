@@ -342,21 +342,21 @@ const goodItem = () => ({
 
 describe('validateItem', () => {
   it('accepts a correct, readable, leak-free item', () => {
-    const r = validateItem(goodItem(), cfg, 'hard');
+    const r = validateItem(goodItem(), cfg, 'medium');
     expect(r.ok, JSON.stringify(r.errors)).toBe(true);
   });
   it('rejects a leaked chart number in the stem', () => {
     const item = goodItem();
     item.question_text = 'Visitors were 200, 400, 250, 600, 550. What is the range?';
-    expect(validateItem(item, cfg, 'hard').ok).toBe(false);
+    expect(validateItem(item, cfg, 'medium').ok).toBe(false);
   });
   it('rejects a wrong (code-recomputed) answer', () => {
     const item = goodItem(); item.answer = 500; item.options[0].value = 500;
-    expect(validateItem(item, cfg, 'hard').ok).toBe(false);
+    expect(validateItem(item, cfg, 'medium').ok).toBe(false);
   });
   it('rejects a value off the allowed 1/d fraction', () => {
     const item = goodItem(); item.chart.values = [2, 4, 1.65, 6, 5.5]; // 1.65 not a quarter of 2
-    expect(validateItem(item, cfg, 'hard').ok).toBe(false);
+    expect(validateItem(item, cfg, 'medium').ok).toBe(false);
   });
 });
 
@@ -430,7 +430,7 @@ describe('generateChartQuestion', () => {
     };
     let call = 0;
     const stub = async () => (++call === 1 ? 'not json' : JSON.stringify(valid));
-    const q = await generateChartQuestion(cfg, 'hard', 'line-chart', stub, 4);
+    const q = await generateChartQuestion(cfg, 'medium', 'line-chart', stub, 4);
     expect(call).toBe(2);
     expect(q.correctIndex).toBe(0);
     expect(q.stimulus).toMatchObject({ figures: [{ kind: 'line-chart', yMax: 8 }] });
