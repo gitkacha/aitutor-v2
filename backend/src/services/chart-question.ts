@@ -209,6 +209,98 @@ export function validateItem(raw: unknown, cfg: GridConfig, difficulty: Difficul
     : { ok: true, errors: [], meta: { subdivision: inferred!, steps, criticalHardValues: criticalHard } };
 }
 
+// ── Prompt for the generation model (Task 4) ─────────────────────────────────
+// The grid (gridStep, yMax, gridlines) is FIXED by code (chart-grid.ts's pickGrid) so a
+// generated chart is always readable — the model must describe data that fits this grid,
+// never invent or restate its own. It must also never leak a data value, gridline value,
+// or axis number in the question stem (leakedNumbers() enforces this at validation time).
+const FRACTION_WORD: Record<Subdivision, string> = {
+  1: 'gridline only (no fractional positions)',
+  2: 'gridline or exact half-way point',
+  3: 'gridline or exact third (1/3, 2/3) of a grid interval',
+  4: 'gridline or exact quarter (1/4, 1/2, 3/4) of a grid interval',
+};
+
+export function buildChartPrompt(cfg: GridConfig, difficulty: Difficulty, kind: 'line-chart' | 'bar-chart'): string {
+  const ticks = gridTicks(cfg.yMax, cfg.G).join(', ');
+  const difficultyGuidance = {
+    easy: 'Every plotted value must sit exactly ON a gridline or exactly halfway between two gridlines.',
+    medium: '1-2 plotted values must sit at a third/quarter position on the grid (per the allowed subdivision below); the rest on a gridline or halfway. The question must take at least 2 reasoning steps (e.g. a difference, range, sum, or mean, plus the unit conversion if any).',
+    hard: 'At least one of the values that is CRITICAL to computing the answer must sit at a third/quarter position on the grid (not just a decorative one). The question must take at least 2 reasoning steps.',
+  }[difficulty];
+
+  return `You are writing ONE multiple-choice "read a ${kind}" data-interpretation question for a Year 6 student preparing for the NSW Selective High School Placement Test.
+
+FIXED GRID — DO NOT CHANGE. The chart's grid has already been chosen by code so the chart is always readable. You must use EXACTLY this grid:
+- gridStep = ${cfg.G} (the spacing between gridlines, in axis units)
+- yMax = ${cfg.yMax} (the top of the y-axis, in axis units)
+- gridlines are at: ${ticks}
+- one axis unit = ${cfg.unit} real unit(s) (e.g. the axis is in "hundreds" if unit = 100)
+- allowed value positions: each plotted value must sit on a ${FRACTION_WORD[cfg.d]}
+
+Do not change the grid, invent a different gridStep or yMax, or restate the gridline values anywhere in your output text — echo gridStep/yMax back ONLY in the "chart" JSON fields, never in prose.
+
+DIFFICULTY (${difficulty}): ${difficultyGuidance}
+
+DATA. Invent a short, natural title, axis labels, 3-8 category labels (e.g. days of the week, months, names) and one plotted value per label, each obeying the FIXED GRID above and clean once converted to real units (a multiple of ${cfg.cleanStep} real unit(s)).
+
+QUESTION TEXT — DO NOT LEAK THE CHART. Refer to "the chart" (or "the graph") generically. Do NOT write any data value, gridline value, or axis number anywhere in the question_text — the student must read every number from the rendered chart, not from your words. Ask a genuine multi-step question: a difference between two categories, the range, a sum, or a mean — not a single direct lookup.
+
+OPERATION. Set "operation" to exactly one of:
+- {"type":"value","index":<int>} — reads a single plotted value
+- {"type":"difference","a":<int>,"b":<int>} — |values[a] - values[b]|
+- {"type":"range"} — max - min
+- {"type":"sum"} — sum of all values
+- {"type":"mean"} — average of all values
+
+ANSWER & OPTIONS. Give the correct "answer" in REAL units (axis value × ${cfg.unit}). Provide 4-5 "options", each {"value": <number in real units>, "error": <string naming the exact misreading/miscalculation that produces it, or null for the single correct option>}. Exactly one option must have "error": null and its value must equal the correct answer. Every wrong option must name a plausible, specific mistake (e.g. "read the wrong bar", "used only the largest value", "forgot to convert to real units") — never a generic label. Do NOT include a distractor reachable only by misreading a value as a third instead of a quarter (or vice versa) — that ambiguity is checked and rejected.
+
+Respond with ONLY a JSON object (no markdown, no code fences) in this exact shape:
+{
+  "chart": {"title": "...", "xLabel": "...", "yLabel": "...", "gridStep": ${cfg.G}, "yMax": ${cfg.yMax}, "labels": ["...", ...], "values": [<numbers in axis units>, ...]},
+  "question_text": "...",
+  "operation": {"type": "..."},
+  "answer": <number, real units>,
+  "options": [{"value": <number>, "error": <string or null>}, ...],
+  "worked_solution": "Step-by-step reasoning a Year 6 student could redo in their head, ending in the answer."
+}`;
+}
+
+// ── Model-driven generation with validation retry (Task 4) ───────────────────
+function stripFences(text: string): string {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  return (fenced ? fenced[1] : text).trim();
+}
+
+export async function generateChartQuestion(
+  cfg: GridConfig,
+  difficulty: Difficulty,
+  kind: 'line-chart' | 'bar-chart',
+  callModel: (prompt: string) => Promise<string>,
+  maxAttempts = 4,
+): Promise<GeneratedMathQuestion> {
+  let prompt = buildChartPrompt(cfg, difficulty, kind);
+  let lastErrors: string[] = ['no attempts made'];
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const reply = await callModel(prompt);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(stripFences(reply));
+    } catch {
+      lastErrors = ['response was not valid JSON'];
+      prompt = `${buildChartPrompt(cfg, difficulty, kind)}\n\nYour previous reply could not be parsed as JSON. Respond with ONLY the JSON object, no markdown or commentary.`;
+      continue;
+    }
+    const result = validateItem(parsed, cfg, difficulty);
+    if (result.ok) {
+      return toGeneratedMathQuestion(parsed as QuestionItem, cfg, 'Data Interpretation', kind);
+    }
+    lastErrors = result.errors;
+    prompt = `${buildChartPrompt(cfg, difficulty, kind)}\n\nYour previous reply had these problems — fix ALL of them and respond again with ONLY the corrected JSON object:\n${result.errors.map((e) => `- ${e}`).join('\n')}`;
+  }
+  throw new Error(`generateChartQuestion: failed after ${maxAttempts} attempts: ${lastErrors.join('; ')}`);
+}
+
 // ── Mapping to the app's GeneratedMathQuestion (Task 3 adaptation) ───────────
 // options[].value → options: string[]; error:null → correctIndex; worked_solution +
 // per-distractor "If you chose X, you …" → explanation; chart → stimulus line/bar figure

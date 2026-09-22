@@ -5,6 +5,9 @@ import { hasDistinctOptions, explanationMatchesKey, keptByEscalation } from '../
 import { balanceAnswerPositions } from '../lib/answer-balance';
 import { MATH_SKILLS, WRITING_SKILLS, THINKING_SKILLS } from '../../prisma/seed-skills';
 import { buildTopicBriefSection } from './topic-briefs';
+import { pickGrid } from './chart-grid';
+import type { Difficulty } from './chart-grid';
+import { generateChartQuestion } from './chart-question';
 
 // Per-role model providers (W-21). Each role — generation, answer-key verification, writing
 // analysis — resolves its own {model, baseUrl, apiKey} from role-specific env, falling back
@@ -854,6 +857,37 @@ export async function resolveMathTopicsForGeneration(topicSlugs?: string[], subj
   });
 }
 
+// W-153: code-recomputed-answer chart pipeline for data-interpretation line/bar questions
+// (chart-grid.ts + chart-question.ts). Candidate gridline steps and axis-unit scales the
+// grid picker chooses from; ~half of DI questions are routed through this pipeline so they
+// are guaranteed readable, bypassing the LLM answer-key audit (code already checked the key).
+const CHART_CANDIDATE_GS = [2, 3, 4, 5, 6, 9, 10, 12, 20];
+const CHART_UNITS = [1, 10, 100];
+
+function pick<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+async function generateDiChartQuestions(count: number): Promise<GeneratedMathQuestion[]> {
+  const out: GeneratedMathQuestion[] = [];
+  for (let i = 0; i < count; i++) {
+    try {
+      const difficulty: Difficulty = Math.random() < 0.5 ? 'medium' : 'hard';
+      const unit = pick(CHART_UNITS);
+      const cleanStep = unit === 1 ? 1 : 25;
+      const cfg = pickGrid({ candidateGs: CHART_CANDIDATE_GS, unit, cleanStep, difficulty });
+      const kind: 'line-chart' | 'bar-chart' = Math.random() < 0.5 ? 'line-chart' : 'bar-chart';
+      const q = await generateChartQuestion(cfg, difficulty, kind, (p) =>
+        chatCompletion(providerFor('generation'), p, generationTokenBudget(1), 0.8).then((r) => r.content)
+      );
+      out.push(q);
+    } catch (error) {
+      console.error('Chart question generation failed, skipping:', error);
+    }
+  }
+  return out;
+}
+
 export async function generateMathWorksheetQuestions(
   topics: MathTopicForGen[],
   questionCount = 35,
@@ -870,6 +904,24 @@ export async function generateMathWorksheetQuestions(
   // collected this run; `promptAvoid` is fed to each batch so the model avoids re-skinning them.
   const seen = new Set(avoidTexts.map(normalizeQuestionText));
   const promptAvoid: string[] = [...avoidTexts];
+
+  // W-153: route ~half of the data-interpretation share through the code-recomputed-answer
+  // chart pipeline (chart-grid.ts + chart-question.ts) before the existing batch loop, so a
+  // worksheet with data-interpretation among its topics always contains some guaranteed-readable
+  // line/bar chart questions. These bypass verifyQuestionKey (code already recomputed the answer)
+  // and the skill-tag audit (skillSlug is already 'bar-and-line-graphs'); the rest of the DI share
+  // still comes from the existing batch path below (so pie/table questions still appear, W-146).
+  // Non-DI worksheets are entirely unaffected.
+  if (topics.some((t) => t.slug === 'data-interpretation')) {
+    const diShare = Math.round(questionCount / topics.length);
+    const K = Math.min(Math.round(diShare / 2), questionCount);
+    const chartQuestions = await generateDiChartQuestions(K);
+    for (const q of chartQuestions) {
+      if (collected.length >= questionCount) break;
+      collected.push(q);
+      seen.add(normalizeQuestionText(q.questionText));
+    }
+  }
 
   // Verification drops some candidates, so allow extra top-up calls.
   const maxCalls = Math.ceil(questionCount / GENERATION_BATCH_SIZE) + 5;
