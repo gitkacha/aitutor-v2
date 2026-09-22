@@ -322,3 +322,4 @@ in dev.db (0 untagged).
 - [ ] W-154: e2e — DI chart question renders explicit ticks and leaks no values
 - [ ] W-155: Parallelize DI chart-question generation (was sequential per-question model calls — too slow); bounded concurrency, dedup guard already handles parallel duplicates
 - [ ] W-156: Chart answers must not require >2 decimal places — validateItem rejects ugly/repeating decimals (e.g. mean 1175/6); options + explanation formatted to <=2dp so nothing renders as ...333334; prompt asks for clean answers; unit-tested
+- [ ] W-157: Batch-generated questions must not dump a figure's raw data (Columns:[...]/Rows:[...] or bracketed value arrays) into the question text — prompt rule + deterministic hasRawDataLeak guard discards such leaks; unit-tested

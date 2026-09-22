@@ -81,6 +81,17 @@ describe('buildGenerationBatchPrompt — pie inference guidance', () => {
   });
 });
 
+// W-157: a stimulus question must reference its figure, never dump the figure's raw data into the stem.
+describe('buildGenerationBatchPrompt — no raw data in the question text', () => {
+  it('forbids reproducing a figure\'s rows/columns/values in the question text', () => {
+    const prompt = buildGenerationBatchPrompt([topic('data-interpretation', 'Data Interpretation')], 10, [], { briefVariant: 'off' });
+    expect(prompt).toContain('NO RAW DATA IN THE QUESTION TEXT');
+    const lower = prompt.toLowerCase();
+    expect(lower).toContain('columns');
+    expect(lower).toContain('rows');
+  });
+});
+
 // W-149: a value the student must READ off a bar/line graph must be pinpointable by intuitive
 // calculation from the axis spacing — on a gridline or a clean half/quarter-step — never an awkward
 // mid-gridline value like 7.5/22.5 against a spacing of 8.

@@ -1,7 +1,7 @@
 import prisma from '../lib/prisma';
 import { checkGridCompassDirection } from '../lib/grid-compass';
 import { validateStimulus, StimulusSpec } from '../lib/stimulus';
-import { hasDistinctOptions, explanationMatchesKey, keptByEscalation } from '../lib/question-checks';
+import { hasDistinctOptions, explanationMatchesKey, keptByEscalation, hasRawDataLeak } from '../lib/question-checks';
 import { balanceAnswerPositions } from '../lib/answer-balance';
 import { MATH_SKILLS, WRITING_SKILLS, THINKING_SKILLS } from '../../prisma/seed-skills';
 import { buildTopicBriefSection } from './topic-briefs';
@@ -792,6 +792,13 @@ stimulus. NEVER write "shown below", "in the diagram", "on the protractor" or si
 unless the question includes a stimulus containing that exact figure and all data needed
 to solve it. Questions violating this are discarded.
 
+NO RAW DATA IN THE QUESTION TEXT. When a question has a stimulus (a table, chart or graph), the
+figure IS the data — the questionText must REFER to it ("the table shows…", "using the graph…")
+and must NEVER reproduce its contents. Do NOT paste the figure's rows, columns, headers, coordinate
+lists or value arrays into the questionText, and never write structural labels like "Columns: [...]"
+or "Rows: [...]". The student reads the numbers off the rendered figure. Questions that dump the raw
+data into the text are discarded.
+
 Respond with ONLY a JSON array (no markdown, no code fences) in this exact format:
 [
   {
@@ -947,7 +954,8 @@ export async function generateMathWorksheetQuestions(
       const batchResult = await generateQuestionBatch(topics, need, promptAvoid, opts);
       accumulate(totals, genModel, batchResult.usage);
       const candidates: GeneratedMathQuestion[] = batchResult.questions
-        .filter(q => isValidGeneratedQuestion(q, allowedSlugs, optionCount) && hasDistinctOptions(q.options.map(String)))
+        // W-157: drop any question that dumped its figure's raw data (Columns/Rows/value arrays) into the stem.
+        .filter(q => isValidGeneratedQuestion(q, allowedSlugs, optionCount) && hasDistinctOptions(q.options.map(String)) && !hasRawDataLeak(q.questionText))
         .map(q => ({
           questionText: q.questionText,
           options: q.options.map(String),

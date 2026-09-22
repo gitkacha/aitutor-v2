@@ -31,6 +31,17 @@ export function explanationMatchesKey(explanation: string, correctIndex: number)
   return named[named.length - 1] === LETTERS[correctIndex];
 }
 
+// W-157: a question must reference its stimulus figure, never reproduce the figure's raw data in
+// the question text. Catches the model serialising a table/dataset into the stem — an explicit
+// "Columns:" / "Rows:" label followed by a bracket, or a bracketed array that starts with a quoted
+// value (e.g. ["Robotics",50,55]). These patterns don't occur in a legitimate Year-6 word problem.
+export function hasRawDataLeak(questionText: string): boolean {
+  const t = String(questionText);
+  if (/\b(columns|rows)\b\s*:\s*\[/i.test(t)) return true;
+  if (/\[\s*"[^"]+"\s*,/.test(t)) return true;
+  return false;
+}
+
 // Escalation decision (W-20): after a disagreeing first pass, two more independent solves
 // run. Keep the question only if at least two of the three verdicts equal the claimed key
 // and none is a "none of the options" / unparseable verdict (represented as negative).
