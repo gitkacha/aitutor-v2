@@ -313,3 +313,10 @@ in dev.db (0 untagged).
 - [x] W-147: Pie-chart questions leave room to infer — generation prompt tells the model not to label every slice; leave ≥1 slice showPercent:false that's derivable by a clean subtraction/fraction (never eyeball-angle guessing), and the derived share must feed a further step (protects W-139 multi-step rule) — commits `151dfcb`, `866e12c` · proof: `backend/src/services/generation-uniqueness.test.ts` pie-inference block · user signed off 2026-09-22
 - [x] W-148: Fix compact pie legend (lessons) leaking percentages — respect showPercent:false so unlabelled slices stay unlabelled in the compact legend too — commit `151dfcb` · proof: `frontend/src/components/StimulusFigure.blocks.test.ts` sectorLegendText tests · user signed off 2026-09-22
 - [x] W-149: Bar/line graph plotted values must be readable by intuitive calculation from the axis spacing (on a gridline, or a clean half/quarter/three-quarter-step midpoint) — never an awkward mid-gridline value like 7.5/22.5 against spacing 8 — commits `3bcd7cf`, `ef87dff` · proof: `backend/src/services/generation-uniqueness.test.ts` readable-plotted-values test + manual (regenerated Q12-style chart now readable) · user signed off 2026-09-22
+
+## Chart-question pipeline (plan 2026-09-23-chart-question-pipeline.md, base c3255e1)
+- [ ] W-150: Line/bar chart figures support an explicit y-axis (yMax + yTickStep) — schema + validateStimulus + StimulusFigure renders domain+ticks; auto-scale fallback when absent; unit-tested
+- [ ] W-151: backend chart-grid.ts numeric core (safe grid selection, readability/ambiguity helpers); code owns the grid; unit-tested
+- [ ] W-152: backend chart-question.ts zod schema + validators (leak/answer/ambiguity/traps) + toGeneratedMathQuestion mapping; unit-tested
+- [ ] W-153: chart-question generator + DI line/bar integration (mix medium/hard), code-recomputed answer replaces LLM audit; unit-tested with stub model
+- [ ] W-154: e2e — DI chart question renders explicit ticks and leaks no values
