@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isMultiple, fracInInterval, isClean, safeGridPairs, pickGrid, gridTicks, inferSubdivision } from './chart-grid';
+import { isMultiple, fracInInterval, isClean, safeGridPairs, pickGrid, gridTicks, inferSubdivision, ambiguousValues, type GridConfig } from './chart-grid';
 
 describe('chart-grid numeric core', () => {
   it('isMultiple / fracInInterval', () => {
@@ -50,5 +50,21 @@ describe('chart-grid numeric core', () => {
     const cfg = pickGrid({ candidateGs: [2, 4, 10, 20], unit: 100, cleanStep: 25, difficulty: 'hard', rng: () => 0 });
     expect(cfg.yMax % cfg.G).toBe(0);
     expect(cfg.d).toBeGreaterThanOrEqual(3); // hard → thirds/quarters
+  });
+});
+
+describe('ambiguousValues', () => {
+  it('flags a quarter-mark value whose rival third reading is clean (W-151 float-drift false negative)', () => {
+    const cfg: GridConfig = { G: 12, d: 3, yMax: 24, unit: 1, cleanStep: 1 };
+    // v=4 is the 1/3 mark of a 12-step interval; the rival quarter reading lands on 3, which is
+    // clean (an integer). round6(frac) has a ~5e-7 error that, amplified by G=12, previously
+    // pushed the reconstructed altValue to ~3.000004 — just past TOL — so isClean wrongly
+    // returned false and the value was NOT flagged. It must be flagged.
+    expect(ambiguousValues([4], cfg)).toEqual([4]);
+  });
+
+  it('does not flag an easy (exact-halfway) position', () => {
+    const cfg: GridConfig = { G: 12, d: 2, yMax: 24, unit: 1, cleanStep: 1 };
+    expect(ambiguousValues([6], cfg)).toEqual([]);
   });
 });

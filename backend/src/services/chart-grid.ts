@@ -78,10 +78,11 @@ export function ambiguousValues(values: number[], cfg: GridConfig): number[] {
   return values.filter((v) => {
     const frac = fracInInterval(v, cfg.G);
     if (isEasyPosition(frac)) return false;
+    const base = Math.floor(round6(v / cfg.G)); // exact interval index (round6 removes the drift before floor)
     return ([3, 4] as const).some((k) => {
       const alt = Math.round(frac * k) / k;
       if (approxEq(alt, frac) || Math.abs(alt - frac) >= 0.1) return false;
-      const altValue = v - frac * cfg.G + alt * cfg.G;
+      const altValue = round6((base + alt) * cfg.G);
       return isClean(altValue, cfg.unit, cfg.cleanStep);
     });
   });
