@@ -863,27 +863,39 @@ export async function resolveMathTopicsForGeneration(topicSlugs?: string[], subj
 // are guaranteed readable, bypassing the LLM answer-key audit (code already checked the key).
 const CHART_CANDIDATE_GS = [2, 3, 4, 5, 6, 9, 10, 12, 20];
 const CHART_UNITS = [1, 10, 100];
+// W-155: chart questions are independent per-question model calls (each with its own validation
+// retry), so run them concurrently instead of sequentially. Bounded so a large DI worksheet doesn't
+// fire a wide burst of reasoning-model calls at once (rate limits). The collect-loop dedup guard
+// (W-87) already drops any duplicate two parallel calls happen to produce.
+const CHART_CONCURRENCY = 6;
 
 function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+async function generateOneChartQuestion(): Promise<GeneratedMathQuestion | null> {
+  try {
+    const difficulty: Difficulty = Math.random() < 0.5 ? 'medium' : 'hard';
+    const unit = pick(CHART_UNITS);
+    const cleanStep = unit === 1 ? 1 : 25;
+    const cfg = pickGrid({ candidateGs: CHART_CANDIDATE_GS, unit, cleanStep, difficulty });
+    const kind: 'line-chart' | 'bar-chart' = Math.random() < 0.5 ? 'line-chart' : 'bar-chart';
+    return await generateChartQuestion(cfg, difficulty, kind, (p) =>
+      chatCompletion(providerFor('generation'), p, generationTokenBudget(1), 0.8).then((r) => r.content)
+    );
+  } catch (error) {
+    console.error('Chart question generation failed, skipping:', error);
+    return null;
+  }
+}
+
 async function generateDiChartQuestions(count: number): Promise<GeneratedMathQuestion[]> {
   const out: GeneratedMathQuestion[] = [];
-  for (let i = 0; i < count; i++) {
-    try {
-      const difficulty: Difficulty = Math.random() < 0.5 ? 'medium' : 'hard';
-      const unit = pick(CHART_UNITS);
-      const cleanStep = unit === 1 ? 1 : 25;
-      const cfg = pickGrid({ candidateGs: CHART_CANDIDATE_GS, unit, cleanStep, difficulty });
-      const kind: 'line-chart' | 'bar-chart' = Math.random() < 0.5 ? 'line-chart' : 'bar-chart';
-      const q = await generateChartQuestion(cfg, difficulty, kind, (p) =>
-        chatCompletion(providerFor('generation'), p, generationTokenBudget(1), 0.8).then((r) => r.content)
-      );
-      out.push(q);
-    } catch (error) {
-      console.error('Chart question generation failed, skipping:', error);
-    }
+  // Concurrent in bounded waves; each attempt swallows its own failure and returns null.
+  for (let i = 0; i < count; i += CHART_CONCURRENCY) {
+    const waveSize = Math.min(CHART_CONCURRENCY, count - i);
+    const results = await Promise.all(Array.from({ length: waveSize }, () => generateOneChartQuestion()));
+    for (const q of results) if (q) out.push(q);
   }
   return out;
 }

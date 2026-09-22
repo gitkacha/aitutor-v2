@@ -320,3 +320,4 @@ in dev.db (0 untagged).
 - [ ] W-152: backend chart-question.ts zod schema + validators (leak/answer/ambiguity/traps) + toGeneratedMathQuestion mapping; unit-tested
 - [ ] W-153: chart-question generator + DI line/bar integration (mix medium/hard), code-recomputed answer replaces LLM audit; unit-tested with stub model
 - [ ] W-154: e2e — DI chart question renders explicit ticks and leaks no values
+- [ ] W-155: Parallelize DI chart-question generation (was sequential per-question model calls — too slow); bounded concurrency, dedup guard already handles parallel duplicates
