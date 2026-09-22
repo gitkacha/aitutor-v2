@@ -918,8 +918,10 @@ export async function generateMathWorksheetQuestions(
     const chartQuestions = await generateDiChartQuestions(K);
     for (const q of chartQuestions) {
       if (collected.length >= questionCount) break;
+      const n = normalizeQuestionText(q.questionText);
+      if (seen.has(n)) continue; // W-87: no duplicate chart questions
       collected.push(q);
-      seen.add(normalizeQuestionText(q.questionText));
+      seen.add(n);
     }
   }
 

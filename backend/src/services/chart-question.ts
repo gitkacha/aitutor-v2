@@ -317,8 +317,8 @@ export function toGeneratedMathQuestion(
     .filter((o) => o.error !== null)
     .map((o) => `If you chose ${o.value}, you ${o.error}.`);
   const explanation = [item.worked_solution, ...distractorLines].join(' ');
-  const stimulus = {
-    version: 1 as const,
+  const stimulus: StimulusSpec = {
+    version: 1,
     text: '',
     figures: [{
       kind,
@@ -338,6 +338,6 @@ export function toGeneratedMathQuestion(
     topicSlug: 'data-interpretation',
     topicName,
     skillSlug: 'bar-and-line-graphs',
-    stimulus: stimulus as any, // validateStimulus-compatible; cast to StimulusSpec in the real module
+    stimulus,
   };
 }

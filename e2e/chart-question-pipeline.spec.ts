@@ -110,6 +110,13 @@ test.describe('W-154 — DI chart question pipeline e2e', () => {
       expect(result.questions.length).toBe(6);
       expect(log.chartCalls, 'the chart-question pipeline must have been invoked').toBeGreaterThan(0);
 
+      // W-153: the chart-routing loop must dedup against `seen` just like the batch loop does —
+      // the stub below returns an IDENTICAL question_text for every chart call, so this only
+      // passes if duplicate chart questions are skipped (and the batch top-up backfills the rest
+      // with distinct questions).
+      const texts = result.questions.map((q: any) => q.questionText);
+      expect(new Set(texts).size, 'no duplicate questionText across the worksheet').toBe(texts.length);
+
       const chartQuestions = result.questions.filter(
         (q: any) => q.stimulus?.figures?.some((f: any) => (f.kind === 'line-chart' || f.kind === 'bar-chart') && f.yTickStep)
       );
