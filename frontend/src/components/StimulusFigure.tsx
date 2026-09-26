@@ -7,7 +7,7 @@ import type {
   Figure, GridFigure, ProtractorFigure, CompassFigure, ShapeFigure,
   RotationFigure, RotationShape, FoldCutFigure, TargetFigure, PieChartFigure,
 } from '@/lib/stimulus';
-import { gridTicks } from '@/lib/chart-ticks';
+import { explicitAxisProps } from '@/lib/chart-ticks';
 
 // W-130: caption explaining a pie slice's 5%-block breakdown (shown on hover in interactive lessons).
 // Only decomposes into blocks when the percent is a clean multiple of 5.
@@ -372,11 +372,10 @@ export default function StimulusFigure({ figure, interactive, compact }: { figur
       case 'line-chart':
       case 'bar-chart': {
         const data = figure.points.map((p) => ({ x: String(p.x), y: p.y }));
-        // W-150: an explicit axis (both yMax and yTickStep) draws exact gridlines instead of
-        // Recharts auto-scaling. When absent, behaviour is unchanged (auto-scale).
-        const axis = (figure.yMax && figure.yTickStep)
-          ? { domain: [0, figure.yMax] as [number, number], ticks: gridTicks(figure.yMax, figure.yTickStep) }
-          : {};
+        // W-150/W-158: an explicit axis (both yMax and yTickStep) draws exact gridlines instead of
+        // Recharts auto-scaling, with interval:0 so every gridline renders. Empty when absent, so
+        // auto-scaling behaviour is unchanged.
+        const axis = explicitAxisProps(figure.yMax, figure.yTickStep);
         return (
           <div className={compact ? 'w-full max-w-[440px]' : 'w-full max-w-xl'}>
             {figure.title && <p className="text-sm font-medium text-gray-700 text-center mb-1">{figure.title}</p>}
@@ -385,14 +384,14 @@ export default function StimulusFigure({ figure, interactive, compact }: { figur
                 <LineChart data={data} margin={{ top: 5, right: 20, bottom: 18, left: 4 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="x" tick={{ fontSize: 11 }} label={figure.xLabel ? { value: figure.xLabel, position: 'insideBottom', offset: -12, fontSize: 11 } : undefined} />
-                  <YAxis tick={{ fontSize: 11 }} label={figure.yLabel ? { value: figure.yLabel, angle: -90, position: 'insideLeft', fontSize: 11 } : undefined} {...(axis.ticks ? { domain: axis.domain, ticks: axis.ticks, allowDecimals: true } : {})} />
+                  <YAxis tick={{ fontSize: 11 }} label={figure.yLabel ? { value: figure.yLabel, angle: -90, position: 'insideLeft', fontSize: 11 } : undefined} {...axis} />
                   <Line type="linear" dataKey="y" stroke="#1c6dd0" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} />
                 </LineChart>
               ) : (
                 <BarChart data={data} margin={{ top: 5, right: 20, bottom: 18, left: 4 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="x" tick={{ fontSize: 11 }} label={figure.xLabel ? { value: figure.xLabel, position: 'insideBottom', offset: -12, fontSize: 11 } : undefined} />
-                  <YAxis tick={{ fontSize: 11 }} label={figure.yLabel ? { value: figure.yLabel, angle: -90, position: 'insideLeft', fontSize: 11 } : undefined} {...(axis.ticks ? { domain: axis.domain, ticks: axis.ticks, allowDecimals: true } : {})} />
+                  <YAxis tick={{ fontSize: 11 }} label={figure.yLabel ? { value: figure.yLabel, angle: -90, position: 'insideLeft', fontSize: 11 } : undefined} {...axis} />
                   <Bar dataKey="y" fill="#1c6dd0" isAnimationActive={false} />
                 </BarChart>
               )}

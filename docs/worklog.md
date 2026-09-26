@@ -323,3 +323,4 @@ in dev.db (0 untagged).
 - [ ] W-155: Parallelize DI chart-question generation (was sequential per-question model calls — too slow); bounded concurrency, dedup guard already handles parallel duplicates
 - [ ] W-156: Chart answers must not require >2 decimal places — validateItem rejects ugly/repeating decimals (e.g. mean 1175/6); options + explanation formatted to <=2dp so nothing renders as ...333334; prompt asks for clean answers; unit-tested
 - [ ] W-157: Batch-generated questions must not dump a figure's raw data (Columns:[...]/Rows:[...] or bracketed value arrays) into the question text — prompt rule + deterministic hasRawDataLeak guard discards such leaks; unit-tested
+- [ ] W-158: Chart gridlines sometimes missing (e.g. at 50) — Recharts preserveEnd tick-thinning drops an interior GRID line while axis labels still show all; pass interval={0} with explicit ticks so every gridline renders; unit-tested (explicitAxisProps helper)
