@@ -34,3 +34,75 @@ describe('normalizeQuestionText', () => {
     expect(normalizeQuestionText('Lily faces West.')).not.toBe(normalizeQuestionText('Chris faces North.'));
   });
 });
+
+import { buildGenerationBatchPrompt } from './ai.service';
+
+const topic = (slug: string, name: string) => ({
+  id: 1, name, slug, description: `${name} description`,
+  questions: [{ id: 1, questionText: `hardest ${name} q`, options: '[]', correctIndex: 0, explanation: '', percentCorrect: 20 }],
+});
+
+describe('buildGenerationBatchPrompt — topic briefs A/B', () => {
+  it("variant 'on' with a briefed topic injects the DISTRACTOR and FIGURES rules", () => {
+    const prompt = buildGenerationBatchPrompt([topic('data-interpretation', 'Data Interpretation')], 10, [], { briefVariant: 'on' });
+    expect(prompt).toContain('DISTRACTOR RULE');
+    expect(prompt).toContain('FIGURES — DRAW THEM ACCURATELY');
+    expect(prompt.toLowerCase()).toContain('counting gridlines instead of the gaps');
+  });
+
+  it("variant 'off' emits the baseline prompt (no brief text) for a briefed topic", () => {
+    const t = [topic('data-interpretation', 'Data Interpretation')];
+    const off = buildGenerationBatchPrompt(t, 10, [], { briefVariant: 'off' });
+    expect(off).not.toContain('DISTRACTOR RULE');
+    expect(off).not.toContain('FIGURES — DRAW THEM ACCURATELY');
+  });
+
+  it("variant 'on' with only unbriefed topics equals the baseline (no brief text)", () => {
+    const t = [topic('arithmetic', 'Arithmetic')];
+    const on = buildGenerationBatchPrompt(t, 10, [], { briefVariant: 'on' });
+    const off = buildGenerationBatchPrompt(t, 10, [], { briefVariant: 'off' });
+    expect(on).toBe(off);
+    expect(on).not.toContain('DISTRACTOR RULE');
+  });
+});
+
+// W-147: pie questions must leave room to infer — the model should NOT label every slice; some
+// slices are left unlabelled (showPercent:false) for the student to derive by a clean calculation.
+describe('buildGenerationBatchPrompt — pie inference guidance', () => {
+  it('tells the model to leave some pie slices unlabelled for the student to infer', () => {
+    // Base-prompt guidance (present regardless of the brief A/B variant).
+    const prompt = buildGenerationBatchPrompt([topic('data-interpretation', 'Data Interpretation')], 10, [], { briefVariant: 'off' });
+    expect(prompt).toContain('PIE LABELS — LEAVE ROOM TO INFER');
+    expect(prompt).toContain('showPercent":false');
+    const lower = prompt.toLowerCase();
+    expect(lower).toContain('infer');
+    // The inference must stay a clean calculation, never an eyeball-angle guess.
+    expect(lower).toContain('by eye');
+  });
+});
+
+// W-157: a stimulus question must reference its figure, never dump the figure's raw data into the stem.
+describe('buildGenerationBatchPrompt — no raw data in the question text', () => {
+  it('forbids reproducing a figure\'s rows/columns/values in the question text', () => {
+    const prompt = buildGenerationBatchPrompt([topic('data-interpretation', 'Data Interpretation')], 10, [], { briefVariant: 'off' });
+    expect(prompt).toContain('NO RAW DATA IN THE QUESTION TEXT');
+    const lower = prompt.toLowerCase();
+    expect(lower).toContain('columns');
+    expect(lower).toContain('rows');
+  });
+});
+
+// W-149: a value the student must READ off a bar/line graph must be pinpointable by intuitive
+// calculation from the axis spacing — on a gridline or a clean half/quarter-step — never an awkward
+// mid-gridline value like 7.5/22.5 against a spacing of 8.
+describe('buildGenerationBatchPrompt — readable plotted values on bar/line graphs', () => {
+  it('tells the model plotted values must be readable from the axis spacing', () => {
+    const prompt = buildGenerationBatchPrompt([topic('data-interpretation', 'Data Interpretation')], 10, [], { briefVariant: 'off' });
+    expect(prompt).toContain('READABLE PLOTTED VALUES');
+    const lower = prompt.toLowerCase();
+    expect(lower).toContain('gridline');
+    expect(lower).toContain('intuitive calculation');
+    // Uses the concrete failing case as a counter-example.
+    expect(lower).toMatch(/7\.5|22\.5/);
+  });
+});

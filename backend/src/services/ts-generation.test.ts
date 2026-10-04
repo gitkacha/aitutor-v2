@@ -22,6 +22,13 @@ describe('buildGenerationBatchPrompt', () => {
     // Explanations use the lessons' intuitive speed-tricks + clean numbers, not decimal grinding (W-122).
     expect(p).toContain('Building Blocks');
     expect(p).toMatch(/fractions[\s\S]*decimals/i);
+    // W-139: pies/angles the student must read visually must be intuitive (45°/90°/180° ↔ eighths/
+    // quarters/halves), never an awkward slice to decipher — and the example pie must not model one.
+    expect(p).toContain('READABLE SLICES & ANGLES');
+    expect(p).not.toContain('"percent":27');
+    // W-139 follow-on: clean angles must NOT water the question down — data-interpretation questions
+    // stay multi-step at NSW Selective difficulty (proportion→quantity, reverse, compare, chain).
+    expect(p).toContain('MULTI-STEP DATA INTERPRETATION');
   });
 
   it('thinking-skills: four-option, three distractors, 4-option example, fold-cut + target figures, exemplar anchored', () => {

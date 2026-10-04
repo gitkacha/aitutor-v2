@@ -1,9 +1,13 @@
 import prisma from '../lib/prisma';
 import { checkGridCompassDirection } from '../lib/grid-compass';
 import { validateStimulus, StimulusSpec } from '../lib/stimulus';
-import { hasDistinctOptions, explanationMatchesKey, keptByEscalation } from '../lib/question-checks';
+import { hasDistinctOptions, explanationMatchesKey, keptByEscalation, hasRawDataLeak } from '../lib/question-checks';
 import { balanceAnswerPositions } from '../lib/answer-balance';
 import { MATH_SKILLS, WRITING_SKILLS, THINKING_SKILLS } from '../../prisma/seed-skills';
+import { buildTopicBriefSection } from './topic-briefs';
+import { pickGrid } from './chart-grid';
+import type { Difficulty } from './chart-grid';
+import { generateChartQuestion } from './chart-question';
 
 // Per-role model providers (W-21). Each role — generation, answer-key verification, writing
 // analysis — resolves its own {model, baseUrl, apiKey} from role-specific env, falling back
@@ -51,6 +55,11 @@ export function providerFor(role: ModelRole): ModelProvider {
 
 // Reasoning models reject `temperature` and think inside the completion budget.
 const isReasoningModel = (model: string) => /^(gpt-5|o[134])/.test(model);
+
+// W-144: a single OpenAI call must not hang forever. A briefed reasoning-model batch legitimately
+// takes ~1-2 min, so the ceiling is generous; a genuinely hung socket aborts and the caller's
+// retry path recovers. Override with OPENAI_TIMEOUT_MS.
+const OPENAI_TIMEOUT_MS = Number(process.env.OPENAI_TIMEOUT_MS) || 180_000;
 
 interface ChatCompletionResponse {
   choices: Array<{
@@ -106,6 +115,7 @@ export async function chatCompletion(provider: ModelProvider, prompt: string, ma
       'Authorization': `Bearer ${provider.apiKey}`,
     },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(OPENAI_TIMEOUT_MS), // W-144: fail a hung call fast
   });
 
   if (!response.ok) {
@@ -222,6 +232,7 @@ export async function chatWithTools(
       'Authorization': `Bearer ${provider.apiKey}`,
     },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(OPENAI_TIMEOUT_MS), // W-144: fail a hung call fast
   });
 
   if (!response.ok) {
@@ -628,9 +639,15 @@ export function buildUniquenessInstructions(avoidTexts: string[]): string {
 export interface GenerationOpts {
   optionCount?: number; // 5 for math (default), 4 for thinking-skills
   subject?: string;     // 'math' (default) | 'thinking-skills' — selects the figure vocabulary
+  briefVariant?: 'on' | 'off'; // W-141 A/B: 'on' splices topic briefs in; 'off' = baseline prompt
 }
 
 const OPTION_WORD: Record<number, string> = { 3: 'three', 4: 'four', 5: 'five' };
+
+// W-141 A/B toggle for the topic-brief injection. Default 'on'; set MATH_TOPIC_BRIEFS=off (or 0 /
+// false) to revert to the pre-brief baseline prompt with zero code changes. Read once at load.
+const DEFAULT_BRIEF_VARIANT: 'on' | 'off' =
+  /^(off|0|false)$/i.test(process.env.MATH_TOPIC_BRIEFS ?? '') ? 'off' : 'on';
 
 // W-93: the batch prompt, subject-parametrized. For subject 'math' (the default) it is unchanged
 // from before: five-option, four distractors, a 5-option example, and the base figure vocabulary.
@@ -658,6 +675,10 @@ export function buildGenerationBatchPrompt(
     if (!hardest) return null;
     return { topic: t.name, percentCorrect: hardest.percentCorrect, question: hardest.questionText };
   }).filter(Boolean);
+
+  const briefVariant = opts.briefVariant ?? DEFAULT_BRIEF_VARIANT;
+  // '' when variant is 'off' OR no selected topic is briefed → prompt stays byte-for-byte baseline.
+  const briefSection = briefVariant === 'on' ? buildTopicBriefSection(topics.map((t) => t.slug)) : '';
 
   return `You are a mathematics tutor creating a practice worksheet for a student preparing for the NSW Selective High School Placement Test (Mathematical Reasoning section).
 
@@ -704,13 +725,56 @@ shapes). Format: {"version":1,"text":"<lead-in sentence>","figures":[<figure>]} 
 figure is ONE of:
 - {"kind":"protractor","rays":[20,50],"joinPairs":[[20,50]]} — rays at degree marks 0-180
 - {"kind":"line-chart","title":"...","xLabel":"...","yLabel":"...","points":[{"x":"9 am","y":0},...]} (same shape for "bar-chart")
-- {"kind":"pie-chart","sectors":[{"label":"Rent","percent":27,"showPercent":false},...]} — percents must sum to 100
+- {"kind":"pie-chart","sectors":[{"label":"Rent","percent":25,"showPercent":false},...]} — percents must sum to 100
 - {"kind":"table","columns":["Size","Price"],"rows":[["Small",6],...]}
 - {"kind":"grid","rows":4,"cols":6,"filled":[[0,2],[1,1]],"rowLabels":["1","2","3","4"],"colLabels":["A","B","C","D","E","F"]}
 - {"kind":"compass","facing":"N"}
 - {"kind":"shape","unit":"cm","vertices":[[0,0],[12,0],[12,12],[0,12]],"sideLabels":[{"side":0,"label":"12 cm"}]}
 - {"kind":"rotation","shape":"arrow","beforeDeg":0,"afterDeg":225}
 - {"kind":"cards","values":["4/5","0.15","1/3"]}${extraFigures}
+
+${briefSection ? briefSection + '\n\n' : ''}READABLE SLICES & ANGLES. When a pie-chart, protractor or rotation asks the student to READ or
+ESTIMATE a slice or angle FROM the figure (an unlabelled slice, "what fraction is shaded?", "estimate
+this angle", "which slice is biggest?"), that amount MUST be an intuitive one with a mental shortcut:
+halves (50% = 180°), quarters (25% = 90°), eighths (12.5% = 45°) and their multiples or sums, or
+clock-face angles (multiples of 30° / 90°). Build the WHOLE pie from these clean fractions so the
+computed answer is intuitive too. NEVER make the student decipher an awkward slice or angle that has
+no mental shortcut (16%, 27%, 33%, 40%, 72° …). A slice printed with "showPercent":true may carry a
+clean labelled value, since the student reads the number rather than judging the angle by eye.
+
+READABLE PLOTTED VALUES (bar & line graphs). Every data value the student must READ off a bar or
+line graph must sit where they can pinpoint it by intuitive calculation from the axis — either ON a
+gridline, or at an OBVIOUS clean fraction of the gridline spacing (exactly halfway, or a quarter or
+three-quarters of the way, between two gridlines) that lands on a clean number. Choose the gridline
+spacing to make each read value fall on such a spot: spacing 5 lets you use 7.5 (the clear midpoint
+of 5 and 10); spacing 0.5 puts 7.5 right on a line. NEVER require reading a value that sits at an
+awkward position with no obvious fraction of the spacing — with gridlines 8 apart (0, 8, 16, 24) the
+values 7.5 and 22.5 are unreadable, because neither is a gridline nor a clean half/quarter step of 8.
+Gridline spacing must still not be 1 (per the FIGURES rule when present), so the student still works
+out the scale. Also keep the answer clean: for a mean or total, make the read values sum to a clean
+multiple.
+
+PIE LABELS — LEAVE ROOM TO INFER. Do NOT label every slice with its percentage. On many pie
+questions, deliberately leave ONE (or more) slices UNLABELLED (set "showPercent":false on them) so
+the student must INFER that value — but only by a clean, intuitive calculation, never by judging the
+slice's angle by eye. Make the inference clean: the unlabelled slice is the remainder (100 minus the
+labelled clean slices), or it is an obvious clean fraction of the whole (a quarter, a half, an
+eighth). Keep enough slices labelled ("showPercent":true) that the inference is a simple mental
+subtraction or fraction, not a guess — a value the student must READ to plug into later arithmetic
+stays labelled; a value the student should DERIVE is left unlabelled. Inferring the unlabelled slice
+must NEVER be the whole question (that is just a one-step read, e.g. "the other slices are 40% and
+25%, what is the third?"). The derived share must then FEED a further step — apply it to a total, or
+compare it against another category as a quantity — so the question stays multi-step per below.
+
+MULTI-STEP DATA INTERPRETATION. Clean angles and numbers are for READABILITY — never an excuse to
+make a chart question easy. Every data-interpretation question (pie, bar, line, table) must be a
+genuine multi-step NSW-Selective problem, not a one-step read. Do NOT ask "what percent is the biggest
+slice?" or "the other slices are 40% and 25%, what is the third?". Instead demand reasoning that
+combines the figure with a total or across categories: apply a share to a whole ("360 people; the 25%
+slice is how many?"), REVERSE it ("the 90° slice is 60 people — how many in total?"), compare or
+difference two categories AS QUANTITIES, or CHAIN steps (find the missing share, THEN apply it to the
+total, THEN compare). Keep every number clean so the arithmetic stays mental, but the REASONING must
+be exam-level and multi-step.
 
 COMPASS & DIRECTION CONVENTION. On any grid, map, or figure, NORTH is toward the TOP of the figure
 (up on the screen), SOUTH the bottom, EAST the right, WEST the left. A grid renders its row labels
@@ -727,6 +791,13 @@ HARD RULE: every question must be fully answerable from its questionText plus it
 stimulus. NEVER write "shown below", "in the diagram", "on the protractor" or similar
 unless the question includes a stimulus containing that exact figure and all data needed
 to solve it. Questions violating this are discarded.
+
+NO RAW DATA IN THE QUESTION TEXT. When a question has a stimulus (a table, chart or graph), the
+figure IS the data — the questionText must REFER to it ("the table shows…", "using the graph…")
+and must NEVER reproduce its contents. Do NOT paste the figure's rows, columns, headers, coordinate
+lists or value arrays into the questionText, and never write structural labels like "Columns: [...]"
+or "Rows: [...]". The student reads the numbers off the rendered figure. Questions that dump the raw
+data into the text are discarded.
 
 Respond with ONLY a JSON array (no markdown, no code fences) in this exact format:
 [
@@ -745,6 +816,15 @@ Respond with ONLY a JSON array (no markdown, no code fences) in this exact forma
 Generate exactly ${count} questions. Make sure distractors are plausible — they should be answers a student might get from common mistakes.`;
 }
 
+// W-143: gpt-5-mini is a reasoning model — hidden reasoning tokens are drawn from the SAME
+// max_completion_tokens budget as the visible JSON. A budget sized only for the JSON (the old
+// count*600+4000) is fully consumed by reasoning on the heavier briefed prompts, so the model
+// returns EMPTY content (finish_reason=length) and the batch retry-storms — the ~15-minute stall.
+// Measured headroom: a 10-question briefed batch spends ~12.4k completion tokens, so give ~18k.
+export function generationTokenBudget(count: number): number {
+  return Math.min(count * 1200 + 6000, 24000);
+}
+
 async function generateQuestionBatch(
   topics: MathTopicForGen[],
   count: number,
@@ -752,8 +832,8 @@ async function generateQuestionBatch(
   opts: GenerationOpts = {},
 ): Promise<{ questions: any[]; usage: Usage | null }> {
   const prompt = buildGenerationBatchPrompt(topics, count, avoidTexts, opts);
-  // Reasoning models think inside the completion budget, so leave generous headroom.
-  const { content, usage } = await chatCompletion(providerFor('generation'), prompt, Math.min(count * 600 + 4000, 16000), 0.8);
+  // Reasoning models think inside the completion budget, so leave generous headroom (W-143).
+  const { content, usage } = await chatCompletion(providerFor('generation'), prompt, generationTokenBudget(count), 0.8);
   const arrayMatch = content.match(/\[[\s\S]*\]/);
   if (!arrayMatch) {
     throw new Error('Generation response did not contain a JSON array');
@@ -784,6 +864,49 @@ export async function resolveMathTopicsForGeneration(topicSlugs?: string[], subj
   });
 }
 
+// W-153: code-recomputed-answer chart pipeline for data-interpretation line/bar questions
+// (chart-grid.ts + chart-question.ts). Candidate gridline steps and axis-unit scales the
+// grid picker chooses from; ~half of DI questions are routed through this pipeline so they
+// are guaranteed readable, bypassing the LLM answer-key audit (code already checked the key).
+const CHART_CANDIDATE_GS = [2, 3, 4, 5, 6, 9, 10, 12, 20];
+const CHART_UNITS = [1, 10, 100];
+// W-155: chart questions are independent per-question model calls (each with its own validation
+// retry), so run them concurrently instead of sequentially. Bounded so a large DI worksheet doesn't
+// fire a wide burst of reasoning-model calls at once (rate limits). The collect-loop dedup guard
+// (W-87) already drops any duplicate two parallel calls happen to produce.
+const CHART_CONCURRENCY = 6;
+
+function pick<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+async function generateOneChartQuestion(): Promise<GeneratedMathQuestion | null> {
+  try {
+    const difficulty: Difficulty = Math.random() < 0.5 ? 'medium' : 'hard';
+    const unit = pick(CHART_UNITS);
+    const cleanStep = unit === 1 ? 1 : 25;
+    const cfg = pickGrid({ candidateGs: CHART_CANDIDATE_GS, unit, cleanStep, difficulty });
+    const kind: 'line-chart' | 'bar-chart' = Math.random() < 0.5 ? 'line-chart' : 'bar-chart';
+    return await generateChartQuestion(cfg, difficulty, kind, (p) =>
+      chatCompletion(providerFor('generation'), p, generationTokenBudget(1), 0.8).then((r) => r.content)
+    );
+  } catch (error) {
+    console.error('Chart question generation failed, skipping:', error);
+    return null;
+  }
+}
+
+async function generateDiChartQuestions(count: number): Promise<GeneratedMathQuestion[]> {
+  const out: GeneratedMathQuestion[] = [];
+  // Concurrent in bounded waves; each attempt swallows its own failure and returns null.
+  for (let i = 0; i < count; i += CHART_CONCURRENCY) {
+    const waveSize = Math.min(CHART_CONCURRENCY, count - i);
+    const results = await Promise.all(Array.from({ length: waveSize }, () => generateOneChartQuestion()));
+    for (const q of results) if (q) out.push(q);
+  }
+  return out;
+}
+
 export async function generateMathWorksheetQuestions(
   topics: MathTopicForGen[],
   questionCount = 35,
@@ -801,6 +924,26 @@ export async function generateMathWorksheetQuestions(
   const seen = new Set(avoidTexts.map(normalizeQuestionText));
   const promptAvoid: string[] = [...avoidTexts];
 
+  // W-153: route ~half of the data-interpretation share through the code-recomputed-answer
+  // chart pipeline (chart-grid.ts + chart-question.ts) before the existing batch loop, so a
+  // worksheet with data-interpretation among its topics always contains some guaranteed-readable
+  // line/bar chart questions. These bypass verifyQuestionKey (code already recomputed the answer)
+  // and the skill-tag audit (skillSlug is already 'bar-and-line-graphs'); the rest of the DI share
+  // still comes from the existing batch path below (so pie/table questions still appear, W-146).
+  // Non-DI worksheets are entirely unaffected.
+  if (topics.some((t) => t.slug === 'data-interpretation')) {
+    const diShare = Math.round(questionCount / topics.length);
+    const K = Math.min(Math.round(diShare / 2), questionCount);
+    const chartQuestions = await generateDiChartQuestions(K);
+    for (const q of chartQuestions) {
+      if (collected.length >= questionCount) break;
+      const n = normalizeQuestionText(q.questionText);
+      if (seen.has(n)) continue; // W-87: no duplicate chart questions
+      collected.push(q);
+      seen.add(n);
+    }
+  }
+
   // Verification drops some candidates, so allow extra top-up calls.
   const maxCalls = Math.ceil(questionCount / GENERATION_BATCH_SIZE) + 5;
   let failedCalls = 0;
@@ -811,7 +954,8 @@ export async function generateMathWorksheetQuestions(
       const batchResult = await generateQuestionBatch(topics, need, promptAvoid, opts);
       accumulate(totals, genModel, batchResult.usage);
       const candidates: GeneratedMathQuestion[] = batchResult.questions
-        .filter(q => isValidGeneratedQuestion(q, allowedSlugs, optionCount) && hasDistinctOptions(q.options.map(String)))
+        // W-157: drop any question that dumped its figure's raw data (Columns/Rows/value arrays) into the stem.
+        .filter(q => isValidGeneratedQuestion(q, allowedSlugs, optionCount) && hasDistinctOptions(q.options.map(String)) && !hasRawDataLeak(q.questionText))
         .map(q => ({
           questionText: q.questionText,
           options: q.options.map(String),

@@ -7,6 +7,7 @@ import type {
   Figure, GridFigure, ProtractorFigure, CompassFigure, ShapeFigure,
   RotationFigure, RotationShape, FoldCutFigure, TargetFigure, PieChartFigure,
 } from '@/lib/stimulus';
+import { explicitAxisProps } from '@/lib/chart-ticks';
 
 // W-130: caption explaining a pie slice's 5%-block breakdown (shown on hover in interactive lessons).
 // Only decomposes into blocks when the percent is a clean multiple of 5.
@@ -16,6 +17,13 @@ export function blocksLabel(name: string, percent: number): string {
     return `${name} — ${percent}% = ${n} block${n === 1 ? '' : 's'} of 5%`;
   }
   return `${name} — ${percent}%`;
+}
+
+// W-148: compact-legend label for a pie slice. Honours showPercent (default = shown, matching the
+// non-compact chart's `showPercent !== false`), so a slice marked showPercent:false shows only its
+// name and the student can infer its value.
+export function sectorLegendText(label: string, percent: number, showPercent?: boolean): string {
+  return showPercent === false ? label : `${label} ${percent}%`;
 }
 
 // W-130: the pie chart. In lessons (`interactive`), hovering a slice highlights it and captions its
@@ -54,7 +62,7 @@ function PieFigure({ f, interactive, compact }: { f: PieChartFigure; interactive
           {f.sectors.map((s, i) => (
             <span key={i} className="inline-flex items-center gap-1">
               <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
-              {s.label} {s.percent}%
+              {sectorLegendText(s.label, s.percent, s.showPercent)}
             </span>
           ))}
         </div>
@@ -364,6 +372,10 @@ export default function StimulusFigure({ figure, interactive, compact }: { figur
       case 'line-chart':
       case 'bar-chart': {
         const data = figure.points.map((p) => ({ x: String(p.x), y: p.y }));
+        // W-150/W-158: an explicit axis (both yMax and yTickStep) draws exact gridlines instead of
+        // Recharts auto-scaling, with interval:0 so every gridline renders. Empty when absent, so
+        // auto-scaling behaviour is unchanged.
+        const axis = explicitAxisProps(figure.yMax, figure.yTickStep);
         return (
           <div className={compact ? 'w-full max-w-[440px]' : 'w-full max-w-xl'}>
             {figure.title && <p className="text-sm font-medium text-gray-700 text-center mb-1">{figure.title}</p>}
@@ -372,14 +384,14 @@ export default function StimulusFigure({ figure, interactive, compact }: { figur
                 <LineChart data={data} margin={{ top: 5, right: 20, bottom: 18, left: 4 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="x" tick={{ fontSize: 11 }} label={figure.xLabel ? { value: figure.xLabel, position: 'insideBottom', offset: -12, fontSize: 11 } : undefined} />
-                  <YAxis tick={{ fontSize: 11 }} label={figure.yLabel ? { value: figure.yLabel, angle: -90, position: 'insideLeft', fontSize: 11 } : undefined} />
+                  <YAxis tick={{ fontSize: 11 }} label={figure.yLabel ? { value: figure.yLabel, angle: -90, position: 'insideLeft', fontSize: 11 } : undefined} {...axis} />
                   <Line type="linear" dataKey="y" stroke="#1c6dd0" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} />
                 </LineChart>
               ) : (
                 <BarChart data={data} margin={{ top: 5, right: 20, bottom: 18, left: 4 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="x" tick={{ fontSize: 11 }} label={figure.xLabel ? { value: figure.xLabel, position: 'insideBottom', offset: -12, fontSize: 11 } : undefined} />
-                  <YAxis tick={{ fontSize: 11 }} label={figure.yLabel ? { value: figure.yLabel, angle: -90, position: 'insideLeft', fontSize: 11 } : undefined} />
+                  <YAxis tick={{ fontSize: 11 }} label={figure.yLabel ? { value: figure.yLabel, angle: -90, position: 'insideLeft', fontSize: 11 } : undefined} {...axis} />
                   <Bar dataKey="y" fill="#1c6dd0" isAnimationActive={false} />
                 </BarChart>
               )}

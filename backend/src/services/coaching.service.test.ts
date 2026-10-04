@@ -165,6 +165,14 @@ describe('lesson prompt is the single tactical structure (W-118/W-123)', () => {
     // W-136: a question may carry its own small figure; don't reuse the lesson figure across questions.
     expect(p).toContain('PER-QUESTION FIGURE');
     expect(p).toContain('```figure');
+    // W-138: every question must state the exact unit/form of the expected answer (no ambiguous
+    // "which pack / what is the cheapest way" where dollars vs pack-count is left implicit).
+    expect(p).toContain('STATE THE ANSWER UNIT');
+    // W-139: pie/angle figures must use intuitive slices (45°/90°/180° ↔ eighths/quarters/halves),
+    // never an awkward slice for the student to decipher visually.
+    expect(p).toContain('READABLE SLICES & ANGLES');
+    // W-139 follow-on: intuitive angles must not trivialise — chart questions stay multi-step.
+    expect(p).toContain('MULTI-STEP DATA INTERPRETATION');
     // Draws on the named concrete mental models the user asked for.
     expect(p).toContain('Bar Model');
     expect(p).toContain('Clock Face');
@@ -183,6 +191,55 @@ describe('lesson prompt is the single tactical structure (W-118/W-123)', () => {
       .mockResolvedValueOnce({ content: '{"ok":true,"warnings":[]}', usage: null });
     await generateCoachingModuleContent(skill, 'math');
     expect(chatCompletion.mock.calls[0][2] as number).toBeGreaterThanOrEqual(12000);
+  });
+});
+
+describe('on-screen visual technique (W-159) + lesson figure quality (W-160)', () => {
+  async function promptForSkill(s: typeof skill, subject: 'math' | 'thinking-skills'): Promise<string> {
+    chatCompletion.mockReset();
+    chatCompletion
+      .mockResolvedValueOnce({ content: '# The Selective Trap\nlesson', usage: null })
+      .mockResolvedValueOnce({ content: '{"ok":true,"warnings":[]}', usage: null });
+    await generateCoachingModuleContent(s, subject);
+    return chatCompletion.mock.calls[0][1] as string;
+  }
+
+  const visualSkill = { name: 'Bar and Line Graphs', slug: 'bar-and-line-graphs', examLevelNotes: 'read values off axes', misconceptions: [] };
+  const tsVisual = { name: 'Visual Reasoning', slug: 'visual-reasoning', examLevelNotes: 'spot the transformation', misconceptions: [] };
+
+  it('W-159: a visual-skill lesson teaches on-screen technique (scratch paper, no figure markup)', async () => {
+    const p = await promptForSkill(visualSkill, 'math');
+    expect(p).toContain('ON-SCREEN TECHNIQUE');
+    expect(p).toContain('On the screen:');
+    expect(p).toContain('Jot the sub-answers');
+    const low = p.toLowerCase();
+    expect(low).toContain('scratch paper');
+    expect(low).toMatch(/annotate|without marking/);
+    // Figure→technique match: the taught move must fit the actual figure, never reference an absent feature.
+    expect(p).toContain('MATCH THE TECHNIQUE TO THE FIGURE');
+  });
+
+  it('W-159: a non-visual (arithmetic) skill lesson has no on-screen patter, library intact', async () => {
+    const p = await promptForSkill(skill, 'math'); // balancing-number-sentences
+    expect(p).not.toContain('ON-SCREEN TECHNIQUE');
+    expect(p).not.toContain('On the screen:');
+    expect(p).not.toContain('Jot the sub-answers');
+    expect(p).toContain('Bar Model');
+    expect(p).toContain('Clock Face');
+  });
+
+  it('W-159: thinking-skills visual-reasoning also gets on-screen technique', async () => {
+    const p = await promptForSkill(tsVisual, 'thinking-skills');
+    expect(p).toContain('ON-SCREEN TECHNIQUE');
+  });
+
+  it('W-160: lesson bar/line figures must set an explicit readable axis (yMax/yTickStep, readable values, <=2dp)', async () => {
+    const p = await promptForSkill(visualSkill, 'math');
+    expect(p).toContain('yTickStep');
+    expect(p).toContain('yMax');
+    const low = p.toLowerCase();
+    expect(low).toContain('gridline');
+    expect(low).toMatch(/2 decimal|two decimal/);
   });
 });
 

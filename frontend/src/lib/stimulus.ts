@@ -29,6 +29,8 @@ export interface LineChartFigure {
   xLabel?: string;
   yLabel?: string;
   points: ChartPoint[];
+  yMax?: number;
+  yTickStep?: number;
 }
 
 export interface BarChartFigure {
@@ -37,6 +39,8 @@ export interface BarChartFigure {
   xLabel?: string;
   yLabel?: string;
   points: ChartPoint[];
+  yMax?: number;
+  yTickStep?: number;
 }
 
 export interface PieSector {
@@ -169,11 +173,20 @@ function validFigure(f: any): boolean {
       return true;
     }
     case 'line-chart':
-    case 'bar-chart':
-      return (
+    case 'bar-chart': {
+      const pointsOk =
         Array.isArray(f.points) && f.points.length >= 2 &&
-        f.points.every((p: any) => p && (typeof p.x === 'string' || isFiniteNumber(p.x)) && isFiniteNumber(p.y))
-      );
+        f.points.every((p: any) => p && (typeof p.x === 'string' || isFiniteNumber(p.x)) && isFiniteNumber(p.y));
+      if (!pointsOk) return false;
+      // W-150: optional explicit axis — both present, positive, yMax a multiple of the step.
+      const hasAxis = f.yMax !== undefined || f.yTickStep !== undefined;
+      if (hasAxis) {
+        if (!isFiniteNumber(f.yMax) || !isFiniteNumber(f.yTickStep) || f.yMax <= 0 || f.yTickStep <= 0) return false;
+        const n = f.yMax / f.yTickStep;
+        if (Math.abs(n - Math.round(n)) > 1e-9) return false;
+      }
+      return true;
+    }
     case 'pie-chart': {
       if (!Array.isArray(f.sectors) || f.sectors.length < 2) return false;
       if (!f.sectors.every((s: any) => s && typeof s.label === 'string' && isFiniteNumber(s.percent) && s.percent > 0)) {

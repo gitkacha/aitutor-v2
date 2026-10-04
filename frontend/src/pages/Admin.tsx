@@ -14,6 +14,7 @@ import ThinkingSkillsGenerate from '@/components/ThinkingSkillsGenerate';
 import { validateStimulus } from '@/lib/stimulus';
 import { parseJsonArray } from '@/lib/parse';
 import { mathWorksheetTitle } from '@/lib/math-worksheet-title';
+import { isGenerationExpired } from '@/lib/generation-poll';
 
 type AdminTab = 'writing' | 'math' | 'thinking-skills';
 
@@ -243,6 +244,10 @@ export default function Admin() {
     try {
       const { jobId } = await mathApi.startGeneration(selectedTopics, questionCount);
       localStorage.setItem('coach.mathGenJob', jobId);
+      // W-145: remember when/how big this run is so the poll can enforce a deadline (and survive
+      // a navigate-away/re-attach).
+      localStorage.setItem('coach.mathGenStart', String(Date.now()));
+      localStorage.setItem('coach.mathGenCount', String(questionCount));
       setMathJobId(jobId);
     } catch (e: any) {
       setMessage(`Error: ${e.message}`);
@@ -254,9 +259,25 @@ export default function Admin() {
     if (!mathJobId) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;
-    const finish = () => { localStorage.removeItem('coach.mathGenJob'); setMathJobId(null); };
+    const finish = () => {
+      localStorage.removeItem('coach.mathGenJob');
+      localStorage.removeItem('coach.mathGenStart');
+      localStorage.removeItem('coach.mathGenCount');
+      setMathJobId(null);
+    };
     const tick = async () => {
       try {
+        // W-145: stop waiting once past the deadline instead of spinning forever on a wedged job.
+        // If the start marker is missing (e.g. re-attaching to a job started before this shipped),
+        // stamp it once now so the deadline measures from first observation instead of resetting
+        // every tick (which would never expire).
+        let startedAt = Number(localStorage.getItem('coach.mathGenStart'));
+        if (!startedAt) { startedAt = Date.now(); localStorage.setItem('coach.mathGenStart', String(startedAt)); }
+        const count = Number(localStorage.getItem('coach.mathGenCount')) || undefined;
+        if (isGenerationExpired(startedAt, Date.now(), count)) {
+          if (!cancelled) { setMessage('Generation is taking longer than expected — please try again.'); finish(); }
+          return;
+        }
         const job = await mathApi.getGenerationJob(mathJobId);
         if (cancelled) return;
         if (job.status === 'done' && job.result) {

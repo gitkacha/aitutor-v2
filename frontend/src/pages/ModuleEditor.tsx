@@ -35,6 +35,10 @@ export default function ModuleEditor() {
 
   useEffect(() => {
     if (!id) return;
+    // W-161: a successful regenerate navigates to the NEW draft's id. Both URLs match the same
+    // /admin/modules/:id route, so React keeps this component mounted and `regenerating` would stay
+    // true forever (spinner never clears). Reset it whenever the viewed module changes.
+    setRegenerating(false);
     coachingApi
       .get(Number(id))
       .then((m) => {
