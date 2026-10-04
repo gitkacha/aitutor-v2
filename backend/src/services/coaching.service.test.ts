@@ -194,6 +194,55 @@ describe('lesson prompt is the single tactical structure (W-118/W-123)', () => {
   });
 });
 
+describe('on-screen visual technique (W-159) + lesson figure quality (W-160)', () => {
+  async function promptForSkill(s: typeof skill, subject: 'math' | 'thinking-skills'): Promise<string> {
+    chatCompletion.mockReset();
+    chatCompletion
+      .mockResolvedValueOnce({ content: '# The Selective Trap\nlesson', usage: null })
+      .mockResolvedValueOnce({ content: '{"ok":true,"warnings":[]}', usage: null });
+    await generateCoachingModuleContent(s, subject);
+    return chatCompletion.mock.calls[0][1] as string;
+  }
+
+  const visualSkill = { name: 'Bar and Line Graphs', slug: 'bar-and-line-graphs', examLevelNotes: 'read values off axes', misconceptions: [] };
+  const tsVisual = { name: 'Visual Reasoning', slug: 'visual-reasoning', examLevelNotes: 'spot the transformation', misconceptions: [] };
+
+  it('W-159: a visual-skill lesson teaches on-screen technique (scratch paper, no figure markup)', async () => {
+    const p = await promptForSkill(visualSkill, 'math');
+    expect(p).toContain('ON-SCREEN TECHNIQUE');
+    expect(p).toContain('On the screen:');
+    expect(p).toContain('Jot the sub-answers');
+    const low = p.toLowerCase();
+    expect(low).toContain('scratch paper');
+    expect(low).toMatch(/annotate|without marking/);
+    // Figure→technique match: the taught move must fit the actual figure, never reference an absent feature.
+    expect(p).toContain('MATCH THE TECHNIQUE TO THE FIGURE');
+  });
+
+  it('W-159: a non-visual (arithmetic) skill lesson has no on-screen patter, library intact', async () => {
+    const p = await promptForSkill(skill, 'math'); // balancing-number-sentences
+    expect(p).not.toContain('ON-SCREEN TECHNIQUE');
+    expect(p).not.toContain('On the screen:');
+    expect(p).not.toContain('Jot the sub-answers');
+    expect(p).toContain('Bar Model');
+    expect(p).toContain('Clock Face');
+  });
+
+  it('W-159: thinking-skills visual-reasoning also gets on-screen technique', async () => {
+    const p = await promptForSkill(tsVisual, 'thinking-skills');
+    expect(p).toContain('ON-SCREEN TECHNIQUE');
+  });
+
+  it('W-160: lesson bar/line figures must set an explicit readable axis (yMax/yTickStep, readable values, <=2dp)', async () => {
+    const p = await promptForSkill(visualSkill, 'math');
+    expect(p).toContain('yTickStep');
+    expect(p).toContain('yMax');
+    const low = p.toLowerCase();
+    expect(low).toContain('gridline');
+    expect(low).toMatch(/2 decimal|two decimal/);
+  });
+});
+
 describe('generation completion budget (W-115 fix)', () => {
   it('requests a generous completion budget so the reasoning model does not truncate to empty', async () => {
     chatCompletion

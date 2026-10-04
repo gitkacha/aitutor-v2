@@ -33,7 +33,7 @@ student would see, then teach on top of it. Write a figure as a fenced code bloc
 
 A figure is ONE of:
 - {"kind":"pie-chart","title":"...","sectors":[{"label":"Rent","percent":50,"showPercent":true},...]} — percents sum to 100
-- {"kind":"bar-chart","title":"...","xLabel":"...","yLabel":"...","points":[{"x":"Mon","y":4},...]} (same shape for "line-chart")
+- {"kind":"bar-chart","title":"...","xLabel":"...","yLabel":"...","yMax":60,"yTickStep":10,"points":[{"x":"Mon","y":40},...]} (same shape for "line-chart")
 - {"kind":"table","columns":["Size","Price"],"rows":[["Small",6],...]}
 - {"kind":"grid","rows":4,"cols":4,"filled":[[0,2],[1,1]],"rowLabels":["1","2","3","4"],"colLabels":["A","B","C","D"]}
 - {"kind":"shape","unit":"cm","vertices":[[0,0],[12,0],[12,12],[0,12]],"sideLabels":[{"side":0,"label":"12 cm"}]}
@@ -60,6 +60,13 @@ Rules for figures:
   compare or difference two categories AS QUANTITIES, or CHAIN steps (find the missing share, THEN
   apply it to the total). Keep the numbers clean so the arithmetic stays mental, but the reasoning
   must be exam-level.
+- AXIS & READABLE VALUES (bar/line charts, W-160). ALWAYS set "yMax" and "yTickStep" so the chart
+  draws its own gridlines (yMax must be a whole multiple of yTickStep). Make yTickStep NOT 1 (e.g. 2,
+  5, 10, 0.5) so the student has to read the scale. Every plotted value the student reads MUST land on
+  a gridline, or at a clean half/quarter step of the spacing — NEVER an awkward spot the eye can't
+  place (e.g. 7.5 against a spacing of 10). Keep any value the student computes to AT MOST 2 decimal
+  places — never a long or repeating decimal (if an average wouldn't come out clean, choose friendlier
+  numbers).
 - Only embed a figure when it genuinely helps. A pure-reasoning skill (logic, deduction, spotting a
   flaw in an argument) needs no chart — do NOT invent one.`;
 
@@ -86,6 +93,47 @@ physical and visual, never an abstract formula):
   both numbers into whole numbers, then scale one block up.
 - Money / sharing → coin and note analogies; comparisons → line the amounts up and compare, don't compute.`;
 
+// W-159: visual skills whose lessons must teach ON-SCREEN technique — the real test is on a computer
+// where the student gets physical scratch paper but CANNOT mark the figure. Keyed by skill slug
+// (available at generation time; no schema change). Non-visual (arithmetic/logic) skills are inert.
+const VISUAL_SKILL_SLUGS = new Set<string>([
+  'reading-tables', 'bar-and-line-graphs', 'pie-charts-proportions', 'two-step-data-problems',
+  'measuring-angles', 'estimating-angles', 'angle-types', 'angles-on-lines-and-points',
+  'compass-directions', 'grid-references-maps', 'turns-and-bearings', 'grid-logic-deduction',
+  'perimeter-rectilinear', 'perimeter-composite-shapes', 'rotating-shapes', 'angle-of-rotation',
+  'rotational-symmetry', 'shape-patterns', 'timetable-reading',
+  'visual-reasoning', // Thinking Skills
+]);
+
+// W-159: named, concrete moves for working a figure ON SCREEN with scratch paper only. The crucial
+// rule is MATCH THE TECHNIQUE TO THE FIGURE — the lesson may only name a move that applies to the
+// figure it actually shows (e.g. never "read the scale" / "count the gridlines" on a pie, protractor
+// or table — they have no axis).
+const ON_SCREEN_TECHNIQUE = `ON-SCREEN TECHNIQUE — THIS IS A COMPUTER TEST. The student has physical scratch paper but CANNOT
+write on, mark, highlight or annotate the figure on screen. Teach them to pull what they need OFF the
+figure onto scratch paper using these named moves:
+- "Read the scale first" — before reading any value, work out what ONE gridline/interval is worth and
+  where zero is; decide the scale once, then every read is just counting.
+- "Anchor and count the gridlines" — never eyeball a position; start from a labelled line/point and
+  count whole intervals (or squares) to the target.
+- "Jot the sub-answers" — write each value you read on scratch paper as you go, then combine the
+  jotted numbers; this is how a multi-step visual problem is solved on screen without marking the figure.
+- "One landmark at a time" — track a single corner/dot/arrow through a move, record where it lands,
+  then do the next.
+- "Say the slice as a clean fraction" — turn an on-screen slice/angle into a clean spoken fraction
+  (half, quarter, eighth; 90°, 45°), jot it, then apply.
+
+MATCH THE TECHNIQUE TO THE FIGURE — 100% ACCURACY. Only name the move(s) that actually apply to the
+figure you embed; NEVER reference a feature the figure does not have. Use this mapping:
+- bar / line graph → Read the scale first + Anchor and count the gridlines + Jot the sub-answers.
+- pie chart → Say the slice as a clean fraction + Jot the sub-answers (NO scale or gridlines to read).
+- grid / map / compass → Anchor and count the squares + One landmark at a time + Jot the sub-answers.
+- protractor / angle figure → Say the angle as a clean fraction (clock face) + Jot the sub-answers
+  (NO gridlines).
+- rotation / symmetry → One landmark at a time + Jot the sub-answers.
+- table / timetable → Anchor to the exact row and column, then Jot the sub-answers (NO scale or
+  gridline to read).`;
+
 function generationPrompt(skill: CoachingSkillInput, subject: CoachingSubject, feedback?: string[]): string {
   const ts = subject === 'thinking-skills';
   const skillKind = ts ? 'Thinking Skills reasoning skill' : 'maths skill';
@@ -102,6 +150,12 @@ function generationPrompt(skill: CoachingSkillInput, subject: CoachingSubject, f
   const correctnessLine = ts
     ? 'Every drill must be logically sound — double-check the reasoning in each.'
     : 'Every drill must be arithmetically correct — double-check each calculation, and prefer clean ratios and multipliers over decimals or heavy division.';
+  // W-159: visual skills additionally teach how to work the figure ON SCREEN (scratch paper only).
+  const isVisual = VISUAL_SKILL_SLUGS.has(skill.slug);
+  const onScreenBlock = isVisual ? `\n${ON_SCREEN_TECHNIQUE}\n` : '';
+  const speedScreenDirective = isVisual
+    ? ' Because this figure is on a screen the student may not mark, include a one-line "On the screen:" callout that names which of the on-screen moves above to use for THIS figure — showing the student pulling values onto scratch paper (jot the sub-answers) — and referencing only features the figure actually has.'
+    : '';
   return `You are an expert primary mathematics tutor specialising in preparing Year 5/6 students for the NSW Selective High School Placement Test. Your teaching philosophy rejects abstract formulas, rote memorisation and slow algorithms. Instead you teach using "Mental Models", "Building Blocks" and "Intuitive Visual Shortcuts" that let a student solve a hard reasoning question mentally in under 45 seconds.
 
 Write a step-by-step lesson and practice set for this ONE ${skillKind}.
@@ -110,7 +164,7 @@ Skill / topic: ${skill.name}
 What exam-level mastery looks like (tutor notes — translate into kid-friendly teaching, do NOT copy verbatim): ${skill.examLevelNotes}
 ${misconceptions}${retry}
 ${MENTAL_MODEL_LIBRARY}
-
+${onScreenBlock}
 Structure the lesson EXACTLY as these four sections, in this order, each as a \`##\` heading:
 
 ## 1. The Selective Trap
@@ -120,7 +174,7 @@ Show a typical NSW Selective-style question for this skill. Explain why the "tra
 Explain the concept with a concrete, non-abstract mental model from the library above (money, block-chopping, visual grids, balancing scales, bar models, clock faces…). Do NOT use algebraic formulas yet.
 
 ## 3. The Speed Shortcut
-Turn that mental model into a rapid mental-maths strategy. Walk through the example step by step, showing exactly what the student should "see" in their head. End with a one-line "Mental Map:" of the chain.
+Turn that mental model into a rapid mental-maths strategy. Walk through the example step by step, showing exactly what the student should "see" in their head. End with a one-line "Mental Map:" of the chain.${speedScreenDirective}
 
 ## 4. Guided Quiz
 An INTERACTIVE quiz that makes the student DO the trick — it must not hand them the answer. Give 3 progressive questions. Output EACH question as a fenced code block whose language is "quiz" containing ONE JSON object:
